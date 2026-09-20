@@ -1,0 +1,22 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <Button name="PyresinQoLThreatMenuTemplate" virtual="true">
+        <Size x="120" y="20"/>
+        <Layers>
+            <Layer level="ARTWORK">
+                <Texture parentKey="Icon" file="Interface\Icons\Ability_Warrior_FocusedRage">
+                    <Size x="16" y="16"/>
+                    <Anchors>
+                        <Anchor point="LEFT"/>
+                    </Anchors>
+                </Texture>
+            </Layer>
+        </Layers>
+        <ButtonText parentKey="Text" inherits="GameFontHighlight" justifyH="LEFT" wordwrap="false">
+            <Anchors>
+                <Anchor point="LEFT" relativeKey="$parent.Icon" relativePoint="RIGHT" x="4"/>
+                <Anchor point="RIGHT" x="-4"/>
+            </Anchors>
+        </ButtonText>
+        <HighlightTexture file="Interface\QuestFrame\UI-QuestTitleHighlight" alphaMode="ADD" setAllPoints="true"/>
+    </Button>
+</Ui>

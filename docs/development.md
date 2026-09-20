@@ -13,8 +13,7 @@ bash tools/package.sh
 
 The Lua runner covers language variants and all Edit Mode / Performance activation
 combinations. Tests mock game APIs; they cannot certify visuals, taint or combat safety.
-Optional upstream checks: `luajit tests/experience.lua en /path/to/forever-ui-source`
-and `luajit tests/threatmeter.lua /path/to/Blizzard_DamageMeter/DamageMeterEntry.lua`.
+Optional upstream check: `luajit tests/experience.lua en /path/to/forever-ui-source`.
 
 The build downloads a pinned BigWigs Packager into ignored `.release/`, packages
 with `.pkgmeta`, and verifies `dist/PyresinQoL-X.Y.Z.zip` against the working tree.
@@ -81,6 +80,59 @@ are discovered automatically. Keep `PyresinQoLDB`, existing saved keys, frame na
 and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
+
+### Damage-meter Threat display
+
+Unit Frames adds **Threat** to Blizzard's damage-meter type dropdown through
+`Menu.ModifyMenu("MENU_DAMAGE_METER_WINDOW_TRACKED_TYPE", ...)`. Its Focused Rage
+icon sits left of the label, desaturated while inactive and colored while active.
+Selecting Threat overlays the meter's bars and changes its heading to **Threat**.
+Selecting any native type, including the already selected one, exits the overlay
+and leaves Blizzard's new heading in place. There is no separate header button.
+
+The native heading's previous text is retained while Threat is displayed and
+restored temporarily in Edit Mode. The type dropdown is anchored directly to the
+header, and the native timer is placed after the title, before the segment button.
+The popup's native `menuAnchor` stays untouched. This keeps menu geometry from
+depending on the secret timer text; changing only the Threat row is insufficient
+because Blizzard measures the native category rows too.
+All threat state and rows belong to the addon. Never write native meter types or
+window data, replace the popup's menu anchor or dimensions, hide source details,
+replace native methods, or call native refresh from the extension. The Threat menu entry uses a
+fixed-size XML button through `CreateTemplate`; its initializer changes only the
+label, icon saturation and click handler. Do not add compositor attachments:
+their automatic sizing performs unnecessary region measurements. The native menu
+owns the final row widths and placement.
+
+The existing 0.2-second poll discovers new windows, updates native styling, and
+exits Threat if the native type changes elsewhere. Minimized windows hide the
+overlay through their container. Restricted threat values go only to display sinks.
+
+Run `sh tests/run.sh`. The threat test covers menu selection, same-type return,
+icon state, heading restoration, native-state preservation, restricted values,
+scrolling, Edit Mode, and new windows. Optional native row style check:
+`luajit tests/threatmeter.lua /path/to/Blizzard_DamageMeter/DamageMeterEntry.lua`.
+Offline tests do not certify WoW's frame-layout/taint behavior. After `/reload`,
+select Damage Done, enter combat, attack an NPC until meter rows appear, then open
+the type dropdown. Check switching to Threat and back, repeat menu opening, and
+source details during combat.
+If an old saved meter type is invalid, select **Damage Done**
+in Blizzard's menu and reload.
+
+### Per-unit status text
+
+The Status Text page independently hides pet, target, target-of-target and focus
+health/resource text, including native hover text and Dead/Unconscious labels.
+Defaults leave all text unchanged. The addon adds no hover overlay or bar-script
+hooks. Only font opacity is changed and restored; no status-text CVars, formatter
+calls or native visibility flags are modified.
+
+The Forever 1.60.1.69913 target-of-target template has no numeric text; its toggle
+covers the existing state labels. Frame paths were checked against the pinned
+[Blizzard source](https://github.com/Gethe/wow-ui-source/tree/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UnitFrame).
+Run `sh tests/run.sh`. In game, check each toggle, mouseover, target/focus changes,
+pet dismissal/resummoning, native text formats and combat; mocked tests cannot
+certify taint safety. Reload after updating from the removed global text selector.
 
 ### Nameplate combo points
 

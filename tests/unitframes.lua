@@ -9,7 +9,7 @@ local units = { player = "MAGE", target = "WARRIOR" }
 function UnitClass(unit) return unit, units[unit] end
 function UnitIsPlayer(unit) return units[unit] ~= nil end
 RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
-PyresinQoLDB = { playerClassColor = false, targetClassColor = false }
+PyresinQoLDB = { playerClassColor = false, targetClassColor = false, focusHideStatusText = true }
 local threatCVars = { threatShowNumeric = "0", threatWarning = "0" }
 function SetCVar(name, value)
     assert(threatCVars[name] and type(value) == "string")
@@ -30,49 +30,33 @@ local function Bar()
     function texture:SetAtlas() error("Preserve Blizzard's atlas") end
     local bar = { TextString = text, texture = texture, color = { 1, 1, 1, 1 }, scripts = {},
         LeftText = setmetatable({ alpha = 0.6 }, { __index = text }),
-        RightText = setmetatable({ alpha = 1 }, { __index = text }), current = 50, maximum = 100 }
+        RightText = setmetatable({ alpha = 1 }, { __index = text }) }
     bar.scripts.OnEnter = function(self) self.nativeTooltip = true end
     bar.scripts.OnLeave = function(self) self.nativeTooltip = false end
-    function bar:HookScript(name, callback)
-        local original = self.scripts[name]
-        self.scripts[name] = function(...)
-            if original then original(...) end
-            callback(...)
-        end
-    end
-    function bar:CreateFontString(_, layer, template)
-        assert(layer == "OVERLAY" and template == "TextStatusBarText")
-        local hover = {}
-        function hover:SetPoint(...) self.point = { ... } end
-        function hover:Show() self.shown = true end
-        function hover:Hide() self.shown = false end
-        function hover:SetFormattedText(format, current, maximum)
-            self.arguments = { format, current, maximum }
-            if not issecretvalue(current) and not issecretvalue(maximum) then
-                self.value = format:format(current, maximum)
-            end
-        end
-        self.hover = hover
-        return hover
-    end
+    function bar:HookScript() error("Leave native bar scripts untouched") end
+    function bar:CreateFontString() error("Do not create a custom hover display") end
     function bar:GetStatusBarTexture() return texture end
     function bar:GetStatusBarColor() return unpack(self.color) end
     function bar:SetStatusBarColor(r, g, b, a) self.color = { r, g, b, a or 1 } end
     function bar:SetStatusBarTexture() error("Preserve Blizzard's texture") end
-    function bar:GetValue()
-        assert(self.TextString.alpha == 0, "Read values only for the active hover display")
-        return self.current
-    end
-    function bar:GetMinMaxValues()
-        assert(self.TextString.alpha == 0, "Read values only for the active hover display")
-        return secret, self.maximum
-    end
+    function bar:GetValue() error("Do not read restricted status-bar values") end
+    function bar:GetMinMaxValues() error("Do not read restricted status-bar limits") end
     function bar:UpdateTextString() error("Do not run Blizzard's formatter in addon context") end
     function bar:UpdateTextStringWithValues() error("Do not run Blizzard's formatter in addon context") end
     return bar
 end
 PlayerFrame = { healthbar = Bar(), manabar = Bar() }
 TargetFrame = { healthbar = Bar(), manabar = Bar(), Update = function() end }
+PetFrame = { healthbar = Bar(), manabar = Bar() }
+FocusFrame = { healthbar = Bar(), manabar = Bar() }
+TargetFrame.totFrame = {
+    healthbar = { DeadText = Bar().TextString, UnconsciousText = Bar().TextString }, manabar = {},
+}
+for _, frame in ipairs({ TargetFrame, FocusFrame }) do
+    frame.TargetFrameContent = { TargetFrameContentMain = {
+        HealthBarsContainer = { DeadText = Bar().TextString, UnconsciousText = Bar().TextString },
+    } }
+end
 local hooks = {}
 function hooksecurefunc(owner, method, callback)
     assert(method ~= "UpdateTextStringWithValues" and method ~= "UpdateTextString", "Leave native text updates untouched")
@@ -91,8 +75,14 @@ end
 ns.RegisterModule = function(id, initialize) assert(id == "unitFrames"); initialize(module) end
 assert(loadfile("Modules/UnitFrames/UnitFrames.lua"))("PyresinQoL", ns)
 module.UpdatePlayerFrame()
+module.UpdateStatusText() -- Settings can change before PLAYER_LOGIN.
 events:callback("PLAYER_LOGIN")
 assert(events.event == nil)
+assert(FocusFrame.healthbar.TextString.alpha == 0 and FocusFrame.manabar.LeftText.alpha == 0,
+    "Apply saved visibility at login, even before a focus exists")
+PyresinQoLDB.focusHideStatusText = false
+module.UpdateStatusText()
+assert(FocusFrame.healthbar.TextString.alpha == 0.8 and FocusFrame.manabar.LeftText.alpha == 0.6)
 assert(threatCVars.threatShowNumeric == "1" and threatCVars.threatWarning == "3",
     "Enable native numeric threat at login, including solo play")
 PyresinQoLDB.targetThreat = false
@@ -154,32 +144,54 @@ module.UpdatePlayerFrame()
 assert(hp.texture.desaturation == 0.35)
 print("PASS: independent player/target colors, target changes, NPCs, native texture restoration, nine positions and no restricted text access")
 
-function SetCVar() error("Hover must not change global status-text settings") end
+function SetCVar() error("Text visibility must not change global settings") end
 for _, bar in ipairs({ hp, PlayerFrame.manabar, target, TargetFrame.manabar }) do
-    assert(not bar.hover.shown)
     bar.scripts.OnEnter(bar)
-    assert(bar.nativeTooltip and bar.hover.shown and bar.hover.value == "50 / 100")
-    assert(bar.TextString.alpha == 0 and bar.LeftText.alpha == 0 and bar.RightText.alpha == 0)
-    bar.scripts.OnEnter(bar) -- Repeated entry must not overwrite the saved alpha values.
-    bar.current = 30
-    bar.scripts.OnValueChanged(bar)
-    assert(bar.hover.value == "30 / 100")
-    bar.maximum = 200
-    bar.scripts.OnMinMaxChanged(bar)
-    assert(bar.hover.value == "30 / 200")
-    bar.current, bar.maximum = secret, secret
-    bar.scripts.OnValueChanged(bar)
-    assert(rawequal(bar.hover.arguments[2], secret) and rawequal(bar.hover.arguments[3], secret),
-        "Pass restricted values unchanged into SetFormattedText")
-    bar.scripts.OnLeave(bar)
-    assert(not bar.nativeTooltip and not bar.hover.shown)
+    assert(bar.nativeTooltip and bar.TextString.value == "native")
     assert(bar.TextString.alpha == 0.8 and bar.LeftText.alpha == 0.6 and bar.RightText.alpha == 1)
-    assert(bar.TextString.value == "native", "Keep the native text and selected format untouched")
-    bar.scripts.OnValueChanged(bar) -- No value reads while not hovered.
+    bar.scripts.OnLeave(bar)
+    assert(not bar.nativeTooltip)
+end
+print("PASS: native hover scripts and text retained, without custom overlays or restricted value reads")
+
+local statusFrames = { pet = PetFrame, target = TargetFrame, focus = FocusFrame }
+for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
+    local key = unit .. "HideStatusText"
+    PyresinQoLDB[key] = true
+    module.UpdateStatusText()
+    module.UpdateStatusText() -- Repeated changes must preserve the original opacity.
+    for otherUnit, frame in pairs(statusFrames) do
+        for _, bar in ipairs({ frame.healthbar, frame.manabar }) do
+            assert(bar.TextString.alpha == (unit == otherUnit and 0 or 0.8))
+            assert(bar.LeftText.alpha == (unit == otherUnit and 0 or 0.6))
+            assert(bar.RightText.alpha == (unit == otherUnit and 0 or 1))
+        end
+    end
+    for _, otherUnit in ipairs({ "target", "focus" }) do
+        local container = statusFrames[otherUnit].TargetFrameContent.TargetFrameContentMain.HealthBarsContainer
+        assert(container.DeadText.alpha == (unit == otherUnit and 0 or 0.8))
+        assert(container.UnconsciousText.alpha == (unit == otherUnit and 0 or 0.8))
+    end
+    assert(TargetFrame.totFrame.healthbar.DeadText.alpha == (unit == "targettarget" and 0 or 0.8))
+    assert(TargetFrame.totFrame.healthbar.UnconsciousText.alpha == (unit == "targettarget" and 0 or 0.8))
+    assert(PlayerFrame.healthbar.TextString.alpha == 0.8, "Never hide the player's text")
+    TargetFrame:Update()
+    PyresinQoLDB[key] = false
+    module.UpdateStatusText()
+end
+assert(TargetFrame.totFrame.healthbar.DeadText.alpha == 0.8)
+assert(FocusFrame.healthbar.TextString.alpha == 0.8)
+for _, bar in ipairs({ target, TargetFrame.manabar }) do
     bar.scripts.OnEnter(bar)
-    assert(bar.hover.shown)
-    bar.scripts.OnHide(bar) -- Target cleared or mana bar hidden while hovered.
-    assert(not bar.hover.shown and bar.TextString.alpha == 0.8)
+    PyresinQoLDB.targetHideStatusText = true
+    module.UpdateStatusText()
+    assert(bar.nativeTooltip and bar.TextString.alpha == 0 and bar.LeftText.alpha == 0)
+    bar.scripts.OnLeave(bar)
+    bar.scripts.OnEnter(bar)
+    assert(bar.nativeTooltip and bar.RightText.alpha == 0)
+    PyresinQoLDB.targetHideStatusText = false
+    module.UpdateStatusText()
+    assert(bar.TextString.alpha == 0.8 and bar.LeftText.alpha == 0.6 and bar.RightText.alpha == 1)
     bar.scripts.OnLeave(bar)
 end
-print("PASS: HP/mana hover on player/target, native tooltips, live values, secret forwarding and restoration on leave/hide")
+print("PASS: independent pet/target/target-of-target/focus text, saved visibility, sparse state-only bars and opacity restoration")

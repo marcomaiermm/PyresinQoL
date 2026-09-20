@@ -22,6 +22,7 @@ Modules/UnitFrames/DruidMana.lua
 Modules/UnitFrames/TargetDebuffs.lua
 Modules/UnitFrames/NameplateThreat.lua
 Modules/UnitFrames/NameplateComboPoints.lua
+Modules/UnitFrames/ThreatMenu.xml
 Modules/UnitFrames/ThreatMeter.lua
 Modules/Tooltips/Tooltip.lua
 Modules/GameMenu/Settings.lua

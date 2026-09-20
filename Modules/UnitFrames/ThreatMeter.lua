@@ -1,7 +1,6 @@
 local _, ns = ...
 
 ns.RegisterModule("unitFrames", function()
-    local legacyType = 0x5051
     local threatName = THREAT or "Threat"
     local displays = {}
     local refreshEvents = {
@@ -97,39 +96,27 @@ ns.RegisterModule("unitFrames", function()
 
     local function ApplyMode(window)
         local display = displays[window]
-        if not display.active then return end
         local editing = window:IsEditing() == true
-        window:GetDamageMeterTypeName():SetText(editing and display.nativeTitle or threatName)
-        window:GetSessionDropdown():SetShown(editing and display.sessionShown)
-        window:GetSessionTimerFontString():SetAlpha(editing and 1 or 0)
-        display:SetShown(not editing)
+        local title = window:GetDamageMeterTypeName()
+        local currentTitle = title:GetText()
+        if currentTitle ~= threatName then display.nativeTitle = currentTitle end
+        local shown = display.active == true and not editing
+        local desiredTitle = shown and threatName or display.nativeTitle
+        if desiredTitle and currentTitle ~= desiredTitle then title:SetText(desiredTitle) end
+        display:SetShown(shown)
         RefreshThreat(window)
-    end
-
-    local function LeaveThreat(window)
-        local display = displays[window]
-        if not display.active then return end
-        display.active = false
-        display:Hide()
-        -- The native selection has already set its own title; do not overwrite it.
-        window:GetSessionDropdown():SetShown(display.sessionShown)
-        window:GetSessionTimerFontString():SetAlpha(1)
-    end
-
-    local function SelectThreat(window)
-        local display = displays[window]
-        if not display.active then
-            display.nativeTitle = window:GetDamageMeterTypeName():GetText()
-            display.sessionShown = window:GetSessionDropdown():IsShown()
-        end
-        display.nativeType = window:GetDamageMeterType()
-        display.active, display.offset = true, 0
-        window:HideSourceWindow()
-        ApplyMode(window)
     end
 
     local function ConfigureWindow(window)
         if displays[window] then return end
+        -- Keep the menu's anchor independent of the secret combat-timer text.
+        -- The timer stays visible, after the title instead of before the arrow.
+        local dropdown, timer = window:GetDamageMeterTypeDropdown(), window:GetSessionTimerFontString()
+        dropdown:ClearAllPoints()
+        dropdown:SetPoint("TOPLEFT", window:GetHeader(), "TOPLEFT", 1, -3)
+        timer:ClearAllPoints()
+        timer:SetPoint("RIGHT", window:GetSessionDropdown(), "LEFT", -5, -3)
+        window:GetDamageMeterTypeName():SetPoint("RIGHT", timer, "LEFT", -5, 3)
         local container = window:GetMinimizeContainer()
         local display = CreateFrame("Frame", nil, container)
         displays[window] = display
@@ -147,22 +134,40 @@ ns.RegisterModule("unitFrames", function()
             display.offset = math.max(0, display.offset - delta)
             RefreshThreat(window)
         end)
-
-        if window:GetDamageMeterType() == legacyType then
-            -- Repair state without invoking native Refresh from addon execution.
-            window.damageMeterType = Enum.DamageMeterType.DamageDone
-            window:GetSourceWindow().damageMeterType = Enum.DamageMeterType.DamageDone
-            window:GetDamageMeterTypeName():SetText(DAMAGE_METER_TYPE_DAMAGE_DONE)
-        end
+        ApplyMode(window)
     end
 
-    for _, windowData in pairs(DamageMeterPerCharacterSettings and DamageMeterPerCharacterSettings.windowDataList or {}) do
-        if windowData.damageMeterType == legacyType then windowData.damageMeterType = Enum.DamageMeterType.DamageDone end
-    end
-    for _, windowData in pairs(DamageMeter:GetWindowDataList()) do
-        if windowData.damageMeterType == legacyType then windowData.damageMeterType = Enum.DamageMeterType.DamageDone end
-    end
+    -- Never migrate native type fields here: OnEvent reads them before comparing secret GUIDs.
     DamageMeter:ForEachSessionWindow(ConfigureWindow)
+
+    Menu.ModifyMenu("MENU_DAMAGE_METER_WINDOW_TRACKED_TYPE", function(dropdown, root)
+        local window = dropdown:GetParent()
+        ConfigureWindow(window)
+        local display = displays[window]
+        -- XML owns the regions and size; no compositor measurements in addon context.
+        local option = root:CreateTemplate("PyresinQoLThreatMenuTemplate")
+        option:SetResponder(function()
+            display.active = true
+            display.nativeType = window:GetDamageMeterType()
+            display.offset = 0
+            ApplyMode(window)
+            return MenuResponse.Close
+        end)
+        option:AddInitializer(function(button, description)
+            button:SetText(threatName)
+            button.Icon:SetDesaturated(not display.active)
+            button:SetScript("OnClick", function(_, buttonName)
+                description:Pick(MenuInputContext.MouseButton, buttonName)
+            end)
+        end)
+        root:AddMenuResponseCallback(function(_, description)
+            -- Native radios include reselecting the type underneath the threat overlay.
+            if description:IsRadio() then
+                display.active = false
+                ApplyMode(window)
+            end
+        end)
+    end)
 
     -- Own events/timer only: do not wrap native Refresh, entry initializers or menu methods.
     local events = CreateFrame("Frame")
@@ -178,27 +183,10 @@ ns.RegisterModule("unitFrames", function()
         elapsed = elapsed + delta
         if elapsed < 0.2 then return end
         elapsed = 0
+        DamageMeter:ForEachSessionWindow(ConfigureWindow)
         for window, display in pairs(displays) do
-            if display.active then
-                if window:GetDamageMeterType() ~= display.nativeType then LeaveThreat(window)
-                else ApplyMode(window) end
-            end
+            if display.active and window:GetDamageMeterType() ~= display.nativeType then display.active = false end
+            ApplyMode(window)
         end
-    end)
-
-    Menu.ModifyMenu("MENU_DAMAGE_METER_WINDOW_TRACKED_TYPE", function(dropdown, root)
-        local window = dropdown:GetParent()
-        ConfigureWindow(window)
-        local display = displays[window]
-        -- Set the public anchor during menu generation, without replacing OpenMenu.
-        local x, y = GetCursorPosition()
-        local scale = UIParent:GetEffectiveScale()
-        dropdown:SetMenuAnchor(AnchorUtil.CreateAnchor("TOPLEFT", UIParent, "BOTTOMLEFT", x / scale, y / scale))
-        root:SetMinimumWidth(140)
-        local threatOption = root:CreateRadio(threatName, function() return display.active == true end,
-            function() SelectThreat(window) end)
-        root:AddMenuResponseCallback(function(_, description)
-            if description ~= threatOption and description:IsRadio() then LeaveThreat(window) end
-        end)
     end)
 end)
