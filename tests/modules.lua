@@ -10,7 +10,7 @@ end
 local files = {
     gameMenu = { "Modules/GameMenu/GameMenu.lua" }, editMode = { "Modules/EditMode/PixelPerfect.lua" },
     performance = { "Modules/Performance/Performance.lua" }, experience = { "Modules/Experience/Experience.lua" },
-    quests = { "Modules/Quests/Quests.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/ThreatMeter.lua" },
+    quests = { "Modules/Quests/Quests.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
 }
 -- Loading files or initializing a disabled module must not touch game APIs.
@@ -86,7 +86,7 @@ for line in io.lines("PyresinQoL.toc") do
 end
 assert(title == "PyresinQoL" and savedVariables == "PyresinQoLDB")
 assert(_G[savedVariables] == PyresinQoLDB, "The runtime database must match the saved variable in the TOC")
-assert(count == 24, "Update the manifest expectation when adding source files")
+assert(count == 25, "Update the manifest expectation when adding source files")
 local order = { "gameMenu", "editMode", "performance", "experience", "quests", "unitFrames", "tooltips" }
 assert(#ns.modules == #order)
 for index, id in ipairs(order) do

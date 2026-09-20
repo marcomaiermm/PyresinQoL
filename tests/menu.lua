@@ -18,6 +18,8 @@ local questUpdates = 0
 ns.GetModule("quests").UpdateQuestLevels = function() questUpdates = questUpdates + 1 end
 local pixelPerfectUpdates = 0
 ns.GetModule("editMode").UpdatePixelPerfectMode = function() pixelPerfectUpdates = pixelPerfectUpdates + 1 end
+local statusTextUpdates = 0
+ns.GetModule("unitFrames").UpdateStatusText = function() statusTextUpdates = statusTextUpdates + 1 end
 local playerUpdates = 0
 ns.GetModule("unitFrames").UpdatePlayerFrame = function() playerUpdates = playerUpdates + 1 end
 local druidManaUpdates = 0
@@ -26,6 +28,8 @@ local threatUpdates = 0
 ns.GetModule("unitFrames").UpdateTargetThreat = function() threatUpdates = threatUpdates + 1 end
 local nameplateUpdates = 0
 ns.GetModule("unitFrames").UpdateNameplateThreat = function() nameplateUpdates = nameplateUpdates + 1 end
+local comboUpdates = 0
+ns.GetModule("unitFrames").UpdateNameplateComboPoints = function() comboUpdates = comboUpdates + 1 end
 local debuffUpdates = 0
 ns.GetModule("unitFrames").UpdateTargetDebuffs = function() debuffUpdates = debuffUpdates + 1 end
 local tooltipUpdates = 0
@@ -35,26 +39,9 @@ DEFAULTS, CLOSE = "Defaults", "Close"
 UISpecialFrames, SlashCmdList = {}, {}
 UIParent = { GetWidth = function() return 1280 end, GetHeight = function() return 800 end }
 SettingsPanel = { shown = true, IsShown = function(self) return self.shown end }
-NONE, STATUS_TEXT_PERCENT, STATUS_TEXT_BOTH, STATUS_TEXT_VALUE = "None", "Percent", "Both", "Numeric Value"
-STATUSTEXT_LABEL = "Status Text"
-local cvars = { statusText = "0", statusTextDisplay = "NONE" }
-local cvarEvents = {}
-function GetCVar(name) return cvars[name] end
-function SetCVar(name, value)
-    assert(cvars[name] and type(value) == "string")
-    if cvars[name] ~= value then
-        cvars[name] = value
-        cvarEvents[#cvarEvents + 1] = { name, value }
-    end
-end
-local settingsReady, settingsRegistrant
+function SetCVar() error("Settings must leave Blizzard's status-text CVars alone") end
+local settingsRegistrant
 SettingsRegistrar = { AddRegistrant = function(_, callback) settingsRegistrant = callback end }
-local nativeStatusText = { key = "PROXY_STATUS_TEXT", name = "Status Text", value = 4 }
-function nativeStatusText:GetDefaultValue() return 4 end
-function nativeStatusText:SetValue()
-    error("attempt to compare a secret number value: addon invoked PROXY_STATUS_TEXT's native formatter callback")
-end
-function nativeStatusText:SetValueChangedCallback() error("Keep Blizzard's status text callbacks") end
 PyresinQoLDB.playerHPFormat = "percent"
 PyresinQoLDB.playerManaFormat = "value"
 MinimalSliderWithSteppersMixin = { Label = { Right = 1 } }
@@ -128,12 +115,21 @@ local function Initializer(name, kind)
     end
     return initializer
 end
+function CreateSettingsListSectionHeaderInitializer(name)
+    local header = Initializer(name)
+    function header:InitFrame(frame)
+        frame.Title = Widget()
+        frame.Title:SetText(name)
+    end
+    return header
+end
 function CreateSettingsExpandableSectionInitializer(name)
     local section = Initializer(name, "section")
     sections[#sections + 1] = section
     return section
 end
 local nativeNameplates, nativeThreatCheckbox, nativeThreatPosition = {}, nil, nil
+local nativeComboCheckbox
 Settings = {
     NAMEPLATE_OPTIONS_CATEGORY_ID = 42,
     CreateDropdown = function(owner, setting, options, tooltip)
@@ -145,21 +141,19 @@ Settings = {
     end,
     GetCategory = function(id) assert(id == 42); return nativeNameplates end,
     CreateCheckbox = function(owner, setting, tooltip)
+        if setting == settings.nameplateComboPoints then
+            assert(owner == nativeNameplates and tooltip == ns.L.nameplateComboPointsHelp)
+            nativeComboCheckbox = Initializer(setting.name, "Checkbox")
+            nativeComboCheckbox.setting = setting
+            return nativeComboCheckbox
+        end
         assert(owner == nativeNameplates and setting == settings.nameplateThreat and tooltip == ns.L.nameplateThreatHelp)
         nativeThreatCheckbox = Initializer(setting.name, "Checkbox")
         nativeThreatCheckbox.setting = setting
         return nativeThreatCheckbox
     end,
-    GetSetting = function(key) assert(settingsReady and key == "PROXY_STATUS_TEXT"); return nativeStatusText end,
-    RegisterProxySetting = function(owner, variable, valueType, name, default, getValue, setValue)
-        assert(owner == category and variable == "PyresinQoL_StatusText" and valueType == "number")
-        local setting = { name = name, key = variable }
-        function setting:GetValue() return getValue() end
-        function setting:GetDefaultValue() return default end
-        function setting:SetValue(value) setValue(value) end
-        settings[variable] = setting
-        return setting
-    end,
+    GetSetting = function() error("Settings must leave Blizzard's native settings alone") end,
+    RegisterProxySetting = function() error("Do not register a duplicate status-text setting") end,
     VarType = { Boolean = "boolean", String = "string", Number = "number" },
     RegisterCanvasLayoutCategory = function(frame, name)
         assert(not launcher and name == "PyresinQoL")
@@ -196,7 +190,7 @@ Settings = {
     end,
     CreateDropdownInitializer = function(setting, options)
         local count = setting.key == "nameplateThreatPosition" and 4 or setting.key:match("Position$") and 9
-            or (setting.key == "PyresinQoL_StatusText" or setting.key == "xpTextFormat") and 4 or 2
+            or setting.key == "xpTextFormat" and 4 or 2
         assert(setting and #options() == count)
         for _, option in ipairs(options()) do assert(option.label and option.label ~= "") end
         dropdownCount = dropdownCount + 1
@@ -259,7 +253,8 @@ function CreateFrame(kind, name, parent, template)
     if template == "SettingsFrameTemplate" then
         assert(parent == UIParent and name == "PyresinQoLSettingsFrame")
         canvas = frame
-        frame.NineSlice = { Text = Widget() }
+        frame.NineSlice = Widget()
+        frame.NineSlice.Text = Widget()
         frame.ClosePanelButton = Widget()
     end
     if kind == "Button" and template == "BackdropTemplate" then groupButtons[#groupButtons + 1] = frame end
@@ -357,10 +352,10 @@ events.callback(events, "ADDON_LOADED", "OtherAddon")
 assert(checkboxCount == 0)
 GameMenuFrame.shown = false
 events.callback(events, "ADDON_LOADED", "PyresinQoL")
-assert(checkboxCount == 18 and dropdownCount == 3 and settingsRegistrant,
+assert(checkboxCount == 22 and dropdownCount == 3 and settingsRegistrant,
     "Register unit-frame controls with Blizzard's deferred settings registration")
-settingsReady = true
 settingsRegistrant()
+assert(settings.PyresinQoL_StatusText == nil, "Status text belongs to Blizzard's options")
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow())
 assert(nativeThreatCheckbox.modifyPredicate() == ns.GetModule("unitFrames").active
     and nativeThreatPosition.modifyPredicate() == ns.GetModule("unitFrames").active,
@@ -382,25 +377,24 @@ if arg[1] == "modules-disabled" then
         assert(not settingsList.initializers[1].modifyPredicate())
         assert(not settingsList.Header.DefaultsButton.enabled)
     end
-    assert(cvars.statusText == "0" and PyresinQoLDB.playerHPFormat == "percent",
-        "A disabled Unit Frames module must defer native setting migration")
-    settings.PyresinQoL_StatusText:SetValue(1)
-    assert(cvars.statusText == "0", "A disabled module must not write CVars")
     navigation[1].scripts.OnClick()
     settingsList.Header.DefaultsButton.scripts.OnClick()
     assert(ns.ModulesNeedReload() and reloadButton.enabled and addonButtonCount == 0)
-    assert(PyresinQoLDB.playerHPFormat == "percent", "Enabling waits for reload before migration")
-    print("PASS: all modules disabled, absent callbacks, locked options and deferred CVar migration")
+    print("PASS: all modules disabled, absent callbacks, locked options and unchanged Blizzard settings")
     return
 end
-assert(checkboxCount == 25 and dropdownCount == 9 and colorCount == 1 and sliderCount == 2 and not events.registered.ADDON_LOADED)
+assert(checkboxCount == 30 and dropdownCount == 8 and colorCount == 1 and sliderCount == 2 and not events.registered.ADDON_LOADED)
 assert(canvas and #navigation == 11 and #sections == 0)
 assert(navigation[2].text.value == ns.L.gameMenu and navigation[3].text.value == ns.L.editMode and navigation[4].text.value == ns.L.performance)
 assert(not canvas.shown and canvas.width == 960 and canvas.height == 720)
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and canvas.clamped and canvas.movable)
 assert(SLASH_PQOL1 == "/pqol" and SLASH_PYRESINQOL1 == nil and SLASH_PYRESINQOL2 == nil)
-assert(canvas.NineSlice.Text.value == "|TInterface\\AddOns\\PyresinQoL\\Media\\AddonIcon:24:24:0:0|t PyresinQoL")
-assert(#logos == 1 and logos[1].width == 48 and logos[1].height == 48)
+assert(canvas.NineSlice.Text.value == "PyresinQoL")
+assert(#logos == 2 and logos[1].width == 72 and logos[1].height == 72)
+local corner = logos[1].points[1]
+assert(corner[1] == "TOPLEFT" and corner[2] == canvas and corner[3] == "TOPLEFT"
+    and corner[4] == -20 and corner[5] == 24, "The logo must overlap the window's upper-left corner")
+assert(logos[2].width == 48 and logos[2].height == 48)
 local toc = assert(io.open("PyresinQoL.toc"))
 assert(toc:read("*a"):find("## IconTexture: " .. logos[1].texture, 1, true))
 toc:close()
@@ -422,7 +416,7 @@ assert(not canvas.shown)
 assert(#groupButtons == 3)
 groupButtons[1].scripts.OnClick()
 assert(not navigation[1].shown and not navigation[2].shown and not navigation[3].shown)
-assert(navigation[4].shown and navigation[8].shown)
+assert(navigation[4].shown and navigation[7].shown)
 groupButtons[1].scripts.OnClick()
 assert(navigation[1].shown and navigation[2].shown and navigation[3].shown)
 canvas.scripts.OnShow()
@@ -463,8 +457,6 @@ settings.questLevels:SetValue(false)
 assert(not PyresinQoLDB.questLevels and questUpdates == 1)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(PyresinQoLDB.questLevels and questUpdates == 2)
-navigation[7].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.general and #settingsList.rendered == 1)
 assert(PyresinQoLDB.targetThreat)
 settings.targetThreat:SetValue(false)
 assert(threatUpdates == 1 and not PyresinQoLDB.targetThreat)
@@ -472,26 +464,6 @@ assert(PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
 settings.targetDebuffsOnlyMine:SetValue(false)
 settings.targetDebuffs:SetValue(false)
 assert(debuffUpdates == 2 and not PyresinQoLDB.targetDebuffsOnlyMine and not PyresinQoLDB.targetDebuffs)
-local statusText = settings.PyresinQoL_StatusText
-assert(statusText:GetValue() == 2 and cvars.statusText == "1" and cvars.statusTextDisplay == "PERCENT",
-    "Migration must enable native percentage text without calling native formatter callbacks")
-for _, value in ipairs({ 1, 2, 3, 4, 2 }) do
-    cvarEvents = {}
-    statusText:SetValue(value)
-    assert(statusText:GetValue() == value)
-    assert(cvars.statusTextDisplay == ({ "NUMERIC", "PERCENT", "BOTH", "NONE" })[value])
-    assert(cvars.statusText == (value == 4 and "0" or "1"))
-    local refreshed = false
-    for _, event in ipairs(cvarEvents) do
-        if event[1] == "statusText" then refreshed = true end
-    end
-    assert(refreshed, "Switching visible formats must trigger a native CVAR_UPDATE refresh")
-end
-cvars.statusTextDisplay = "BOTH"
-assert(statusText:GetValue() == 3, "Changes in the game's options must be reflected")
-cvars.statusText = "0"
-assert(statusText:GetValue() == 4, "Hidden text must not be reported as a visible format")
-assert(PyresinQoLDB.playerHPFormat == nil and PyresinQoLDB.playerManaFormat == nil)
 assert(not PyresinQoLDB.playerClassColor and not PyresinQoLDB.targetClassColor)
 settings.playerClassColor:SetValue(true)
 settings.targetClassColor:SetValue(true)
@@ -500,10 +472,7 @@ settings.playerManaPosition:SetValue("RIGHT")
 settings.targetHPPosition:SetValue("BOTTOMRIGHT")
 settings.targetManaPosition:SetValue("LEFT")
 assert(playerUpdates == 6)
-settingsList.Header.DefaultsButton.scripts.OnClick()
-assert(playerUpdates == 6 and PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor,
-    "General defaults must leave player and target settings alone")
-navigation[8].scripts.OnClick()
+navigation[7].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.playerFrame and #settingsList.rendered == 4)
 assert(PyresinQoLDB.druidMana and settings.druidMana.name == ns.L.druidMana)
 settings.druidMana:SetValue(false)
@@ -512,16 +481,19 @@ assert(settings.druidManaPreview == nil, "Temporary preview control has been rem
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(PyresinQoLDB.druidMana and druidManaUpdates == 2)
 assert(playerUpdates == 9 and not PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor)
-navigation[9].scripts.OnClick()
+navigation[8].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.targetFrame and #settingsList.rendered == 6)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(playerUpdates == 12 and not PyresinQoLDB.targetClassColor)
 assert(threatUpdates == 2 and PyresinQoLDB.targetThreat)
 assert(debuffUpdates == 4 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
-assert(statusText:GetValue() == 4 and cvars.statusTextDisplay == "NONE" and PyresinQoLDB.playerHPPosition == "CENTER"
+assert(PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")
-navigation[10].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.nameplates and #settingsList.rendered == 2)
+navigation[9].scripts.OnClick()
+assert(settingsList.Header.Title.value == ns.L.nameplates and #settingsList.rendered == 3)
+assert(PyresinQoLDB.nameplateComboPoints and nativeComboCheckbox:ShouldShow())
+nativeComboCheckbox.setting:SetValue(false)
+assert(comboUpdates == 1 and not PyresinQoLDB.nameplateComboPoints)
 assert(PyresinQoLDB.nameplateThreat)
 settings.nameplateThreat:SetValue(false)
 assert(nameplateUpdates == 1 and not PyresinQoLDB.nameplateThreat)
@@ -530,6 +502,22 @@ nativeThreatPosition.setting:SetValue("LEFT")
 assert(nameplateUpdates == 2 and PyresinQoLDB.nameplateThreatPosition == "LEFT")
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(nameplateUpdates == 4 and PyresinQoLDB.nameplateThreat and PyresinQoLDB.nameplateThreatPosition == "RIGHT")
+assert(comboUpdates == 2 and PyresinQoLDB.nameplateComboPoints)
+navigation[10].scripts.OnClick()
+assert(settingsList.Header.Title.value == ns.L.statusText and #settingsList.rendered == 5)
+assert(settingsList.rendered[1].Title.value == ns.L.hideStatusText)
+for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
+    local key = unit .. "HideStatusText"
+    assert(PyresinQoLDB[key] == false and settings[key].name == ns.L[key])
+    settings[key]:SetValue(true)
+    assert(PyresinQoLDB[key] == true)
+end
+assert(statusTextUpdates == 4)
+settingsList.Header.DefaultsButton.scripts.OnClick()
+for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
+    assert(PyresinQoLDB[unit .. "HideStatusText"] == false)
+end
+assert(statusTextUpdates == 8)
 navigation[11].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 3)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
@@ -617,6 +605,7 @@ unitFramesModule:SetValue(false)
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow(),
     "Native nameplate options must stay visible when the module is disabled")
 assert(not nativeThreatCheckbox.modifyPredicate() and not nativeThreatPosition.modifyPredicate())
+assert(nativeComboCheckbox:ShouldShow() and not nativeComboCheckbox.modifyPredicate())
 unitFramesModule:SetValue(true)
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow())
 local reloaded = 0

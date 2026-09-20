@@ -3,8 +3,14 @@ local L = ns.L
 
 ns.RegisterModuleSettings("unitFrames", function(module, context)
     local Register, AddControl = context.controls.Register, context.controls.AddControl
-    local unitFrames = context.pages.main
-    local category = context.category
+
+    table.insert(context.pages.statusText.initializers, CreateSettingsListSectionHeaderInitializer(L.hideStatusText))
+    for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
+        local key = unit .. "HideStatusText"
+        local setting = Register(context.pages.statusText, key, key, Settings.VarType.Boolean,
+            L[key], false, module.UpdateStatusText)
+        AddControl(context.pages.statusText, Settings.CreateCheckboxInitializer(setting, nil, L.hideStatusTextHelp))
+    end
 
     -- Register these controls alongside Blizzard's settings.
     SettingsRegistrar:AddRegistrant(function()
@@ -27,41 +33,11 @@ ns.RegisterModuleSettings("unitFrames", function(module, context)
         local dropdown = Settings.CreateDropdown(nativeCategory, position, PositionOptions, L.nameplateThreatPositionHelp)
         dropdown:AddModifyPredicate(IsModuleEnabled)
 
-        local statusModes = { "NUMERIC", "PERCENT", "BOTH", "NONE" }
-        local function GetStatusText()
-            if GetCVar("statusText") == "0" then return 4 end
-            local current = GetCVar("statusTextDisplay")
-            for value, mode in ipairs(statusModes) do
-                if mode == current then return value end
-            end
-            return 4
-        end
-        local function SetStatusText(value)
-            if not unitFrames.module.active or not PyresinQoLDB.modules.unitFrames then return end
-            -- Native proxy callbacks run the restricted formatter in the caller's context.
-            -- Change CVars only; Blizzard refreshes its bars through engine CVAR_UPDATE events.
-            -- Toggle visibility so changing between two visible formats also refreshes immediately.
-            SetCVar("statusText", "0")
-            SetCVar("statusTextDisplay", statusModes[value])
-            if value ~= 4 then SetCVar("statusText", "1") end
-        end
-        local statusText = Settings.RegisterProxySetting(category, "PyresinQoL_StatusText",
-            Settings.VarType.Number, STATUSTEXT_LABEL, 4, GetStatusText, SetStatusText)
-        AddControl(unitFrames, Settings.CreateDropdownInitializer(statusText, function()
-            local options = Settings.CreateControlTextContainer()
-            options:Add(4, NONE)
-            options:Add(2, STATUS_TEXT_PERCENT)
-            options:Add(3, STATUS_TEXT_BOTH)
-            options:Add(1, STATUS_TEXT_VALUE)
-            return options:GetData()
-        end, L.unitStatusTextHelp))
-        table.insert(unitFrames.settings, { setting = statusText, default = statusText:GetDefaultValue() })
-        local oldFormats = { value = 1, percent = 2, both = 3, none = 4 }
-        local previous = oldFormats[PyresinQoLDB.playerHPFormat] or oldFormats[PyresinQoLDB.playerManaFormat]
-        if unitFrames.module.active then
-            if previous then statusText:SetValue(previous, true) end
-            PyresinQoLDB.playerHPFormat, PyresinQoLDB.playerManaFormat = nil, nil
-        end
+        local comboPoints = Register(nameplates, "NameplateComboPoints", "nameplateComboPoints", Settings.VarType.Boolean,
+            L.nameplateComboPoints, true, module.UpdateNameplateComboPoints)
+        AddControl(nameplates, Settings.CreateCheckboxInitializer(comboPoints, nil, L.nameplateComboPointsHelp))
+        local comboCheckbox = Settings.CreateCheckbox(nativeCategory, comboPoints, L.nameplateComboPointsHelp)
+        comboCheckbox:AddModifyPredicate(IsModuleEnabled)
 
         for _, unit in ipairs({ "player", "target" }) do
             local unitPage = context.pages[unit]

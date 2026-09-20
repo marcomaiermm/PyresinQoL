@@ -8,7 +8,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 
 ## Features
 
-- **Unit frames & threat:** class colors, health/resource text, druid mana, debuff timers and threat displays.
+- **Unit frames & threat:** class colors, health/resource text, druid mana, debuff timers, threat displays and combo points per enemy nameplate.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview and quest levels.
 - **Edit Mode:** precise positioning and snapping.

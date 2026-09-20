@@ -2,6 +2,7 @@ local _, ns = ...
 
 ns.RegisterModule("unitFrames", function(module)
     local frames = {}
+    local statusTexts = {}
     local healthStyles, updatingColor = {}, {}
 
     function module.UpdateTargetThreat()
@@ -12,38 +13,18 @@ ns.RegisterModule("unitFrames", function(module)
         if enabled then SetCVar("threatWarning", "3") end
     end
 
-    local function AddHoverValues(bar)
-        local text = bar:CreateFontString(nil, "OVERLAY", "TextStatusBarText")
-        text:SetPoint("CENTER", bar.TextString, "CENTER")
-        text:Hide()
-        local nativeTexts = { bar.TextString, bar.LeftText, bar.RightText }
-        local alphas
-        local function Update()
-            if not alphas then return end
-            local _, maximum = bar:GetMinMaxValues()
-            -- Pass restricted values directly to the engine; never calculate or compare them in Lua.
-            text:SetFormattedText("%d / %d", bar:GetValue(), maximum)
-        end
-        local function Leave()
-            if not alphas then return end
-            text:Hide()
-            for index, native in ipairs(nativeTexts) do native:SetAlpha(alphas[index]) end
-            alphas = nil
-        end
-        bar:HookScript("OnEnter", function()
-            if alphas then return end
-            alphas = {}
-            for index, native in ipairs(nativeTexts) do
-                alphas[index] = native:GetAlpha()
-                native:SetAlpha(0)
+    function module.UpdateStatusText()
+        if not PyresinQoLDB then return end
+        for _, entry in ipairs(statusTexts) do
+            local hidden = PyresinQoLDB[entry.unit .. "HideStatusText"] == true
+            if hidden and not entry.hidden then
+                entry.alpha = entry.text:GetAlpha()
+                entry.text:SetAlpha(0)
+            elseif not hidden and entry.hidden then
+                entry.text:SetAlpha(entry.alpha)
             end
-            Update()
-            text:Show()
-        end)
-        bar:HookScript("OnLeave", Leave)
-        bar:HookScript("OnHide", Leave)
-        bar:HookScript("OnValueChanged", Update)
-        bar:HookScript("OnMinMaxChanged", Update)
+            entry.hidden = hidden
+        end
     end
 
     local function UpdateClassColor(health, unit)
@@ -92,8 +73,6 @@ ns.RegisterModule("unitFrames", function(module)
         self:UnregisterEvent("PLAYER_LOGIN")
         frames = { player = PlayerFrame, target = TargetFrame }
         for unit, frame in pairs(frames) do
-            AddHoverValues(frame.healthbar)
-            AddHoverValues(frame.manabar)
             hooksecurefunc(frame.healthbar, "SetStatusBarColor", function(health, r, g, b, a)
                 if updatingColor[health] then return end
                 if healthStyles[health] then healthStyles[health].color = { r, g, b, a or 1 } end
@@ -101,6 +80,18 @@ ns.RegisterModule("unitFrames", function(module)
             end)
         end
         hooksecurefunc(TargetFrame, "Update", module.UpdatePlayerFrame)
+        for unit, frame in pairs({ pet = PetFrame, target = TargetFrame,
+            targettarget = TargetFrame.totFrame, focus = FocusFrame }) do
+            local content = frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentMain
+            for _, region in pairs({ frame.healthbar, frame.manabar, content and content.HealthBarsContainer }) do
+                for _, key in ipairs({ "TextString", "LeftText", "RightText", "DeadText", "UnconsciousText" }) do
+                    local text = region[key]
+                    if text then statusTexts[#statusTexts + 1] = { unit = unit, text = text } end
+                end
+            end
+        end
+        -- Only change font opacity; Blizzard retains its values, formatter and shown state.
+        module.UpdateStatusText()
         module.UpdatePlayerFrame()
         module.UpdateTargetThreat()
     end)
