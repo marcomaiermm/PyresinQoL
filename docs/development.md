@@ -82,6 +82,76 @@ and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
 
+### Nameplate combo points
+
+For rogues and druids, each native nameplate queries `GetComboPoints("player", unit)`
+on power and target changes. No target history is cached: independent enemy counts
+depend on what the client returns. Native status bars render the point textures and
+accept secret counts without Lua comparisons; zero leaves the row visually empty.
+The layout retains the last public maximum (initially five) while it is restricted.
+The display is below the cast bar and has a live toggle in both `/pqol` and Blizzard's
+nameplate options. The native preview uses three sample points.
+
+API and lifecycle were checked against Forever 1.60.1.69913
+([UI source](https://github.com/Gethe/wow-ui-source/tree/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e)).
+Run `luajit tests/nameplate-combopoints.lua`; in game, check two enemies, a finisher,
+target switching, recycled plates, druid forms and combat restrictions.
+
+### Native nameplate preview selector (withdrawn)
+
+Manual preview selection is not loaded. Client reports showed that calling the
+native preview methods from an addon taints the preview's pooled UnitFrame:
+`CompactUnitFrame_UpdateHealPrediction` fails on secret health values after a
+settings change, and switching contexts can fail inside `GridLayoutUtil` on secret
+aura dimensions. Wrapping the native type callbacks in `securecallfunction` did
+not fix this; it is a taint containment boundary, not an elevation of addon code.
+The earlier LuaJIT tests checked dispatch only and did not reproduce WoW taint.
+
+The inspected Midnight 12.1.0.69875
+[`Nameplates.lua`](https://github.com/Gethe/wow-ui-source/blob/78282522143e25c3540583734fd192c3d69be910/Interface/AddOns/Blizzard_SettingsDefinitions_Frame/Nameplates.lua)
+uses `NamePlatePreviewTemplate.NamePlate`, registered under
+`NamePlateConstants.PREVIEW_UNIT_TOKEN`. Its four contexts are the combinations
+of `IsPlayer()` and `IsFriend()`. Aura/simplified setting callbacks reach
+`SetExplicitValues`; no public preview-selection API or exposed secure delegate
+was found. `CreateSecureDelegate` is removed before addon loading by Blizzard's
+`Blizzard_EnvironmentCleanup/EnvironmentCleanup.lua`.
+
+Further invocation-path investigation (2026-09-20):
+
+- The aura setting initializers expose native `OnShow` callbacks for enemy NPC,
+  enemy player and friendly player. Their local `TogglePreviewNamePlate*` helpers
+  still call the same preview methods; copying these callbacks into an addon menu
+  is not a secure dispatch boundary (`Blizzard_Menu/Menu.lua`, `SecureCallResponder`).
+- Friendly NPC is selected by `ToggleSimplifiedType(FriendlyNpc)`. Its native
+  settings caller first writes `nameplateSimplifiedTypes`; reusing that caller
+  would change gameplay settings. Minion and minus-mob variants also exist in
+  `ToggleSimplifiedType`, despite sharing the Enemy NPC preview label.
+- Secure handlers cannot call the preview methods with secure execution:
+  `Blizzard_RestrictedAddOnEnvironment/RestrictedFrames.lua:CallMethod_inner`
+  explicitly calls `forceinsecure()` before invoking the method. The documented
+  `C_NamePlate`/`C_NamePlateManager` APIs expose no preview-type setter.
+- An offline experiment using [Elune](https://github.com/Meorawr/elune) loaded the
+  pinned native `Nameplates.lua` and observed execution at `UnitFrame:SetExplicitValues`.
+  The native baseline was secure; both addon `securecallfunction` dispatch and a
+  native callback copied into an addon responder field were insecure. Elune's
+  scripted taint conformance tests passed. This checks those Lua dispatch paths,
+  not Midnight secret values or the engine's timer/frame-script dispatch; it is
+  not an in-client safety certification for an alternative implementation.
+
+The relevant preview mixin and grid-layout source also match Forever 1.60.1.69913
+([source](https://github.com/Gethe/wow-ui-source/tree/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e));
+the observed failure is not explained by using a pre-Midnight preview implementation.
+No supported addon-initiated route satisfying all preview modes without settings
+writes has been established. User testing confirmed no further errors after a
+fresh reload with the selector removed; the other nameplate extensions remain enabled.
+
+Do not reinstate the selector based only on mocked tests, add wrappers around the
+failing native layout functions, or edit pooled frame fields. It requires a
+supported entry point and in-client confirmation that choosing every context and
+subsequently changing native settings leaves health prediction and aura layout
+untainted. Blizzard's automatic preview selection is left intact. After installing
+this mitigation, `/reload` discards frames tainted by the previous implementation.
+
 ## Settings migration
 
 When moving from the old addon name, close WoW and back up the account's

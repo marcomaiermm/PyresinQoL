@@ -27,6 +27,12 @@ ns.RegisterModuleSettings("unitFrames", function(module, context)
         local dropdown = Settings.CreateDropdown(nativeCategory, position, PositionOptions, L.nameplateThreatPositionHelp)
         dropdown:AddModifyPredicate(IsModuleEnabled)
 
+        local comboPoints = Register(nameplates, "NameplateComboPoints", "nameplateComboPoints", Settings.VarType.Boolean,
+            L.nameplateComboPoints, true, module.UpdateNameplateComboPoints)
+        AddControl(nameplates, Settings.CreateCheckboxInitializer(comboPoints, nil, L.nameplateComboPointsHelp))
+        local comboCheckbox = Settings.CreateCheckbox(nativeCategory, comboPoints, L.nameplateComboPointsHelp)
+        comboCheckbox:AddModifyPredicate(IsModuleEnabled)
+
         local statusModes = { "NUMERIC", "PERCENT", "BOTH", "NONE" }
         local function GetStatusText()
             if GetCVar("statusText") == "0" then return 4 end

@@ -26,6 +26,8 @@ local threatUpdates = 0
 ns.GetModule("unitFrames").UpdateTargetThreat = function() threatUpdates = threatUpdates + 1 end
 local nameplateUpdates = 0
 ns.GetModule("unitFrames").UpdateNameplateThreat = function() nameplateUpdates = nameplateUpdates + 1 end
+local comboUpdates = 0
+ns.GetModule("unitFrames").UpdateNameplateComboPoints = function() comboUpdates = comboUpdates + 1 end
 local debuffUpdates = 0
 ns.GetModule("unitFrames").UpdateTargetDebuffs = function() debuffUpdates = debuffUpdates + 1 end
 local tooltipUpdates = 0
@@ -134,6 +136,7 @@ function CreateSettingsExpandableSectionInitializer(name)
     return section
 end
 local nativeNameplates, nativeThreatCheckbox, nativeThreatPosition = {}, nil, nil
+local nativeComboCheckbox
 Settings = {
     NAMEPLATE_OPTIONS_CATEGORY_ID = 42,
     CreateDropdown = function(owner, setting, options, tooltip)
@@ -145,6 +148,12 @@ Settings = {
     end,
     GetCategory = function(id) assert(id == 42); return nativeNameplates end,
     CreateCheckbox = function(owner, setting, tooltip)
+        if setting == settings.nameplateComboPoints then
+            assert(owner == nativeNameplates and tooltip == ns.L.nameplateComboPointsHelp)
+            nativeComboCheckbox = Initializer(setting.name, "Checkbox")
+            nativeComboCheckbox.setting = setting
+            return nativeComboCheckbox
+        end
         assert(owner == nativeNameplates and setting == settings.nameplateThreat and tooltip == ns.L.nameplateThreatHelp)
         nativeThreatCheckbox = Initializer(setting.name, "Checkbox")
         nativeThreatCheckbox.setting = setting
@@ -259,7 +268,8 @@ function CreateFrame(kind, name, parent, template)
     if template == "SettingsFrameTemplate" then
         assert(parent == UIParent and name == "PyresinQoLSettingsFrame")
         canvas = frame
-        frame.NineSlice = { Text = Widget() }
+        frame.NineSlice = Widget()
+        frame.NineSlice.Text = Widget()
         frame.ClosePanelButton = Widget()
     end
     if kind == "Button" and template == "BackdropTemplate" then groupButtons[#groupButtons + 1] = frame end
@@ -393,14 +403,18 @@ if arg[1] == "modules-disabled" then
     print("PASS: all modules disabled, absent callbacks, locked options and deferred CVar migration")
     return
 end
-assert(checkboxCount == 25 and dropdownCount == 9 and colorCount == 1 and sliderCount == 2 and not events.registered.ADDON_LOADED)
+assert(checkboxCount == 26 and dropdownCount == 9 and colorCount == 1 and sliderCount == 2 and not events.registered.ADDON_LOADED)
 assert(canvas and #navigation == 11 and #sections == 0)
 assert(navigation[2].text.value == ns.L.gameMenu and navigation[3].text.value == ns.L.editMode and navigation[4].text.value == ns.L.performance)
 assert(not canvas.shown and canvas.width == 960 and canvas.height == 720)
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and canvas.clamped and canvas.movable)
 assert(SLASH_PQOL1 == "/pqol" and SLASH_PYRESINQOL1 == nil and SLASH_PYRESINQOL2 == nil)
-assert(canvas.NineSlice.Text.value == "|TInterface\\AddOns\\PyresinQoL\\Media\\AddonIcon:24:24:0:0|t PyresinQoL")
-assert(#logos == 1 and logos[1].width == 48 and logos[1].height == 48)
+assert(canvas.NineSlice.Text.value == "PyresinQoL")
+assert(#logos == 2 and logos[1].width == 72 and logos[1].height == 72)
+local corner = logos[1].points[1]
+assert(corner[1] == "TOPLEFT" and corner[2] == canvas and corner[3] == "TOPLEFT"
+    and corner[4] == -20 and corner[5] == 24, "The logo must overlap the window's upper-left corner")
+assert(logos[2].width == 48 and logos[2].height == 48)
 local toc = assert(io.open("PyresinQoL.toc"))
 assert(toc:read("*a"):find("## IconTexture: " .. logos[1].texture, 1, true))
 toc:close()
@@ -521,7 +535,10 @@ assert(debuffUpdates == 4 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.target
 assert(statusText:GetValue() == 4 and cvars.statusTextDisplay == "NONE" and PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")
 navigation[10].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.nameplates and #settingsList.rendered == 2)
+assert(settingsList.Header.Title.value == ns.L.nameplates and #settingsList.rendered == 3)
+assert(PyresinQoLDB.nameplateComboPoints and nativeComboCheckbox:ShouldShow())
+nativeComboCheckbox.setting:SetValue(false)
+assert(comboUpdates == 1 and not PyresinQoLDB.nameplateComboPoints)
 assert(PyresinQoLDB.nameplateThreat)
 settings.nameplateThreat:SetValue(false)
 assert(nameplateUpdates == 1 and not PyresinQoLDB.nameplateThreat)
@@ -530,6 +547,7 @@ nativeThreatPosition.setting:SetValue("LEFT")
 assert(nameplateUpdates == 2 and PyresinQoLDB.nameplateThreatPosition == "LEFT")
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(nameplateUpdates == 4 and PyresinQoLDB.nameplateThreat and PyresinQoLDB.nameplateThreatPosition == "RIGHT")
+assert(comboUpdates == 2 and PyresinQoLDB.nameplateComboPoints)
 navigation[11].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 3)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
@@ -617,6 +635,7 @@ unitFramesModule:SetValue(false)
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow(),
     "Native nameplate options must stay visible when the module is disabled")
 assert(not nativeThreatCheckbox.modifyPredicate() and not nativeThreatPosition.modifyPredicate())
+assert(nativeComboCheckbox:ShouldShow() and not nativeComboCheckbox.modifyPredicate())
 unitFramesModule:SetValue(true)
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow())
 local reloaded = 0
