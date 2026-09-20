@@ -211,7 +211,7 @@ magick docs/branding/source/addon-icon.png -crop 1029x1179+126+29 +repage -filte
 The crop rectangles exclude faint stray pixels outside the visible artwork.
 `.pkgmeta` keeps documentation, source artwork and tests out of CurseForge/BigWigs
 release packages; `Media/` remains included. When packaging manually, include
-`PyresinQoL.toc`, `Core/`, `Settings/`, `Modules/` and `Media/` inside `PyresinQoL/`.
+`PyresinQoL.toc`, `LICENSE`, `Core/`, `Settings/`, `Modules/` and `Media/` inside `PyresinQoL/`.
 
 ### Module interface and startup
 
@@ -287,3 +287,8 @@ Edit Mode polls geometry to follow native movement and layout reverts, but only
 rewrites controls or solves panel placement when their inputs change. Placement
 also tracks dialog visibility, screen bounds, scale and panel size. The automated
 checks assert these work limits; they do not measure in-game CPU or FPS.
+
+## License
+
+Copyright (c) 2026 Marco Maier. Code, documentation and included logo artwork
+are licensed under the [MIT License](LICENSE).

@@ -3,6 +3,7 @@
 ## IconTexture: Interface\AddOns\PyresinQoL\Media\AddonIcon
 ## Notes: Quality of life improvements for the WoW Forever interface.
 ## Version: 0.1.0
+## X-License: MIT
 ## SavedVariables: PyresinQoLDB
 
 Core/Localization.lua
