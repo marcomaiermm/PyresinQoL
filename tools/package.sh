@@ -8,7 +8,7 @@ if (( $# > 1 )); then
     exit 1
 fi
 if (( $# == 1 )); then tag_args=(--tag "$1"); fi
-version=$(python3 tools/check_package.py "${tag_args[@]}")
+version=$(bash tools/check-package.sh "${tag_args[@]}")
 
 # BigWigs v2.6.1 includes WoW Forever support. Pin the local build too.
 revision=e50a250f8705041e40f2fa1ddcb280a686d65aa0
@@ -21,5 +21,5 @@ if [[ ! -f "$packager" ]]; then
     mv "$packager.tmp" "$packager"
 fi
 # Always build, even when a main-branch commit already carries a tag.
-GITHUB_ACTIONS= bash "$packager" -d -u -l -w 0 -p 0 -r "$PWD/dist" -n "PyresinQoL-$version"
-python3 tools/check_package.py "${tag_args[@]}" --archive "dist/PyresinQoL-$version.zip"
+GITHUB_ACTIONS='' bash "$packager" -d -u -l -w 0 -p 0 -r "$PWD/dist" -n "PyresinQoL-$version"
+bash tools/check-package.sh "${tag_args[@]}" --archive "dist/PyresinQoL-$version.zip"

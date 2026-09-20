@@ -2,12 +2,12 @@
 
 ## Checks and packaging
 
-Use LuaJIT, Python 3, Bash 4.3+, Git, curl and zip. Ubuntu setup:
+Use LuaJIT, Bash 4.3+, Git, curl, zip and unzip. Ubuntu setup:
 
 ```sh
-sudo apt-get install luajit python3 curl git zip
+sudo apt-get install luajit curl git zip unzip
 sh tests/run.sh
-python3 tests/package.py
+bash tests/package.sh
 bash tools/package.sh
 ```
 
@@ -24,9 +24,10 @@ Commit changes before building release candidates so the generated changelog mat
 
 ## Releases
 
+GitHub Actions uses the BigWigs action directly, followed by the shell package audit.
 PRs and pushes to `main` run **Tests and package** and retain an installable ZIP.
 The same checks run on release tags. Actions and the local packager are pinned;
-update the packager revision in both the build script and release workflow together.
+update the packager revision in the local build script and both workflows together.
 
 1. Update `## Version:` in the TOC to `X.Y.Z`, commit and merge the change.
 2. Run `bash tools/package.sh vX.Y.Z` and complete the in-game checklist below.

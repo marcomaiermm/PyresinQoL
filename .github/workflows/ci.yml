@@ -21,23 +21,30 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: ${{ github.ref_type == 'tag' && '0' || '1' }}
           persist-credentials: false
       - name: Install LuaJIT
         run: sudo apt-get update && sudo apt-get install -y luajit
       - name: Test
         run: |
           sh tests/run.sh
-          python3 tests/package.py
-      - name: Build and verify package
+          bash tests/package.sh
+      - name: Validate manifest and version
+        id: package
         env:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
-          if [[ -n "$RELEASE_TAG" ]]; then
-            bash tools/package.sh "$RELEASE_TAG"
-          else
-            bash tools/package.sh
-          fi
+          version=$(bash tools/check-package.sh --tag "$RELEASE_TAG")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Build package without uploads
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          args: -d -u -l -w 0 -p 0 -r ${{ github.workspace }}/dist -n PyresinQoL-${{ steps.package.outputs.version }}
+          pandoc: 'false'
+      - name: Audit package
+        env:
+          VERSION: ${{ steps.package.outputs.version }}
+        run: bash tools/check-package.sh --archive "dist/PyresinQoL-$VERSION.zip"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: addon-package

@@ -44,8 +44,8 @@ jobs:
         run: |
           [[ "$CF_PROJECT_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Missing or invalid CF_PROJECT_ID'; exit 1; }
           [[ -n "$CF_API_KEY" ]] || { echo 'Missing CF_API_KEY'; exit 1; }
-          version=$(python3 tools/check_package.py --tag "$RELEASE_TAG")
-          python3 tools/check_package.py --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$version.zip"
+          version=$(bash tools/check-package.sh --tag "$RELEASE_TAG")
+          bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$version.zip"
           gh api "repos/$GH_REPO/releases" --paginate --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
           if grep -Fxq "$RELEASE_TAG" "$RUNNER_TEMP/release-tags"; then
             echo 'Release already exists; refusing to overwrite it.'
@@ -66,5 +66,5 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.package.outputs.version }}
         run: |
-          python3 tools/check_package.py --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$VERSION.zip"
+          bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$VERSION.zip"
           gh release create "$RELEASE_TAG" "dist/PyresinQoL-$VERSION.zip" --verify-tag --generate-notes
