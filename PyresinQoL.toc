@@ -2,7 +2,7 @@
 ## Title: PyresinQoL
 ## IconTexture: Interface\AddOns\PyresinQoL\Media\AddonIcon
 ## Notes: Quality of life improvements for the WoW Forever interface.
-## Version: 0.1.0
+## Version: 0.1.1
 ## X-License: MIT
 ## SavedVariables: PyresinQoLDB
 

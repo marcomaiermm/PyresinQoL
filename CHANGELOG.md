@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.1.1
 
 - Rogues and druids can now see combo points below each enemy nameplate. Toggle the display in `/pqol` or Blizzard's nameplate settings.
 - New **Status Text** options let you hide health, resource and state text separately for your pet, target, target of target and focus, including on mouseover. Names and bars stay visible.
