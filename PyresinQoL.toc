@@ -1,0 +1,30 @@
+## Interface: 16001
+## Title: PyresinQoL
+## Notes: Quality of life improvements for the WoW Forever interface.
+## Version: 0.1.0
+## SavedVariables: PyresinQoLDB
+
+Core/Localization.lua
+Core/Modules.lua
+Core/Database.lua
+Settings/Controls.lua
+Settings/Window.lua
+Core/Bootstrap.lua
+Modules/GameMenu/GameMenu.lua
+Modules/Performance/Performance.lua
+Modules/EditMode/PixelPerfect.lua
+Modules/Experience/Experience.lua
+Modules/Quests/Quests.lua
+Modules/UnitFrames/UnitFrames.lua
+Modules/UnitFrames/DruidMana.lua
+Modules/UnitFrames/TargetDebuffs.lua
+Modules/UnitFrames/NameplateThreat.lua
+Modules/UnitFrames/ThreatMeter.lua
+Modules/Tooltips/Tooltip.lua
+Modules/GameMenu/Settings.lua
+Modules/EditMode/Settings.lua
+Modules/Performance/Settings.lua
+Modules/Experience/Settings.lua
+Modules/Quests/Settings.lua
+Modules/UnitFrames/Settings.lua
+Modules/Tooltips/Settings.lua
