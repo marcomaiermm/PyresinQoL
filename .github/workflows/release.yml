@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  checks:
+    uses: ./.github/workflows/ci.yml
+    with:
+      tag: ${{ github.ref_name }}
+
+  publish:
+    needs: checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+      CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID || secrets.CF_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: addon-package
+          path: dist
+      - name: Verify release inputs and tested package
+        id: package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+        run: |
+          [[ "$CF_PROJECT_ID" =~ ^[1-9][0-9]*$ ]] || { echo 'Missing or invalid CF_PROJECT_ID'; exit 1; }
+          [[ -n "$CF_API_KEY" ]] || { echo 'Missing CF_API_KEY'; exit 1; }
+          version=$(bash tools/check-package.sh --tag "$RELEASE_TAG")
+          bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$version.zip"
+          gh api "repos/$GH_REPO/releases" --paginate --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
+          if grep -Fxq "$RELEASE_TAG" "$RUNNER_TEMP/release-tags"; then
+            echo 'Release already exists; refusing to overwrite it.'
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          unzip -q "dist/PyresinQoL-$version.zip" -d dist
+      - name: Publish validated package to CurseForge
+        uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
+        with:
+          # Reuse the validated package directory; do not recopy source files.
+          args: -c -o -u -l -w 0 -r ${{ github.workspace }}/dist -p ${{ env.CF_PROJECT_ID }} -n PyresinQoL-${{ steps.package.outputs.version }}
+          pandoc: 'false'
+        env:
+          CF_API_KEY: ${{ secrets.CF_API_KEY }}
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.package.outputs.version }}
+        run: |
+          bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$VERSION.zip"
+          gh release create "$RELEASE_TAG" "dist/PyresinQoL-$VERSION.zip" --verify-tag --generate-notes
