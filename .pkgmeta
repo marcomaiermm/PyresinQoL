@@ -1,6 +1,12 @@
 package-as: PyresinQoL
+license-output: LICENSE
 
 ignore:
+  - .github
+  - .gitignore
+  - .release
+  - dist
   - docs
   - tests
+  - tools
   - README.md
