@@ -7,8 +7,6 @@
 - The addon's shared status-text format selector has been removed. Use Blizzard's settings to choose your preferred text format.
 - **Threat** is now available in the damage meter's display dropdown. Select another display to return to the normal meter.
 
-Reload your UI after updating to apply the changes.
-
 ## 0.1.0
 
 Initial release for **WoW Forever 1.60.1**.
