@@ -18,8 +18,8 @@ Optional upstream check: `luajit tests/experience.lua en /path/to/forever-ui-sou
 The build downloads a pinned BigWigs Packager into ignored `.release/`, packages
 with `.pkgmeta`, and verifies `dist/PyresinQoL-X.Y.Z.zip` against the working tree.
 It never uploads. The ZIP includes the TOC, license, runtime folders, `Media/` and
-generated changelog; docs, source artwork, tests and tooling stay out.
-Commit changes before building release candidates so the generated changelog matches.
+the consumer-facing `CHANGELOG.md`; docs, source artwork, tests and tooling stay out.
+The packager uses this Markdown file as the CurseForge changelog instead of commit logs.
 
 ## Releases
 
@@ -28,7 +28,10 @@ PRs and pushes to `main` run **Tests and package** and retain an installable ZIP
 The same checks run on release tags. Actions and the local packager are pinned;
 update the packager revision in the local build script and both workflows together.
 
-1. Update `## Version:` in the TOC to `X.Y.Z`, commit and merge the change.
+1. Update `## Version:` in the TOC to `X.Y.Z` and rename the `Unreleased` heading in
+   `CHANGELOG.md` to that version. Keep entries short, in English, and focused on
+   player-visible changes; list the newest version first. The full file is sent to
+   CurseForge. Commit and merge the change.
 2. Run `bash tools/package.sh vX.Y.Z` and complete the in-game checklist below.
 3. Tag that tested commit and push the tag:
 
