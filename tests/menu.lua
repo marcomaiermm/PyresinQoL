@@ -6,6 +6,7 @@ local settings, checkboxCount, dropdownCount, colorCount, sliderCount, performan
 local sections, navigation = {}, {}
 local canvas, launcher, settingsList, reloadButton, combatEvents, openButton, closeButton
 local groupButtons = {}
+local logos = {}
 local ns = {}
 function GetLocale() return arg[1] == "de" and "deDE" or "enUS" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
@@ -85,7 +86,10 @@ local function Widget(kind)
     function widget:SetMaxLines(value) self.maxLines = value end
     function widget:SetJustifyH() end
     function widget:SetColorTexture() end
-    function widget:SetTexture() end
+    function widget:SetTexture(path)
+        self.texture = path
+        if path == "Interface\\AddOns\\PyresinQoL\\Media\\AddonIcon" then logos[#logos + 1] = self end
+    end
     function widget:SetAtlas() end
     function widget:SetRotation(value) self.rotation = value end
     function widget:SetHighlightTexture() end
@@ -395,7 +399,17 @@ assert(navigation[2].text.value == ns.L.gameMenu and navigation[3].text.value ==
 assert(not canvas.shown and canvas.width == 960 and canvas.height == 720)
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and canvas.clamped and canvas.movable)
 assert(SLASH_PQOL1 == "/pqol" and SLASH_PYRESINQOL1 == nil and SLASH_PYRESINQOL2 == nil)
-assert(canvas.NineSlice.Text.value == "PyresinQoL")
+assert(canvas.NineSlice.Text.value == "|TInterface\\AddOns\\PyresinQoL\\Media\\AddonIcon:24:24:0:0|t PyresinQoL")
+assert(#logos == 1 and logos[1].width == 48 and logos[1].height == 48)
+local toc = assert(io.open("PyresinQoL.toc"))
+assert(toc:read("*a"):find("## IconTexture: " .. logos[1].texture, 1, true))
+toc:close()
+local iconFile = assert(io.open("Media/AddonIcon.tga", "rb"))
+local header = iconFile:read(18)
+iconFile:close()
+assert(header:byte(3) == 2 and header:byte(13) == 128 and header:byte(14) == 0
+    and header:byte(15) == 128 and header:byte(16) == 0 and header:byte(17) == 32,
+    "The shared icon must be an uncompressed 128x128 RGBA TGA")
 openButton.scripts.OnClick()
 assert(canvas.shown and not SettingsPanel.shown and canvas.scale == 1 and canvas.raised)
 closeButton.scripts.OnClick()

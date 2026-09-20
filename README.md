@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/branding/logo.png" alt="PyresinQoL logo" width="160" height="160">
+</p>
+
 # PyresinQoL
 
 Quality-of-life options for WoW Forever 1.60.1 (Interface 16001).
@@ -161,6 +165,8 @@ The addon is organized by responsibility:
 ```text
 Core/                  Localization, ordered module registry, database migration, bootstrap
 Settings/              Shared window/navigation and control helpers
+Media/                 In-game textures shipped with the addon
+docs/branding/         README/CurseForge logo and original artwork (not packaged)
 Modules/
   GameMenu/            Runtime and Settings.lua
   EditMode/            PixelPerfect.lua and Settings.lua
@@ -179,6 +185,33 @@ to the addon root and launches each check in a separate LuaJIT process. Individu
 checks still run from the addon root, for example `luajit tests/menu.lua de`.
 The tests use mocked game APIs; an in-game `/reload` check remains necessary for
 visual layout, native hooks, combat restrictions and live client behavior.
+
+### Logos and packaging
+
+`docs/branding/logo.png` is the 400 × 400 transparent PNG for the README,
+CurseForge description and project avatar. The README displays it at 160 × 160.
+Upload this file separately as the CurseForge project logo; the TOC icon does not
+set the website avatar. See the [CurseForge avatar requirements](https://support.curseforge.com/support/solutions/articles/9000197279-moderation-policies).
+
+`Media/AddonIcon.tga` is the simplified in-game logo: an uncompressed 128 × 128,
+32-bit TGA with alpha. The TOC uses it for Escape → AddOns; settings reuse it at
+48 × 48 on the native launcher and 24 × 24 in the `/pqol` title bar.
+Restart WoW after adding the texture, then check all three placements in-game.
+
+Unmodified originals live in `docs/branding/source/`: `logo.png` was
+`PyresinQoL_Logo.png`, and `addon-icon.png` was `IngameLogoAddonPyresinQoL.png`.
+The exports preserve the artwork's proportions, trim empty margins and leave
+a small transparent safety margin. Rebuild from the addon root with ImageMagick:
+
+```sh
+magick docs/branding/source/logo.png -crop 1076x1137+89+52 +repage -filter Lanczos -resize 384x384 -gravity center -background none -extent 400x400 -strip PNG32:docs/branding/logo.png
+magick docs/branding/source/addon-icon.png -crop 1029x1179+126+29 +repage -filter Lanczos -resize 124x124 -gravity center -background none -extent 128x128 -strip -type TrueColorAlpha -depth 8 -compress None Media/AddonIcon.tga
+```
+
+The crop rectangles exclude faint stray pixels outside the visible artwork.
+`.pkgmeta` keeps documentation, source artwork and tests out of CurseForge/BigWigs
+release packages; `Media/` remains included. When packaging manually, include
+`PyresinQoL.toc`, `Core/`, `Settings/`, `Modules/` and `Media/` inside `PyresinQoL/`.
 
 ### Module interface and startup
 

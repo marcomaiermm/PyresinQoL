@@ -1,5 +1,6 @@
 local _, ns = ...
 local L = ns.L
+local ICON = "Interface\\AddOns\\PyresinQoL\\Media\\AddonIcon"
 
 function ns.InitializeSettings()
     local launcher = CreateFrame("Frame")
@@ -17,7 +18,7 @@ function ns.InitializeSettings()
     canvas:SetMovable(true)
     canvas:SetClampedToScreen(true)
     canvas:EnableMouse(true)
-    canvas.NineSlice.Text:SetText("PyresinQoL")
+    canvas.NineSlice.Text:SetText("|T" .. ICON .. ":24:24:0:0|t PyresinQoL")
     canvas.ClosePanelButton:SetScript("OnClick", function() canvas:Hide() end)
     table.insert(UISpecialFrames, "PyresinQoLSettingsFrame")
     local drag = CreateFrame("Frame", nil, canvas)
@@ -38,15 +39,19 @@ function ns.InitializeSettings()
     SLASH_PQOL1 = "/pqol"
     SlashCmdList.PQOL = ns.OpenSettings
 
+    local logo = launcher:CreateTexture(nil, "ARTWORK")
+    logo:SetTexture(ICON)
+    logo:SetSize(48, 48)
+    logo:SetPoint("TOPLEFT", 16, -16)
     local title = launcher:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
-    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetPoint("LEFT", logo, "RIGHT", 12, 0)
     title:SetText("PyresinQoL")
     local subtitle = launcher:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-    subtitle:SetPoint("TOPLEFT", 16, -52)
+    subtitle:SetPoint("TOPLEFT", 16, -80)
     subtitle:SetText(L.settingsSubtitle)
     local open = CreateFrame("Button", nil, launcher, "UIPanelButtonTemplate")
     open:SetSize(220, 28)
-    open:SetPoint("TOPLEFT", 16, -84)
+    open:SetPoint("TOPLEFT", 16, -112)
     open:SetText(L.openSettings)
     open:SetScript("OnClick", ns.OpenSettings)
 

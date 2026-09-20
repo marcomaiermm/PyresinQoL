@@ -1,0 +1,6 @@
+package-as: PyresinQoL
+
+ignore:
+  - docs
+  - tests
+  - README.md
