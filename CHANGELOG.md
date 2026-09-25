@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.1.3
 
 - Increase right-side nameplate threat spacing so the level badge does not cover the percentage, including in the settings preview.
 - Fix nameplate threat errors when Blizzard restricts threat values during combat. Restricted percentages use the permitted native formatting without a cap; freely readable values still cap at **999%+**, and 0% stays hidden.
