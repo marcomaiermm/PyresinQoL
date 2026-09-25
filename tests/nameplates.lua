@@ -26,16 +26,25 @@ local function Secret(value)
     return token
 end
 C_StringUtil = {}
-function C_StringUtil.TruncateWhenZero(value)
-    local number = issecretvalue(value) and nativeValues[value] or value
-    local integer = math.floor(number)
-    local text = integer == 0 and "" or tostring(integer)
-    return issecretvalue(value) and Secret(text) or text
-end
-function C_StringUtil.WrapString(value, prefix, suffix)
-    local text = issecretvalue(value) and nativeValues[value] or value
-    local result = text == "" and "" or prefix .. text .. suffix
-    return issecretvalue(value) and Secret(result) or result
+Enum = { NumericRuleFormatRounding = { Down = 2 } }
+function C_StringUtil.CreateNumericRuleFormatter()
+    local formatter = {}
+    function formatter:SetBreakpoints(points) self.points = points end
+    function formatter:FormatNumber(value)
+        local number = issecretvalue(value) and nativeValues[value] or value
+        local rule
+        for _, point in ipairs(self.points) do
+            if number >= point.threshold then rule = point end
+        end
+        assert(rule, "Missing numeric format rule")
+        if rule.step then
+            assert(rule.rounding == Enum.NumericRuleFormatRounding.Down)
+            number = math.floor(number / rule.step) * rule.step
+        end
+        local text = string.format(rule.format, number)
+        return issecretvalue(value) and Secret(text) or text
+    end
+    return formatter
 end
 PyresinQoLDB = {}
 STANDARD_TEXT_FONT = "Fonts\\FRIZQT__.TTF"
@@ -158,6 +167,18 @@ end
 states.nameplate1 = { tanking = true, percent = 100, lead = 153.8 }
 Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
 assert(texts[1].alpha == 0 and texts[2].value == "153%" and texts[2].alpha == 1)
+for _, case in ipairs({ { 998.9, "998%" }, { 999, "999%" }, { 999.9, "999%" },
+    { 1000, "999%+" }, { 22800, "999%+" }, { 1000000, "999%+" } }) do
+    for _, value in ipairs({ case[1], Secret(case[1]) }) do
+        states.nameplate1 = { tanking = false, percent = value }
+        Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
+        assert(texts[1].value == case[2] and texts[1].alpha == 1, "Cap normal threat at 999%+")
+        states.nameplate1 = { tanking = true, percent = 100, lead = value }
+        Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
+        assert(texts[2].value == case[2] and texts[2].alpha == 1, "Cap tank lead at 999%+")
+        assert(issecretvalue(texts[2].argument) == issecretvalue(value), "Keep restricted values secret")
+    end
+end
 states.nameplate1 = { tanking = secret, percent = secret, lead = secret, status = secret }
 Fire("UNIT_THREAT_SITUATION_UPDATE", "player")
 for _, text in ipairs(texts) do
@@ -276,3 +297,5 @@ if arg[1] then
     assert(not ready and released)
     print("PASS: pinned Blizzard nameplate driver lifecycle")
 end
+
+print("PASS: 999%+ cap for normal threat and tank lead, public and secret values, and threshold boundaries")
