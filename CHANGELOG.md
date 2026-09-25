@@ -1,5 +1,9 @@
 # PyresinQoL Changelog
 
+## 0.1.2
+
+- Nameplate threat percentages now display **999%+** at 1000% and above, keeping large threat leads compact. Lower percentages retain their existing display, and 0% stays hidden.
+
 ## 0.1.1
 
 - Rogues and druids can now see combo points below each enemy nameplate. Toggle the display in `/pqol` or Blizzard's nameplate settings.
