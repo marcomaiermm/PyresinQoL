@@ -22,9 +22,16 @@ ns.RegisterModule("unitFrames", function(module)
         display.position = point
     end
 
+    -- Native rules also cap secret threat values without comparing them in Lua.
+    local percentFormatter = C_StringUtil.CreateNumericRuleFormatter()
+    percentFormatter:SetBreakpoints({
+        { threshold = 0, format = "" },
+        { threshold = 1, format = "%d%%", step = 1, rounding = Enum.NumericRuleFormatRounding.Down },
+        { threshold = 1000, format = "999%%+" },
+    })
+
     local function PercentText(value)
-        -- Both native formatters accept secrets and suppress the suffix for an empty value.
-        return C_StringUtil.WrapString(C_StringUtil.TruncateWhenZero(value), "", "%")
+        return percentFormatter:FormatNumber(value)
     end
 
     local function UpdateColor(display, status)
