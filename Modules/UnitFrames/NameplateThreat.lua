@@ -6,7 +6,7 @@ ns.RegisterModule("unitFrames", function(module)
     local tankColors = { [0] = { 1, 1, 1 }, { 1, 1, 0.47 }, { 0.3, 0.7, 1 }, { 0.2, 1, 0.3 } }
 
     local positions = {
-        RIGHT = { "LEFT", "RIGHT", 26, 0 }, LEFT = { "RIGHT", "LEFT", -8, 0 },
+        RIGHT = { "LEFT", "RIGHT", 42, 0 }, LEFT = { "RIGHT", "LEFT", -8, 0 },
         TOP = { "BOTTOM", "TOP", 0, 6 }, BOTTOM = { "TOP", "BOTTOM", 0, -6 },
     }
 
@@ -22,16 +22,11 @@ ns.RegisterModule("unitFrames", function(module)
         display.position = point
     end
 
-    -- Native rules also cap secret threat values without comparing them in Lua.
-    local percentFormatter = C_StringUtil.CreateNumericRuleFormatter()
-    percentFormatter:SetBreakpoints({
-        { threshold = 0, format = "" },
-        { threshold = 1, format = "%d%%", step = 1, rounding = Enum.NumericRuleFormatRounding.Down },
-        { threshold = 1000, format = "999%%+" },
-    })
-
     local function PercentText(value)
-        return percentFormatter:FormatNumber(value)
+        if not issecretvalue(value) and value >= 1000 then return "999%+" end
+        -- FormatNumber rejects secrets in addon code; these helpers accept them.
+        -- Restricted percentages must remain uncapped because Lua cannot compare them.
+        return C_StringUtil.WrapString(C_StringUtil.TruncateWhenZero(value), "", "%")
     end
 
     local function UpdateColor(display, status)

@@ -26,11 +26,23 @@ local function Secret(value)
     return token
 end
 C_StringUtil = {}
+function C_StringUtil.TruncateWhenZero(value)
+    local number = issecretvalue(value) and nativeValues[value] or value
+    local integer = math.floor(number)
+    local text = integer == 0 and "" or tostring(integer)
+    return issecretvalue(value) and Secret(text) or text
+end
+function C_StringUtil.WrapString(value, prefix, suffix)
+    local text = issecretvalue(value) and nativeValues[value] or value
+    local result = text == "" and "" or prefix .. text .. suffix
+    return issecretvalue(value) and Secret(result) or result
+end
 Enum = { NumericRuleFormatRounding = { Down = 2 } }
 function C_StringUtil.CreateNumericRuleFormatter()
     local formatter = {}
     function formatter:SetBreakpoints(points) self.points = points end
     function formatter:FormatNumber(value)
+        assert(not issecretvalue(value), "FormatNumber: secret values are only allowed during untainted execution")
         local number = issecretvalue(value) and nativeValues[value] or value
         local rule
         for _, point in ipairs(self.points) do
@@ -69,7 +81,7 @@ function CreateFrame(_, _, parent)
         function badge:SetSize(width, height) assert(width == 1 and height == 1) end
         function badge:SetPoint(point, anchor, relative, x, y)
             assert(anchor == parent)
-            local expected = { RIGHT = { "LEFT", 26, 0 }, LEFT = { "RIGHT", -8, 0 },
+            local expected = { RIGHT = { "LEFT", 42, 0 }, LEFT = { "RIGHT", -8, 0 },
                 TOP = { "BOTTOM", 0, 6 }, BOTTOM = { "TOP", 0, -6 } }
             local position = assert(expected[relative])
             assert(point == position[1] and x == position[2] and y == position[3])
@@ -170,12 +182,13 @@ assert(texts[1].alpha == 0 and texts[2].value == "153%" and texts[2].alpha == 1)
 for _, case in ipairs({ { 998.9, "998%" }, { 999, "999%" }, { 999.9, "999%" },
     { 1000, "999%+" }, { 22800, "999%+" }, { 1000000, "999%+" } }) do
     for _, value in ipairs({ case[1], Secret(case[1]) }) do
+        local expected = issecretvalue(value) and (tostring(math.floor(case[1])) .. "%") or case[2]
         states.nameplate1 = { tanking = false, percent = value }
         Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
-        assert(texts[1].value == case[2] and texts[1].alpha == 1, "Cap normal threat at 999%+")
+        assert(texts[1].value == expected and texts[1].alpha == 1, "Cap public threat and forward restricted percentages")
         states.nameplate1 = { tanking = true, percent = 100, lead = value }
         Fire("UNIT_THREAT_LIST_UPDATE", "nameplate1")
-        assert(texts[2].value == case[2] and texts[2].alpha == 1, "Cap tank lead at 999%+")
+        assert(texts[2].value == expected and texts[2].alpha == 1, "Cap public tank lead and forward restricted percentages")
         assert(issecretvalue(texts[2].argument) == issecretvalue(value), "Keep restricted values secret")
     end
 end
@@ -298,4 +311,4 @@ if arg[1] then
     print("PASS: pinned Blizzard nameplate driver lifecycle")
 end
 
-print("PASS: 999%+ cap for normal threat and tank lead, public and secret values, and threshold boundaries")
+print("PASS: public 999%+ cap, restricted percentage fallback, and tainted FormatNumber rejection")
