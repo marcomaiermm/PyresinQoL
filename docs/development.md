@@ -84,6 +84,228 @@ and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
 
+### Native player cast bar
+
+`Modules/CastBar` belongs to the existing Unit Frames module. `Config.lua` owns
+only `PyresinQoLDB.castBarCustomization` (off by default) and `PyresinQoLDB.castBar`
+presentation overrides. `Textures.lua` discovers available native profession art;
+`Models.lua` supplies ten visual presets and clipped Blizzard model effects.
+`Presentation.lua` shares icon geometry, text placement and border rendering between
+the live bar and static settings samples. `Native.lua` securely post-hooks the existing
+`PlayerCastingBarFrame`; `EditMode.lua`
+adds Appearance, Layout and Details tabs with native controls to its settings
+dialog. No replacement cast frame, event handler, casting engine, or native Edit
+Mode setting is registered.
+
+Forever already owns **Bar Size** (scale), **Lock to Player Frame**, position,
+anchors, and **Show Cast Time**. The addon does not save copies of these settings;
+the integrated icon's temporary fill offset preserves their logical position.
+Custom width/height and font size use an **Automatic** sentinel instead of persisting
+native dimensions. Native look changes refresh the relevant restoration baseline.
+The Player addon page contains only enable/configure/reset actions for this feature.
+Addon settings save immediately and independently of Blizzard's layout Save/Revert.
+The cast-bar reset preserves the enable switch; Player-page Defaults also disables
+the feature. Both restore native presentation without resetting Blizzard's layout.
+
+Source of truth: Forever **1.60.1.69913**,
+[`CastingBarFrame.lua`](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UIPanels_Game/Shared/CastingBarFrame.lua),
+[`EditModeDialogs.lua`](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_EditMode/Shared/EditModeDialogs.lua),
+and [`ProfessionsRankBar.lua`](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_ProfessionsTemplates/Blizzard_ProfessionsRankBar.lua)
+/ its adjacent XML. Profession kit names come from `Enum.Profession`, as in
+`Professions.GetAtlasKitSpecifier`. Only requested profession atlases returned by
+`C_Texture.GetAtlasInfo` with usable metadata are exposed; missing styles are not
+substituted with a fabricated profession or a generic blue bar.
+
+These assets are flipbooks, not drop-in StatusBar fills. The registry records their
+row count (two columns, 34-pixel cell height) and first cell for static samples.
+The saved `animated` option defaults to true. The **Animated** checkbox below the
+Edit Mode texture selector disables flipbook playback and keeps its first cell
+visible; model styles remain animated and show a checked, disabled checkbox.
+Blizzard default has no custom flipbook and shows an unchecked, disabled checkbox.
+During casts/channels, one native `FlipBook` plays forward with ordinary `BLEND`.
+Known source files use the prepared loops in `Media/CastBar`: their final 300 ms
+are blended into the beginning offline, in premultiplied RGBA, then converted back
+to straight alpha. The wrap therefore traverses adjacent source frames. Color and
+coverage are interpolated together before the game composites a single layer;
+there are no runtime opacity fades, overlapping passes, or frame buffers.
+The original frame rate is retained. Removing the overlap shortens a typical
+60-frame/two-second animation to 51 frames/1.7 seconds. The native rank-bar speed
+also determines the durations for Enchanting's 74 and Jewelcrafting's 44 frames.
+The 16 included BC3/BLP textures cover all 13 professions and the three Forever
+variants, at 512×32 pixels per frame (about 16 MiB total). They use two columns and
+32 rows, with only the generated frame count played. Source file ID and row count
+must match; unfamiliar client artwork falls back to a single native two-second
+flipbook. Static previews, Animated off, and interruption still use the original
+client artwork.
+
+`Media/CastBar/sources.json` records the source build, file IDs, exact atlas bounds
+and SHA-256 checksums. To regenerate, extract these BLPs from the recorded client
+as `pyresin-atlas-<fileDataID>.blp`, then run
+`python3 tools/build-profession-loops.py --source-dir /path/to/extracted/files`.
+The build tool uses numpy, Pillow and ImageMagick; the addon has no new runtime
+dependency. Without `--source-dir`, it runs the RGBA regression check. Generation
+also decodes the shipped BC3 blocks and checks their color/coverage against the
+uncompressed result. Blizzard's source artwork retains its original ownership.
+
+Profession artwork uses Blizzard's displayed Fill size (441×18 UI units), scaled
+by bar height / 18 and anchored on the left. Bar width never enlarges the artwork.
+The native mask reveals its left portion; bars wider than the scaled artwork show
+only their background beyond its right edge. Static and menu samples use the same
+scale and stop at the first cell's edge. This also applies to resized loop files.
+The stationary texture shares the native fill mask and selected tint. Animation
+changes UVs; progress changes only the mask. Both remain engine-owned, with no Lua
+arithmetic on restricted cast values or per-frame updates. One animation group is
+reused; `GetTime() % duration` preserves phase through refreshes and consecutive
+casts. Hide stops playback; showing the next cast resumes it. Clear, reset,
+disable, and native fallback clear animation eligibility. Tests cover the original
+RGBA composition reference, forward sequence, wrap, runtime lifecycle, native
+fallback, and Animated controls. Final visual acceptance still requires the client.
+The original fill is hidden while custom art is active and restored for native
+fallbacks, reset and disable. No second StatusBar is created.
+The texture menu shows each cell as a swatch, prefixes profession entries
+with `Professions:`, and scrolls within 420 units. The closed selector uses one
+flat frame around the name and padded swatch instead of stretching a one-line atlas.
+The fixed-progress sample above the tabs previews the complete configured bar.
+
+Model presets use the colors and built-in model IDs/transforms from
+[the reference collection](https://wago.io/xeJOxehA8):
+[Astral](https://wago.io/mNJRj47pM/1.0.4), [Celestial](https://wago.io/e7OWqrrSx),
+[Ember](https://wago.io/rG6nr7nWU), [Fel](https://wago.io/YWaNciV4v),
+[Flux](https://wago.io/vrADoIkLX), [Galaxy](https://wago.io/Uos2_REtN),
+[Nebula](https://wago.io/9dTTb_PrA), [Sage](https://wago.io/WvUzCLRuc),
+[Sunset](https://wago.io/YvE6OQvhQ), and [Void](https://wago.io/5xziQvVrN).
+No imported aura code, triggers or actions execute. At most two PlayerModels per
+bar/swatch are shown, with separate reused frames for legacy and custom-camera transforms.
+Poses follow the reference's active API: legacy models use `SetPosition(z, x, y)`
+and `SetFacing(rotation)`; inactive transform fields are ignored. No additional
+model-space rotation or translation correction is applied.
+Each model loads on `OnShow`, when its entire parent chain is visible, and reapplies
+its pose on `OnModelLoaded`. Caching a file ID is insufficient after hiding: spell
+models may retain the ID without restoring their rendered state. Native cast
+progress, unchanged refreshes and unrelated settings changes do not reload models.
+The harness models parent visibility and this hide/show lifecycle, including a delayed load resetting the model transform.
+Model viewports follow the reference's `bar_model_stretch`: Astral, Celestial,
+Ember, the first Flux model, Galaxy, the second Nebula model, Sage and Sunset
+anchor to the native progress texture, so their position and dimensions change
+with cast/channel progress. Other models retain a full-bar viewport. Integrated
+icons are excluded from both viewports.
+Their containers flatten render layers. Foreground models clip to current native
+progress, including channeling; the reference's background layers in Astral, Fel
+and Nebula clip to the full bar, so particles also appear over the unfilled area.
+Zero/restricted clip dimensions hide only that clip's models. Native anchors
+update the geometry without progress arithmetic or per-tick model reloads.
+Native foreground regions and their masks temporarily sit above the models;
+original parents and selection levels return on fallback/reset/disable.
+Model presets replace the native background with the same base texture as the fill,
+tinted with the reference background color (not the foreground gradient): dark blue
+for Nebula, dark green for Fel, and black for the other presets. Automatic opacity
+uses each reference's alpha; an explicit background opacity overrides it. The full
+settings preview uses the same painter. A separate background region preserves all
+of Blizzard's original background art and anchors for fallback/reset/disable.
+Model styles always restore Blizzard's interrupted/failed artwork, regardless of
+the saved custom-interruption preference, and hide their base fill and particles.
+
+Texture dropdown swatches, including the closed selector, show the same clipped
+models as the live bar. Menu resetters hide effects before pooled buttons are
+reused; ordinary textures never create models. The full layout sample above the
+tabs remains static and shows only the base texture/gradient.
+Live art, swatches and the full preview share one color application path. Uniform
+`SetVertexColor` replaces gradient corner colors, so it must precede any preset
+gradient. Class/custom tint intentionally replaces the original palette; neither
+live rendering nor the full preview overwrites Original with white afterward.
+Live particles and menu previews require in-game visual acceptance; mock tests
+verify configuration, clipping anchors and reuse, not particle rendering.
+The references use a 280 × 28 bar with an icon. A thin native bar still has
+a different viewport aspect ratio from the reference. Selecting a texture never
+changes the user's bar dimensions. If another installed addon registers `DGround` or
+`Gradient` with LibSharedMedia, its exact base texture is used without honoring a
+global media override. Otherwise the preset uses native solid art (DGround's base
+brightness is retained); third-party image files and WeakAuras are not required.
+Fel's missing `Gradient` media uses a native horizontal brightness ramp from 35%
+to 100%, a visual approximation of the reference. It preserves class/custom
+tints, and partial previews sample the same ramp rather than compressing it.
+An installed `Gradient` texture takes precedence and is not shaded a second time.
+Model poses, foreground/background attachment and stretch behavior follow the
+references. Different bar dimensions and fallback media can still change the
+appearance compared with the WeakAura screenshots.
+
+Integrated icons reserve a square of bar height plus a one-unit divider inside
+the configured total width: 240 × 22 gives a 217-unit native fill. The native
+StatusBar remains the sole cast engine; texture, spark mask and latency all use
+its reduced fill area. Exterior icons keep the native fill width and use a
+0–12-unit gap. Automatic preserves the existing native/Compact behavior.
+Selection anchors and clamp offsets cover the icon and decorative overhang,
+feeding Blizzard's existing snapping code.
+The native fill receives an anchor-dependent inset so changing icon placement
+keeps the outer bar's position, width, height and scale stable. Edit Mode stores
+the logical outer anchor, excluding this inset, so dragging and reloading do not
+accumulate offsets. Icon choices preserve the selected Native/Compact text layout.
+
+Border settings are `borderStyle`, `borderColorMode`, `borderColor`,
+`borderOpacity` and `borderSize`; exterior spacing is `iconGap`. Thin and Inset
+use solid native texture edges outside the fill, with fixed physical-pixel strokes.
+Tinting the Blizzard border desaturates its original art; Original restores its
+captured color and saturation. The native interruptibility shield remains separate.
+Legacy `showBorder` migrates to `native`/`none`, unless an explicit style exists.
+Reset/disable restore native sizes, anchors, tint, text wrapping and selection bounds.
+
+The optional Compact layout places the native spell name and time inside the bar,
+uses a 240 × 22 default with a left icon and 12-pixel Blizzard fonts, and suppresses
+the lower text-box decoration. Explicit dimensions, font and icon choices win.
+Native anchors, text alignment, fonts and spark height return on reset/disable.
+The live bar and full preview apply the same captured native text baseline before
+custom placement; native look changes refresh only the fields Blizzard changes.
+The dialog reveals color pickers, border thickness, exterior spacing and latency opacity only when relevant, reserves
+space above each slider for its value. Details switches between spell-name and
+cast-time controls: independent `namePosition`/`timePosition`, `nameAlignment`/
+`timeAlignment`, and `nameSpacing`/`timeSpacing` (Automatic is -1; explicit 0–24).
+Automatic follows Native/Compact; positions include inside/above/below, with
+left/right exterior positions also available for time. Spacing is horizontal
+padding inside, or the gap from the bar outside. Font size remains shared.
+Native Show Cast Time owns visibility; hidden time controls explain that setting.
+Text rectangles never read or measure spell/time content. Time reserves a fixed
+slot and names use the remaining contiguous space; if none remains, the name is
+transparent until space returns. Icons are excluded, and selection bounds include
+external text. The preview uses the same geometry. Addon overrides still save immediately; Blizzard's Revert applies to
+Blizzard's own layout settings.
+Original color keeps native profession pixels untinted. Interrupted/failed custom
+textures are desaturated with a dark-to-bright red gradient and a narrow, fading
+upper highlight made from a solid native texture. Both use the same native fill
+mask; the highlight stays below text and never enters an integrated icon slot.
+There is no additional pattern, animation, shader program or per-tick work.
+The next cast resets the gradient; native fallbacks, reset and disable hide the
+highlight with the custom fill. Blizzard still owns the message,
+progress and animations. `customInterruptTexture` defaults to true; the Details
+checkbox is visible only for non-default textures without models. Model styles
+always use Blizzard's interrupted/failed art. False immediately restores native
+interrupted/failed art without changing the regular casting texture, persists
+across reload, and resets to true. Default interrupted art stays native, as does
+uninterruptible art unless explicitly tinted. Restricted state falls back to
+native art; restricted progress is passed through by native mask geometry. The optional
+latency zone uses reported **world network latency**, not per-cast send timestamps.
+
+Run `sh tests/run.sh`. `tests/castbar.lua` runs configuration/persistence, textures,
+models, layout and Edit Mode scenarios in separate Lua processes using
+`tests/support/castbar.lua`; each scenario can also run directly.
+To exercise the actual pinned native transition methods,
+download the linked `CastingBarFrame.lua` and run
+`luajit tests/castbar.lua /path/to/CastingBarFrame.lua`.
+The harness covers cast/channel/interrupt/failure/uninterruptible transitions,
+delays, stationary masked artwork during ordinary/reverse progress, interruption tint, color modes, icon sizing, font/text,
+spark/border/background, latency, reset/disable, native look changes, reconstructed
+saved-variable sessions, legacy migration, all six icon layouts, minimum/maximum
+dimensions, text collisions/placement/spacing, border scale/opacity, selection restoration, UI controls and picker
+cancellation. Frame rendering is
+mocked: these checks do **not** certify in-client visuals, secret-value enforcement,
+taint, combat safety, or an actual reload/relog.
+
+Before release, check those behaviors in Forever with short/long casts, each
+available profession texture, both attached/detached native looks, different UI
+scales and dimensions, Edit Mode entry/exit and switching to another system.
+Check texture clipping at partial progress, native fonts and decorative tints,
+then disable/reset during a cast, `/reload`, relog, and verify saved settings.
+Watch for Lua/taint errors both in and out of combat.
+
 ### Damage-meter Threat display
 
 Unit Frames adds **Threat** to Blizzard's damage-meter type dropdown through

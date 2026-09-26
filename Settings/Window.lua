@@ -239,6 +239,7 @@ function ns.InitializeSettings()
     local function ResetPage(page)
         if page.module and not (page.module.active and PyresinQoLDB.modules[page.module.id]) then return end
         for _, entry in ipairs(page.settings) do entry.setting:SetValue(entry.default) end
+        if page.onReset then page.onReset() end
     end
     list.Header.DefaultsButton:SetText(DEFAULTS)
     list.Header.DefaultsButton:SetScript("OnClick", function()

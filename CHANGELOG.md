@@ -1,5 +1,13 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+- Add opt-in player cast-bar customization in Blizzard Edit Mode, with Appearance, Layout and Details tabs, conditional controls and a shared preview.
+- Choose native profession textures with smooth forward animation loops and an Animated toggle, or ten styles with native model effects, reference colors and backgrounds. The scrollable texture selector previews each style, including model effects.
+- Customize original/class/custom colors, dimensions, compact layout, fonts, spell-name and cast-time placement, spark, background and latency zone. Choose Blizzard, Thin, Inset or None borders with color, opacity and thickness controls, plus integrated or external icons with adjustable exterior spacing.
+- Keep profession artwork scaled by bar height and clipped to cast progress. Interrupted/failed profession textures retain their pattern with red shading unless disabled under Details; model styles always restore Blizzard's interruption artwork.
+- Preserve Blizzard's cast engine, position, scale and cast-time visibility. Icon changes keep the bar's total size and text layout stable; Edit Mode bounds include icons, borders and external text. Reset restores native presentation without changing the Blizzard layout, and old border visibility settings migrate automatically.
+
 ## 0.1.3
 
 - Increase right-side nameplate threat spacing so the level badge does not cover the percentage, including in the settings preview.

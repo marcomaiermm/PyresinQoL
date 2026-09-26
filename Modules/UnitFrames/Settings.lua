@@ -59,6 +59,22 @@ ns.RegisterModuleSettings("unitFrames", function(module, context)
                 local mana = Register(unitPage, "DruidMana", "druidMana", Settings.VarType.Boolean,
                     L.druidMana, true, module.UpdateDruidMana)
                 AddControl(unitPage, Settings.CreateCheckboxInitializer(mana, nil, L.druidManaHelp))
+                local cast = ns.CastBar
+                table.insert(unitPage.initializers, CreateSettingsListSectionHeaderInitializer(L.castBarCustom))
+                local enabled = Register(unitPage, "CastBarCustomization", "castBarCustomization",
+                    Settings.VarType.Boolean, L.castBarEnable, false, function(_, value) cast.SetEnabled(value) end)
+                AddControl(unitPage, Settings.CreateCheckboxInitializer(enabled, nil, L.castBarEnableHelp))
+                for _, action in ipairs({
+                    { L.castBarConfigure, cast.Configure, L.castBarConfigureHelp },
+                    { L.castBarReset, cast.Reset, L.castBarResetHelp },
+                }) do
+                    local button = CreateSettingsButtonInitializer(action[1], action[1], action[2], action[3], false)
+                    button:AddModifyPredicate(function()
+                        return module.active and PyresinQoLDB.modules.unitFrames
+                    end)
+                    table.insert(unitPage.initializers, button)
+                end
+                unitPage.onReset = cast.Reset
             end
             if unit == "target" then
                 local threat = Register(unitPage, "TargetThreat", "targetThreat", Settings.VarType.Boolean,

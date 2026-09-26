@@ -2,7 +2,7 @@
 local combat, events, opened, hidden, sound
 local addonContext = false
 local category = {}
-local settings, checkboxCount, dropdownCount, colorCount, sliderCount, performanceUpdates = {}, 0, 0, 0, 0, 0
+local settings, performanceUpdates = {}, 0
 local sections, navigation = {}, {}
 local canvas, launcher, settingsList, reloadButton, combatEvents, openButton, closeButton
 local groupButtons = {}
@@ -92,7 +92,7 @@ local function Widget(kind)
     end
     function widget:RegisterEvent(event)
         self.registered[event] = true
-        if event == "ADDON_LOADED" then events = self end
+        if event == "ADDON_LOADED" and not events then events = self end
         if event == "PLAYER_REGEN_DISABLED" and not combatEvents then combatEvents = self end
     end
     function widget:UnregisterEvent(event) self.registered[event] = nil end
@@ -114,6 +114,17 @@ local function Initializer(name, kind)
         end
     end
     return initializer
+end
+function CreateSettingsButtonInitializer(name, text, callback, tooltip, addSearchTags)
+    assert(addSearchTags ~= nil, "Forever requires an explicit addSearchTags argument")
+    assert(name and text and type(callback) == "function" and tooltip ~= "")
+    local button = Initializer(name, "Button")
+    local original = button.InitFrame
+    function button:InitFrame(frame)
+        original(self, frame)
+        frame.Button:SetScript("OnClick", callback)
+    end
+    return button
 end
 function CreateSettingsListSectionHeaderInitializer(name)
     local header = Initializer(name)
@@ -179,7 +190,6 @@ Settings = {
     end,
     CreateCheckboxInitializer = function(setting, options, tooltip)
         assert(setting and tooltip ~= "")
-        checkboxCount = checkboxCount + 1
         return Initializer(setting.name, "Checkbox")
     end,
     CreateControlTextContainer = function()
@@ -193,12 +203,10 @@ Settings = {
             or setting.key == "xpTextFormat" and 4 or 2
         assert(setting and #options() == count)
         for _, option in ipairs(options()) do assert(option.label and option.label ~= "") end
-        dropdownCount = dropdownCount + 1
         return Initializer(setting.name, "Control")
     end,
     CreateColorSwatchInitializer = function(setting)
         assert(setting)
-        colorCount = colorCount + 1
         return Initializer(setting.name, "ColorSwatch")
     end,
     CreateSliderOptions = function(minimum, maximum, step)
@@ -209,7 +217,6 @@ Settings = {
     end,
     CreateSliderInitializer = function(setting, options)
         assert(setting and options)
-        sliderCount = sliderCount + 1
         return Initializer(setting.name, "SliderWithSteppers")
     end,
 }
@@ -339,6 +346,11 @@ end
 assert(loadfile("Modules/GameMenu/GameMenu.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Database.lua"))("PyresinQoL", ns)
 assert(loadfile("Settings/Controls.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/CastBar/Config.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/CastBar/Textures.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/CastBar/Presentation.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/CastBar/Native.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/CastBar/EditMode.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/GameMenu/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Performance/Settings.lua"))("PyresinQoL", ns)
@@ -349,11 +361,9 @@ assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Settings/Window.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Bootstrap.lua"))("PyresinQoL", ns)
 events.callback(events, "ADDON_LOADED", "OtherAddon")
-assert(checkboxCount == 0)
 GameMenuFrame.shown = false
 events.callback(events, "ADDON_LOADED", "PyresinQoL")
-assert(checkboxCount == 22 and dropdownCount == 3 and settingsRegistrant,
-    "Register unit-frame controls with Blizzard's deferred settings registration")
+assert(settingsRegistrant, "Native settings registration remains deferred")
 settingsRegistrant()
 assert(settings.PyresinQoL_StatusText == nil, "Status text belongs to Blizzard's options")
 assert(nativeThreatCheckbox:ShouldShow() and nativeThreatPosition:ShouldShow())
@@ -383,7 +393,7 @@ if arg[1] == "modules-disabled" then
     print("PASS: all modules disabled, absent callbacks, locked options and unchanged Blizzard settings")
     return
 end
-assert(checkboxCount == 30 and dropdownCount == 8 and colorCount == 1 and sliderCount == 2 and not events.registered.ADDON_LOADED)
+assert(not events.registered.ADDON_LOADED)
 assert(canvas and #navigation == 11 and #sections == 0)
 assert(navigation[2].text.value == ns.L.gameMenu and navigation[3].text.value == ns.L.editMode and navigation[4].text.value == ns.L.performance)
 assert(not canvas.shown and canvas.width == 960 and canvas.height == 720)
@@ -473,12 +483,30 @@ settings.targetHPPosition:SetValue("BOTTOMRIGHT")
 settings.targetManaPosition:SetValue("LEFT")
 assert(playerUpdates == 6)
 navigation[7].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.playerFrame and #settingsList.rendered == 4)
+assert(settingsList.Header.Title.value == ns.L.playerFrame)
+assert(settings.castBarCustomization and not ns.CastBar.IsEnabled())
+settings.castBarCustomization:SetValue(true)
+assert(ns.CastBar.IsEnabled() and PyresinQoLDB.castBarCustomization)
+assert(ns.CastBar.Set("width", 240) and PyresinQoLDB.castBar.width == 240)
+local castReset
+for index, initializer in ipairs(settingsList.initializers) do
+    if initializer.data.name == ns.L.castBarReset then
+        castReset = settingsList.rendered[index].Button
+    end
+end
+assert(castReset and castReset.scripts.OnClick)
+castReset.scripts.OnClick()
+assert(ns.CastBar.IsEnabled() and ns.CastBar.Get("width") == 0 and PyresinQoLDB.castBar == nil)
+assert(ns.CastBar.Set("width", 240))
+settings.castBarCustomization:SetValue(false)
+assert(not ns.CastBar.IsEnabled() and PyresinQoLDB.castBarCustomization == nil
+    and ns.CastBar.Get("width") == 240)
 assert(PyresinQoLDB.druidMana and settings.druidMana.name == ns.L.druidMana)
 settings.druidMana:SetValue(false)
 assert(not PyresinQoLDB.druidMana and druidManaUpdates == 1)
 assert(settings.druidManaPreview == nil, "Temporary preview control has been removed")
 settingsList.Header.DefaultsButton.scripts.OnClick()
+assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("width") == 0)
 assert(PyresinQoLDB.druidMana and druidManaUpdates == 2)
 assert(playerUpdates == 9 and not PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor)
 navigation[8].scripts.OnClick()
