@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.1.4
 
 - Add opt-in player cast-bar customization in Blizzard Edit Mode, with Appearance, Layout and Details tabs, conditional controls and a shared preview.
 - Choose native profession textures with smooth forward animation loops and an Animated toggle, or ten styles with native model effects, reference colors and backgrounds. The scrollable texture selector previews each style, including model effects.
