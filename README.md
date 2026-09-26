@@ -12,6 +12,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview and quest levels.
 - **Edit Mode:** precise positioning and snapping.
+- **Player cast bar:** native textures, four border styles, integrated or external icons, and a complete preview directly in Edit Mode.
 - **Convenience:** FPS/latency display and a cooldown-manager shortcut.
 
 ## Install
@@ -27,6 +28,13 @@ Upgrading from the old addon name? See [settings migration](docs/development.md#
 
 Open **`/pqol`**, select the modules you want, and use **Reload UI** to apply
 module changes. Individual settings and positions are preserved.
+
+For cast-bar customization, open **Unit Frames → Player**, enable **Cast Bar
+Customization**, then choose **Configure in Edit Mode**. Use **Appearance**,
+**Layout** and **Details** to adjust the preview. **Animated** toggles profession
+texture animation; model styles always animate. Blizzard controls position, scale
+and **Show Cast Time**. Reset restores native presentation without changing your
+Blizzard layout.
 
 [Report an issue](https://github.com/marcomaiermm/PyresinQoL/issues) ·
 [Developer guide](docs/development.md) · [MIT License](LICENSE)

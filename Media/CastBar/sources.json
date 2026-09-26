@@ -1,0 +1,149 @@
+{
+  "build": "1.60.1.70009",
+  "sources": [
+    {
+      "id": 4683154,
+      "name": "blacksmithing",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "0e4eda082a7ecf53758b979e42b076199c45bfc7a903507a1e93865b7eb3f1d5"
+    },
+    {
+      "id": 4693223,
+      "name": "enchanting",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1258,
+      "sha256": "74a44ac053e4e02f36a21f464f1f15615b441020032ac9f0a87fde72f077324a"
+    },
+    {
+      "id": 4693230,
+      "name": "tailoring",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "b92f58e9a85bd2421a1fffdedb651e98f793ca1b35416d8b57bc7381895931b7"
+    },
+    {
+      "id": 4693237,
+      "name": "jewelcrafting",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 748,
+      "sha256": "5189ab4fc9cfae156e396cad30b55a4ce3bd5895e9d9db102948af62765fabb0"
+    },
+    {
+      "id": 4696956,
+      "name": "alchemy",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "f3a3e7dc092cc54169dd97f6a97182e1e752bb6ac792d7df929acfbfe3e84593"
+    },
+    {
+      "id": 4696971,
+      "name": "leatherworking",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "bfb5cf3c7be8a201d518b46faae0b6d1d9595be09780a2228000bdf7792d57eb"
+    },
+    {
+      "id": 4872261,
+      "name": "cooking",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "8621058f23a650fc50286bf36a971f8d5cd1a4a062a2d2f1890a3bf992d9463a"
+    },
+    {
+      "id": 4881558,
+      "name": "engineering",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "43544eb16952c5fecd0ec45db99f0355d4867935752374bb86551ecce2d93710"
+    },
+    {
+      "id": 4872270,
+      "name": "herbalism",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "731b971103d27a5ba30759d11dfd3a9daea9c263138f39fdabcafe2d5af9e986"
+    },
+    {
+      "id": 4881612,
+      "name": "fishing",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "741fbb896ddc3befa6cdd82d6f9244794179c66e6dc5c35692b161293422f570"
+    },
+    {
+      "id": 4872264,
+      "name": "inscription",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "9b7c2ac61ac9331e6ffe3c622a773623ea582d83461023b35450e2751a08a36c"
+    },
+    {
+      "id": 4872225,
+      "name": "mining",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "83443be9688018526e2dfa048cc8e59aeb4bac6d3826450bd9a1f45bde35ae76"
+    },
+    {
+      "id": 4872267,
+      "name": "skinning",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "0602be20ea047e8ca722b639f917a4ec8b5311691c8fdddb05b0a1bf025d3d75"
+    },
+    {
+      "id": 8176596,
+      "name": "skinning_c60",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "7b44f99d16a40e5686c6e7a8fd991c614001e6c957ff9267d361b4c0aba569dc"
+    },
+    {
+      "id": 8176598,
+      "name": "enchanting_c60",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1258,
+      "sha256": "f90e650fa7cac3984d2af6c5b537b781b03b51d1358eb178bd792d3cb9aec668"
+    },
+    {
+      "id": 8176600,
+      "name": "alchemy_c60",
+      "x": 1,
+      "y": 1,
+      "width": 1712,
+      "height": 1020,
+      "sha256": "1e06dcb257b1651894bbf2b9a18fcbdb15db80f087301dcd8c9ef45cadff9689"
+    }
+  ]
+}

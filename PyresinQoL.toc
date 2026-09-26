@@ -17,6 +17,12 @@ Modules/Performance/Performance.lua
 Modules/EditMode/PixelPerfect.lua
 Modules/Experience/Experience.lua
 Modules/Quests/Quests.lua
+Modules/CastBar/Config.lua
+Modules/CastBar/Models.lua
+Modules/CastBar/Textures.lua
+Modules/CastBar/Presentation.lua
+Modules/CastBar/Native.lua
+Modules/CastBar/EditMode.lua
 Modules/UnitFrames/UnitFrames.lua
 Modules/UnitFrames/DruidMana.lua
 Modules/UnitFrames/TargetDebuffs.lua
