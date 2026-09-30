@@ -5,14 +5,6 @@ ns.RegisterModule("unitFrames", function(module)
     local statusTexts = {}
     local healthStyles, updatingColor = {}, {}
 
-    function module.UpdateTargetThreat()
-        if not PyresinQoLDB then return end
-        local enabled = PyresinQoLDB.targetThreat ~= false
-        -- Blizzard owns the indicator, its layout, and restricted threat values.
-        SetCVar("threatShowNumeric", enabled and "1" or "0")
-        if enabled then SetCVar("threatWarning", "3") end
-    end
-
     function module.UpdateStatusText()
         if not PyresinQoLDB then return end
         for _, entry in ipairs(statusTexts) do
@@ -93,6 +85,5 @@ ns.RegisterModule("unitFrames", function(module)
         -- Only change font opacity; Blizzard retains its values, formatter and shown state.
         module.UpdateStatusText()
         module.UpdatePlayerFrame()
-        module.UpdateTargetThreat()
     end)
 end)

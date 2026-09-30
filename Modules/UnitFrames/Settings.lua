@@ -77,9 +77,15 @@ ns.RegisterModuleSettings("unitFrames", function(module, context)
                 unitPage.onReset = cast.Reset
             end
             if unit == "target" then
-                local threat = Register(unitPage, "TargetThreat", "targetThreat", Settings.VarType.Boolean,
-                    L.targetThreat, true, module.UpdateTargetThreat)
-                AddControl(unitPage, Settings.CreateCheckboxInitializer(threat, nil, L.targetThreatHelp))
+                local threat = Register(unitPage, "TargetThreat", "targetThreat", Settings.VarType.String,
+                    L.targetThreat, "auto", module.UpdateTargetThreat)
+                AddControl(unitPage, Settings.CreateDropdownInitializer(threat, function()
+                    local options = Settings.CreateControlTextContainer()
+                    for _, mode in ipairs({ "off", "auto", "combat", "always" }) do
+                        options:Add(mode, L["targetThreat_" .. mode])
+                    end
+                    return options:GetData()
+                end, L.targetThreatHelp))
                 local debuffs = Register(unitPage, "TargetDebuffs", "targetDebuffs", Settings.VarType.Boolean,
                     L.targetDebuffs, true, module.UpdateTargetDebuffs)
                 AddControl(unitPage, Settings.CreateCheckboxInitializer(debuffs, nil, L.targetDebuffsHelp))

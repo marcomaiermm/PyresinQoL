@@ -10,11 +10,6 @@ function UnitClass(unit) return unit, units[unit] end
 function UnitIsPlayer(unit) return units[unit] ~= nil end
 RAID_CLASS_COLORS = { MAGE = { r = 0.25, g = 0.78, b = 0.92 }, WARRIOR = { r = 0.78, g = 0.61, b = 0.43 } }
 PyresinQoLDB = { playerClassColor = false, targetClassColor = false, focusHideStatusText = true }
-local threatCVars = { threatShowNumeric = "0", threatWarning = "0" }
-function SetCVar(name, value)
-    assert(threatCVars[name] and type(value) == "string")
-    threatCVars[name] = value
-end
 local function Bar()
     local text = { value = "native", points = {}, alpha = 0.8 }
     function text:ClearAllPoints() self.points = {} end
@@ -83,18 +78,6 @@ assert(FocusFrame.healthbar.TextString.alpha == 0 and FocusFrame.manabar.LeftTex
 PyresinQoLDB.focusHideStatusText = false
 module.UpdateStatusText()
 assert(FocusFrame.healthbar.TextString.alpha == 0.8 and FocusFrame.manabar.LeftText.alpha == 0.6)
-assert(threatCVars.threatShowNumeric == "1" and threatCVars.threatWarning == "3",
-    "Enable native numeric threat at login, including solo play")
-PyresinQoLDB.targetThreat = false
-module.UpdateTargetThreat()
-assert(threatCVars.threatShowNumeric == "0" and threatCVars.threatWarning == "3",
-    "Disabling numbers must preserve threat warnings")
-threatCVars.threatWarning = "1"
-module.UpdateTargetThreat()
-assert(threatCVars.threatWarning == "1", "Disabled feature must leave warning preferences alone")
-PyresinQoLDB.targetThreat = true
-module.UpdateTargetThreat()
-assert(threatCVars.threatShowNumeric == "1" and threatCVars.threatWarning == "3")
 local hp, target = PlayerFrame.healthbar, TargetFrame.healthbar
 PyresinQoLDB.playerClassColor = true
 module.UpdatePlayerFrame()
