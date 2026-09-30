@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.1.5
 
 - Choose Off, Automatic (Blizzard), In combat or Always for target and focus threat percentages. Existing enabled/disabled settings keep their behavior; the new visibility modes keep the number visible after taking aggro and distinguish missing data from 0%.
 
