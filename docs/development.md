@@ -306,6 +306,42 @@ Check texture clipping at partial progress, native fonts and decorative tints,
 then disable/reset during a cast, `/reload`, relog, and verify saved settings.
 Watch for Lua/taint errors both in and out of combat.
 
+### Target and focus threat visibility
+
+`targetThreat` is now a string: `off`, `auto`, `combat` or `always`. Database
+initialization maps the old false value to `off` and true/missing values to `auto`;
+saved string modes survive reloads. The dropdown defaults to `auto`, preserving
+Blizzard's native numeric indicator and its visibility rules.
+
+`TargetThreat.lua` uses independent regions in `combat` and `always`, anchored to
+the existing numeric indicators when auras are below the frame. With mirrored
+auras, the addon badge moves to the right of the target/focus frame, since Blizzard
+reserves overhead clearance only for a shown native indicator. A secure post-hook
+on aura configuration updates only the addon badge when mirroring changes; native
+aura placement and indicator geometry remain untouched. Dimensions, border, background and font match
+Forever 1.60.1.69913's
+[`TargetFrame.xml`](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UnitFrame/Mainline/TargetFrame.xml).
+These modes disable the native numbers through `threatShowNumeric`; they do not
+call, replace or hook the native threat formatter or aura placement. `off` preserves
+the warning CVar. All enabled modes retain the existing `threatWarning = 3` behavior.
+
+The new modes show percentages for living, attackable targets and focus units.
+Combat visibility follows player combat lockdown. A publicly readable positive
+lead is selected while tanking; otherwise the raw percentage remains visible,
+including 0%. Missing percentages show an em dash, or 100% when tanking is known.
+Secret percentages go directly to `SetFormattedText`, secret tanking booleans to
+`SetAlphaFromBoolean`; secret threat states use a neutral color. Restricted lead
+values cannot be tested for zero, so these modes retain the raw percentage instead
+of risking a blank display or a restricted-value comparison. Nameplates are unchanged.
+Health events are registered only for target/focus and refresh the affected display.
+Faction events refresh target/focus individually or both when the player changes
+faction; unrelated units are ignored. Layout changes do not query threat values.
+
+Run `luajit tests/targetthreat.lua` and `sh tests/run.sh`. In game, check all modes,
+combat entry/exit, aggro takeover, target/focus changes, death, friendly units,
+small focus frames, mirrored aura layouts and Edit Mode. Offline checks do not
+certify layout or taint safety.
+
 ### Damage-meter Threat display
 
 Unit Frames adds **Threat** to Blizzard's damage-meter type dropdown through

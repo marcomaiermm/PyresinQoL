@@ -177,7 +177,7 @@ Settings = {
     RegisterAddOnSetting = function(owner, variable, key, db, valueType, name, default)
         assert(owner == category and name ~= "")
         if db[key] == nil then db[key] = default end
-        local setting = { name = name, key = key }
+        local setting = { name = name, key = key, valueType = valueType }
         function setting:SetValueChangedCallback(callback) assert(callback); self.callback = callback end
         function setting:SetValue(value)
             db[key] = value
@@ -199,10 +199,16 @@ Settings = {
         return container
     end,
     CreateDropdownInitializer = function(setting, options)
-        local count = setting.key == "nameplateThreatPosition" and 4 or setting.key:match("Position$") and 9
+        local count = (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
             or setting.key == "xpTextFormat" and 4 or 2
         assert(setting and #options() == count)
         for _, option in ipairs(options()) do assert(option.label and option.label ~= "") end
+        if setting.key == "targetThreat" then
+            assert(setting.valueType == Settings.VarType.String)
+            for index, mode in ipairs({ "off", "auto", "combat", "always" }) do
+                assert(options()[index].value == mode and options()[index].label == ns.L["targetThreat_" .. mode])
+            end
+        end
         return Initializer(setting.name, "Control")
     end,
     CreateColorSwatchInitializer = function(setting)
@@ -467,9 +473,9 @@ settings.questLevels:SetValue(false)
 assert(not PyresinQoLDB.questLevels and questUpdates == 1)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(PyresinQoLDB.questLevels and questUpdates == 2)
-assert(PyresinQoLDB.targetThreat)
-settings.targetThreat:SetValue(false)
-assert(threatUpdates == 1 and not PyresinQoLDB.targetThreat)
+assert(PyresinQoLDB.targetThreat == "auto")
+settings.targetThreat:SetValue("off")
+assert(threatUpdates == 1 and PyresinQoLDB.targetThreat == "off")
 assert(PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
 settings.targetDebuffsOnlyMine:SetValue(false)
 settings.targetDebuffs:SetValue(false)
@@ -513,7 +519,7 @@ navigation[8].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.targetFrame and #settingsList.rendered == 6)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(playerUpdates == 12 and not PyresinQoLDB.targetClassColor)
-assert(threatUpdates == 2 and PyresinQoLDB.targetThreat)
+assert(threatUpdates == 2 and PyresinQoLDB.targetThreat == "auto")
 assert(debuffUpdates == 4 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
 assert(PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")

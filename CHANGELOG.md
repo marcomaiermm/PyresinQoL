@@ -1,5 +1,9 @@
 # PyresinQoL Changelog
 
+## 0.1.5
+
+- Choose Off, Automatic (Blizzard), In combat or Always for target and focus threat percentages. Existing enabled/disabled settings keep their behavior; the new visibility modes keep the number visible after taking aggro and distinguish missing data from 0%.
+
 ## 0.1.4
 
 - Add opt-in player cast-bar customization in Blizzard Edit Mode, with Appearance, Layout and Details tabs, conditional controls and a shared preview.
