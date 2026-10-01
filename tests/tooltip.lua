@@ -3,6 +3,16 @@ FACTION_ALLIANCE = arg[1] == "de" and "Allianz" or "Alliance"
 FACTION_HORDE = "Horde"
 local module = {}
 local ns, postCall, objectPostCall = {}, nil, nil
+function GetLocale() return arg[1] == "de" and "deDE" or "enUS" end
+assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
+UIParent, YOU = {}, "You"
+local combat, callbacks = false, {}
+function InCombatLockdown() return combat end
+function CreateColor(r, g, b) return { r = r, g = g, b = b } end
+function CreateColorFromHexString(hex)
+    return CreateColor(tonumber(hex:sub(3, 4), 16) / 255,
+        tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255)
+end
 local secret = setmetatable({}, { __tostring = function() error("Do not inspect restricted values") end })
 function issecretvalue(value) return rawequal(value, secret) end
 local unit, health, maximum, guild, rank = "mouseover", 1234, 5678, "Test Guild", "Officer"
@@ -34,28 +44,85 @@ function bar:GetHeight() return self.height end
 function bar:SetHeight(height) self.height = height end
 function bar:CreateFontString() self.text = Text(); return self.text end
 function bar:HookScript(event, callback) self.scripts[event] = callback end
-GameTooltip = { StatusBar = bar, scripts = {}, lines = {} }
-function GameTooltip:GetUnit() return "Name", unit end
-function GameTooltip:NumLines() return #self.lines end
-function GameTooltip:GetLeftLine(index) return self.lines[index] end
-function GameTooltip:HookScript(event, callback) self.scripts[event] = callback end
-function GameTooltip:GetPrimaryTooltipInfo() return self.info end
-function GameTooltip:ClearAllPoints() self.point = nil end
-function GameTooltip:SetAnchorType(anchor) self.anchor = anchor end
-Enum = { TooltipDataType = { Unit = 2, Object = 4 } }
+local function Tooltip()
+    local tooltip = { scripts = {}, lines = {}, rightLines = {}, shown = true,
+        background = { 0.1, 0.1, 0.1, 1 }, border = { 1, 1, 1, 1 }, anchor = "ANCHOR_NONE" }
+    -- The native tooltip exposes color methods on NineSlice, not on its parent.
+    tooltip.NineSlice = {}
+    function tooltip.NineSlice:GetCenterColor() return unpack(tooltip.background) end
+    function tooltip.NineSlice:GetBorderColor() return unpack(tooltip.border) end
+    function tooltip.NineSlice:SetCenterColor(...) assert(select("#", ...) == 4); tooltip.background = { ... } end
+    function tooltip.NineSlice:SetBorderColor(...) assert(select("#", ...) == 4); tooltip.border = { ... } end
+    function tooltip:GetUnit() return "Name", unit end
+    function tooltip:NumLines() return #self.lines end
+    function tooltip:GetLeftLine(index) return self.lines[index] end
+    function tooltip:GetRightLine(index) return self.rightLines[index] end
+    function tooltip:AddDoubleLine(left, right)
+        self.lines[#self.lines + 1] = Text(left)
+        self.rightLines[#self.lines] = Text(right)
+    end
+    function tooltip:HookScript(event, callback)
+        local previous = self.scripts[event]
+        self.scripts[event] = function(...)
+            if previous then previous(...) end
+            callback(...)
+        end
+    end
+    function tooltip:RegisterEvent() end
+    function tooltip:GetPrimaryTooltipInfo() return self.info end
+    function tooltip:GetPrimaryTooltipData() return self.data end
+    function tooltip:GetOwner() return self.owner end
+    function tooltip:SetOwner(owner, anchor)
+        if self.scripts.OnTooltipCleared then self.scripts.OnTooltipCleared(self) end
+        self.owner, self.anchor, self.point = owner, anchor, nil
+        self.lines, self.rightLines, self.info, self.data = {}, {}, nil, nil
+    end
+    function tooltip:ClearAllPoints() self.point = nil end
+    function tooltip:GetPoint() if self.point then return unpack(self.point) end end
+    function tooltip:SetPoint(...) self.point = { ... } end
+    function tooltip:GetAnchorType() return self.anchor end
+    function tooltip:SetAnchorType(anchor, x, y) self.anchor, self.anchorX, self.anchorY = anchor, x, y end
+    function tooltip:IsShown() return self.shown end
+    function tooltip:Show()
+        local wasShown = self.shown
+        self.shown = true
+        if not wasShown and self.scripts.OnShow then self.scripts.OnShow(self) end
+    end
+    function tooltip:RefreshDataNextUpdate() self.refreshRequested = true end
+    return tooltip
+end
+GameTooltip, ItemRefTooltip, ShoppingTooltip1 = Tooltip(), Tooltip(), Tooltip()
+GameTooltip.StatusBar = bar
+ShoppingTooltip1.RefreshDataNextUpdate = nil -- Comparison tooltips lack this mixin.
+function GameTooltip_SetDefaultAnchor(tooltip, owner)
+    tooltip:SetOwner(owner, "ANCHOR_NONE")
+    tooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -17, 70)
+end
+function SharedTooltip_SetBackdropStyle(tooltip) tooltip.NineSlice:SetCenterColor(0.1, 0.1, 0.1, 1) end
+function hooksecurefunc(object, name, callback)
+    if type(object) == "string" then object, name, callback = _G, object, name end
+    local original = assert(object[name], name)
+    object[name] = function(...)
+        original(...)
+        callback(...)
+    end
+end
+Enum = { TooltipDataType = { Item = 0, Spell = 1, Unit = 2, Object = 4 } }
 TooltipDataProcessor = { AddTooltipPostCall = function(kind, callback)
+    callbacks[kind] = callback
     if kind == Enum.TooltipDataType.Object then objectPostCall = callback
-    else assert(kind == Enum.TooltipDataType.Unit); postCall = callback end
+    elseif kind == Enum.TooltipDataType.Unit then postCall = callback end
 end }
 ns.RegisterModule = function(id, initialize) assert(id == "tooltips"); initialize(module) end
 assert(loadfile("Modules/Tooltips/Tooltip.lua"))("PyresinQoL", ns)
 bar.scripts.OnUpdate(bar, 0.1)
 assert(bar.text.value == "", "Safe before settings load")
 objectPostCall(GameTooltip)
-assert(not GameTooltip.anchor, "Object tooltip is safe before settings load")
+assert(GameTooltip.anchor == "ANCHOR_NONE", "Object tooltip is safe before settings load")
 PyresinQoLDB = { tooltipHealth = true, tooltipGuildRank = true }
 local function Rebuild(guildText, factionText)
     GameTooltip.scripts.OnTooltipCleared()
+    GameTooltip.data = { type = Enum.TooltipDataType.Unit }
     GameTooltip.lines = { Text("Player"), Text(guildText or "<Test Guild>"), Text("Level 60") }
     if factionText then table.insert(GameTooltip.lines, Text(factionText)) end
     postCall(GameTooltip)
@@ -160,15 +227,18 @@ GameTooltip.scripts.OnTooltipCleared()
 bar.scripts.OnUpdate(bar, 0.1)
 assert(bar.text.value == "", "No stale HP on item or spell tooltips")
 PyresinQoLDB.tooltipObjectCursor = true
+GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+GameTooltip.data = { type = Enum.TooltipDataType.Object }
 GameTooltip.info = { getterName = "GetWorldCursor" }
-GameTooltip.anchor, GameTooltip.point = "ANCHOR_NONE", "BOTTOMRIGHT"
+GameTooltip:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -17, 70)
 GameTooltip.lines = { Text("Goldshire") }
 objectPostCall(GameTooltip)
 assert(GameTooltip.anchor == "ANCHOR_CURSOR" and not GameTooltip.point, "Signs use the native cursor anchor")
 assert(GameTooltip.lines[1].value == "Goldshire", "Anchoring preserves the object's text")
 objectPostCall({}) -- Other tooltip frames stay untouched.
 for _, info in ipairs({ {}, { getterName = "GetHyperlink" } }) do
-    GameTooltip.info, GameTooltip.anchor = info, "ANCHOR_RIGHT"
+    GameTooltip:SetOwner(UIParent, "ANCHOR_RIGHT")
+    GameTooltip.info, GameTooltip.data = info, { type = Enum.TooltipDataType.Object }
     objectPostCall(GameTooltip)
     assert(GameTooltip.anchor == "ANCHOR_RIGHT", "Only world cursor objects move")
 end
@@ -176,7 +246,8 @@ GameTooltip.info = nil
 objectPostCall(GameTooltip)
 assert(GameTooltip.anchor == "ANCHOR_RIGHT", "Ignore missing tooltip info")
 -- SetWorldCursor resets the owner/anchor before processing each new world hover.
-GameTooltip.info, GameTooltip.anchor = { getterName = "GetWorldCursor" }, "ANCHOR_NONE"
+GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
+GameTooltip.info, GameTooltip.data = { getterName = "GetWorldCursor" }, { type = Enum.TooltipDataType.Unit }
 postCall(GameTooltip)
 assert(GameTooltip.anchor == "ANCHOR_NONE", "Units retain Blizzard's anchor after hovering an object")
 PyresinQoLDB.tooltipObjectCursor = false
@@ -219,3 +290,146 @@ cleared = clears
 GameTooltip.scripts.OnTooltipCleared()
 assert(clears == cleared, "Clear already-empty text only once")
 print("PASS: bounded health refresh, immediate display and no disabled text writes")
+
+-- Exercise the new metadata, target, appearance and positioning controls.
+local itemLoaded, itemIcon, itemStack = true, 134400, 200
+local lookups = 0
+C_Item = {
+    GetItemInfoInstant = function(id)
+        assert(id == 123); lookups = lookups + 1
+        return id, nil, nil, nil, itemIcon
+    end,
+    GetItemInfo = function(id)
+        assert(id == 123); lookups = lookups + 1
+        if itemLoaded then return "Item", nil, 3, nil, nil, nil, nil, itemStack end
+    end,
+    GetItemQualityColor = function(quality)
+        assert(quality == 3); return 0.2, 0.4, 0.8
+    end,
+}
+C_Spell = { GetSpellTexture = function(id) assert(id == 456); return 135000 end }
+local function Build(tooltip, kind, id)
+    tooltip:SetOwner(UIParent, "ANCHOR_NONE")
+    tooltip.lines, tooltip.data = { Text("Native title") }, { type = kind, id = id }
+    tooltip.info, tooltip.refreshRequested = { getterName = "GetHyperlink" }, false
+    callbacks[kind](tooltip, tooltip.data)
+end
+local function Value(tooltip, label)
+    for index, line in ipairs(tooltip.lines) do
+        if line.value == label then return tooltip.rightLines[index] end
+    end
+end
+unit = nil
+PyresinQoLDB = {
+    tooltipItemID = true, tooltipItemIconID = true, tooltipItemStack = true,
+    tooltipSpellID = true, tooltipSpellIconID = true, tooltipItemQualityBorder = true,
+}
+for _, tooltip in ipairs({ GameTooltip, ItemRefTooltip, ShoppingTooltip1 }) do
+    Build(tooltip, Enum.TooltipDataType.Item, 123)
+    assert(Value(tooltip, ns.L.tooltipItemIDLine).value == "123")
+    assert(Value(tooltip, ns.L.tooltipIconIDLine).value == "134400")
+    assert(Value(tooltip, ns.L.tooltipStackLine).value == "200")
+    assert(tooltip.border[3] == 0.8)
+    callbacks[Enum.TooltipDataType.Item](tooltip, tooltip.data)
+    assert(#tooltip.lines == 4, "Repeated processing must not duplicate metadata")
+    callbacks[Enum.TooltipDataType.Item](tooltip, { type = Enum.TooltipDataType.Item, id = 789 })
+    assert(#tooltip.lines == 4, "Embedded recipe metadata must not replace the primary item")
+    Build(tooltip, Enum.TooltipDataType.Spell, 456)
+    assert(Value(tooltip, ns.L.tooltipSpellIDLine).value == "456")
+    assert(Value(tooltip, ns.L.tooltipIconIDLine).value == "135000")
+    assert(not Value(tooltip, ns.L.tooltipStackLine) and tooltip.border[3] == 1)
+end
+local calls = lookups
+Build(GameTooltip, Enum.TooltipDataType.Item, secret)
+assert(#GameTooltip.lines == 1 and lookups == calls, "Restricted IDs never reach item APIs")
+itemIcon, itemStack = secret, secret
+Build(GameTooltip, Enum.TooltipDataType.Item, 123)
+assert(#GameTooltip.lines == 2, "Restricted icon/stack values are omitted")
+itemIcon, itemStack, itemLoaded = 134400, 200, false
+Build(GameTooltip, Enum.TooltipDataType.Item, 123)
+assert(#GameTooltip.lines == 3, "Uncached items still show public ID and instant icon")
+itemLoaded = true
+Build(GameTooltip, Enum.TooltipDataType.Item, 123)
+assert(#GameTooltip.lines == 4)
+module.UpdateTooltips()
+assert(GameTooltip.refreshRequested and ItemRefTooltip.refreshRequested,
+    "Changed settings rebuild visible item and spell tooltips")
+PyresinQoLDB = {}
+calls = lookups
+Build(GameTooltip, Enum.TooltipDataType.Item, 123)
+assert(#GameTooltip.lines == 1 and lookups == calls, "Disabled metadata avoids API lookups")
+
+local targetExists, targetName, targetPlayer = true, "Other", false
+FACTION_BAR_COLORS = { [5] = { r = 0, g = 1, b = 0 } }
+function UnitExists(token) assert(token == unit .. "target"); return targetExists end
+function UnitName(token) assert(token == unit .. "target"); return targetName end
+function UnitIsUnit(token, other)
+    assert(token == unit .. "target" and other == "player"); return targetPlayer
+end
+local originalIsPlayer, originalClass = UnitIsPlayer, UnitClass
+function UnitIsPlayer(token)
+    if token == unit .. "target" then return true end
+    return originalIsPlayer(token)
+end
+function UnitClass(token)
+    if token == unit .. "target" then return "Warrior", "WARRIOR" end
+    return originalClass(token)
+end
+function UnitReaction(token, other) assert(other == "player"); return 5 end
+unit = "mouseover"
+PyresinQoLDB = { tooltipTarget = true, tooltipUnitClassBorder = true,
+    tooltipCustomBackground = true, tooltipBackgroundColor = "FF112233", tooltipBackgroundOpacity = 0.5 }
+Rebuild()
+assert(Value(GameTooltip, ns.L.tooltipTargetLine).value == "Other")
+assert(Value(GameTooltip, ns.L.tooltipTargetLine).color[1] == 0.78)
+assert(GameTooltip.border[1] == 0.25 and GameTooltip.background[4] == 0.5)
+targetPlayer = true
+bar.scripts.OnUpdate(bar, 0.1)
+assert(Value(GameTooltip, ns.L.tooltipTargetLine).value == ">>You<<")
+targetPlayer, targetName = false, secret
+bar.scripts.OnUpdate(bar, 0.1)
+assert(rawequal(Value(GameTooltip, ns.L.tooltipTargetLine).args[1], secret),
+    "Restricted names go directly to the native formatter")
+targetExists, GameTooltip.refreshRequested = false, false
+bar.scripts.OnUpdate(bar, 0.1)
+assert(GameTooltip.refreshRequested, "Disappearing targets request a native rebuild")
+Rebuild()
+assert(not Value(GameTooltip, ns.L.tooltipTargetLine), "No empty target row")
+targetExists, targetName = true, "New target"
+bar.scripts.OnUpdate(bar, 0.1)
+assert(Value(GameTooltip, ns.L.tooltipTargetLine).value == "New target",
+    "Targets update even when health text is disabled")
+SharedTooltip_SetBackdropStyle(GameTooltip)
+assert(GameTooltip.background[4] == 0.5, "Native styling preserves the chosen background")
+GameTooltip.scripts.OnHide()
+assert(GameTooltip.background[1] == 0.1 and GameTooltip.background[4] == 1)
+
+unit = nil
+PyresinQoLDB = { tooltipAnchor = "fixed", tooltipAnchorPoint = "TOPLEFT",
+    tooltipAnchorX = 40, tooltipAnchorY = -20 }
+GameTooltip_SetDefaultAnchor(GameTooltip, UIParent)
+GameTooltip.data, GameTooltip.info = { type = Enum.TooltipDataType.Item }, {}
+GameTooltip.scripts.OnShow()
+assert(GameTooltip.anchor == "ANCHOR_NONE" and GameTooltip.point[1] == "TOPLEFT"
+    and GameTooltip.point[4] == 40 and GameTooltip.point[5] == -20)
+PyresinQoLDB.tooltipAnchorCombat, combat = true, true
+GameTooltip.scripts.OnEvent(GameTooltip, "PLAYER_REGEN_DISABLED")
+assert(GameTooltip.point[1] == "BOTTOMRIGHT" and GameTooltip.point[4] == -17)
+combat = false
+GameTooltip.scripts.OnEvent(GameTooltip, "PLAYER_REGEN_ENABLED")
+assert(GameTooltip.point[1] == "TOPLEFT")
+PyresinQoLDB.tooltipAnchor, PyresinQoLDB.tooltipCursorAnchor = "cursor", "ANCHOR_CURSOR_LEFT"
+PyresinQoLDB.tooltipCursorX, PyresinQoLDB.tooltipCursorY = -12, 24
+module.UpdateTooltips()
+assert(GameTooltip.anchor == "ANCHOR_CURSOR_LEFT" and GameTooltip.anchorX == -12
+    and GameTooltip.anchorY == 24 and not GameTooltip.point)
+GameTooltip:SetOwner({}, "ANCHOR_RIGHT")
+GameTooltip.data = { type = Enum.TooltipDataType.Item }
+module.UpdateTooltips()
+assert(GameTooltip.anchor == "ANCHOR_RIGHT", "Explicit frame anchors remain native")
+PyresinQoLDB.tooltipAnchorSpells = true
+GameTooltip_SetDefaultAnchor(GameTooltip, {})
+GameTooltip.data = { type = Enum.TooltipDataType.Spell }
+GameTooltip.scripts.OnShow()
+assert(GameTooltip.anchor == "ANCHOR_RIGHT", "Spell owner anchoring takes precedence over cursor mode")
+print("PASS: metadata isolation, restricted values, cache misses, live targets, NineSlice colors and anchors")
