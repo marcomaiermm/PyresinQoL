@@ -199,7 +199,9 @@ Settings = {
         return container
     end,
     CreateDropdownInitializer = function(setting, options)
-        local count = (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
+        local count = (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
+            or setting.key == "tooltipAnchorPoint" and 9
+            or (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
             or setting.key == "xpTextFormat" and 4 or 2
         assert(setting and #options() == count)
         for _, option in ipairs(options()) do assert(option.label and option.label ~= "") end
@@ -216,9 +218,13 @@ Settings = {
         return Initializer(setting.name, "ColorSwatch")
     end,
     CreateSliderOptions = function(minimum, maximum, step)
-        assert(minimum == 0 and maximum == 40 and step == 1)
+        assert((minimum == 0 and maximum == 40 and step == 1)
+            or (minimum == -2500 and maximum == 2500 and step == 1)
+            or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
-            assert(label == MinimalSliderWithSteppersMixin.Label.Right and formatter(12) == "12 px")
+            assert(label == MinimalSliderWithSteppersMixin.Label.Right)
+            assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
+                or maximum ~= 1 and formatter(12) == "12 px")
         end }
     end,
     CreateSliderInitializer = function(setting, options)
@@ -390,7 +396,14 @@ if arg[1] == "modules-disabled" then
         local button = NavigationButton(module.pages[1].name)
         button.scripts.OnClick()
         assert(button.text.color[1] == 0.5)
-        assert(not settingsList.initializers[1].modifyPredicate())
+        local controls = 0
+        for _, initializer in ipairs(settingsList.initializers) do
+            if initializer.modifyPredicate then
+                controls = controls + 1
+                assert(not initializer.modifyPredicate())
+            end
+        end
+        assert(controls > 0)
         assert(not settingsList.Header.DefaultsButton.enabled)
     end
     navigation[1].scripts.OnClick()
@@ -553,14 +566,49 @@ for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
 end
 assert(statusTextUpdates == 8)
 navigation[11].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 3)
+assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 36)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
 settings.tooltipHealth:SetValue(false)
 settings.tooltipGuildRank:SetValue(false)
 settings.tooltipObjectCursor:SetValue(false)
 assert(not PyresinQoLDB.tooltipHealth and not PyresinQoLDB.tooltipGuildRank and not PyresinQoLDB.tooltipObjectCursor and tooltipUpdates == 3)
 settingsList.Header.DefaultsButton.scripts.OnClick()
-assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor and tooltipUpdates == 6)
+assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor and tooltipUpdates == 33)
+local headers = {}
+for _, row in ipairs(settingsList.rendered) do
+    if row.Title then headers[#headers + 1] = row.Title.value end
+end
+for index, name in ipairs({ "tooltipPositionSection", "tooltipSpellSection", "tooltipItemSection",
+    "tooltipUnitSection", "tooltipBackgroundSection", "tooltipBorderSection" }) do
+    assert(headers[index] == ns.L[name])
+end
+assert(#headers == 6)
+local defaults = {
+    tooltipAnchor = "default", tooltipAnchorPoint = "BOTTOMRIGHT", tooltipAnchorX = -30, tooltipAnchorY = 120,
+    tooltipCursorAnchor = "ANCHOR_CURSOR_RIGHT", tooltipCursorX = 16, tooltipCursorY = 8,
+    tooltipAnchorCombat = false, tooltipObjectCursor = true, tooltipAnchorSpells = true,
+    tooltipSpellID = true, tooltipSpellIconID = false,
+    tooltipItemQualityBorder = true, tooltipItemQualityBackground = false, tooltipItemStack = false,
+    tooltipItemID = false, tooltipItemIconID = false, tooltipHealth = true, tooltipGuildRank = true,
+    tooltipTarget = true, tooltipUnitClassBorder = true, tooltipUnitReactionBorder = true,
+    tooltipUnitClassBackground = false, tooltipUnitReactionBackground = false,
+    tooltipCustomBackground = false, tooltipBackgroundColor = "FF000000", tooltipBackgroundOpacity = 0.9,
+    tooltipCustomBorder = false, tooltipBorderColor = "FFB2B2B2", tooltipBorderOpacity = 1,
+}
+for key, value in pairs(defaults) do assert(PyresinQoLDB[key] == value, key) end
+local changes = {
+    tooltipItemID = true, tooltipSpellIconID = true, tooltipItemStack = true, tooltipAnchor = "fixed",
+    tooltipAnchorPoint = "TOPLEFT", tooltipAnchorX = 40, tooltipCustomBackground = true,
+    tooltipBackgroundColor = "FF112233", tooltipBackgroundOpacity = 0.5, tooltipBorderOpacity = 0.25,
+}
+for key, value in pairs(changes) do
+    settings[key]:SetValue(value)
+    assert(PyresinQoLDB[key] == value)
+end
+assert(tooltipUpdates == 43, "All tooltip controls apply live")
+settingsList.Header.DefaultsButton.scripts.OnClick()
+assert(tooltipUpdates == 73)
+for key, value in pairs(defaults) do assert(PyresinQoLDB[key] == value, key) end
 navigation[5].scripts.OnClick()
 settings.xpTextFormat:SetValue("percent")
 settings.xpAlwaysShow:SetValue(false)

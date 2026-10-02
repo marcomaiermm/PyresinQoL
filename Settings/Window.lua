@@ -8,7 +8,7 @@ function ns.InitializeSettings()
     local category = Settings.RegisterCanvasLayoutCategory(launcher, "PyresinQoL")
     Settings.RegisterAddOnCategory(category)
 
-    -- The same native window frame used by DragonflightUI, without an addon dependency.
+    -- Use Blizzard's native settings window frame.
     local canvas = CreateFrame("Frame", "PyresinQoLSettingsFrame", UIParent, "SettingsFrameTemplate")
     canvas:Hide()
     canvas:SetSize(960, 720)
