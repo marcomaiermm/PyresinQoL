@@ -2,6 +2,10 @@
 local module = {}
 local ns, events, container = {}, nil, nil
 local casterTooltipEnabled = false
+local restricted = false
+function issecretvalue() return false end
+ns.RegisterModule = function() end
+assert(loadfile("Modules/UnitFrames/PlayerAuras.lua"))("PyresinQoL", ns)
 function SetCVar(name, value)
     assert(name == "tooltipShowAuraCasterNames" and value == "1")
     assert(not casterTooltipEnabled, "Enable native caster tooltips once, not on every aura update")
@@ -20,7 +24,10 @@ local function Region(parent, layer)
     end
     function region:ClearAllPoints() self.point = nil end
     function region:SetAllPoints() self.allPoints = true end
-    function region:SetSize(w, h) self.width, self.height = w, h end
+    function region:SetSize(w, h)
+        assert(not (self.restrictedButton and restricted), "Cannot resize restricted aura buttons")
+        self.width, self.height = w, h
+    end
     function region:SetShown(shown) self.shown = shown end
     function region:SetShadowColor() end
     function region:SetShadowOffset() end
@@ -33,6 +40,8 @@ local function Region(parent, layer)
 end
 local function Button()
     local button = Region()
+    button.restrictedButton = true
+    function button:CanBeAccessedInContext() return not restricted end
     function button:SetTooltipAnchorPoint(point) self.tooltipAnchor = point end
     function button:SetIcon(icon) self.icon = icon end
     function button:AddDispelTypeTexture(border, options) self.border = border; self.borderOptions = options end
@@ -44,6 +53,11 @@ local function Button()
 end
 local native = { maximum = 16 }
 function native:SetMaxDebuffs(maximum) self.maximum = maximum end
+function native:SetSmallAuraSize(size) self.smallSize = size end
+function native:SetLargeAuraSize(size) self.largeSize = size end
+function native:SetFlowLayoutSpacing(x, y) self.spacing = { x, y } end
+function native:SetFlowLayoutMaximumLineSize(width) self.lineWidth = width end
+function native:SetConstrainedFlowLayoutLineSize(width) self.narrowWidth = width end
 TargetFrame = { spellbar = Region() }
 TargetFrame.spellbar.point = { "native" }
 function TargetFrame:GetAuraContainer() return native end
@@ -73,6 +87,7 @@ function CreateFrame(kind, _, parent, template)
             assert(type(enabled) == "boolean")
             self.groups[key].enabled = enabled
         end
+        function frame:SetAuraGroupLayout(key, layout) self.groups[key].options.layout = layout end
         function frame:SetFlowLayoutAnchorPoint(point) self.anchor = point end
         function frame:SetFlowLayoutGrowthDirection(x, y) self.growth = { x, y } end
         function frame:SetFlowLayoutMaximumLineSize(width) self.lineWidth = width end
@@ -85,8 +100,9 @@ function CreateFrame(kind, _, parent, template)
         function frame:SetUseAuraDisplayTime(enabled) self.auraDisplayTime = enabled end
     elseif not parent then
         events = frame
-        function frame:RegisterEvent(event) self.event = event end
-        function frame:UnregisterEvent(event) assert(event == self.event); self.event = nil end
+        frame.events = {}
+        function frame:RegisterEvent(event) self.events[event] = true end
+        function frame:UnregisterEvent(event) assert(self.events[event]); self.events[event] = nil end
         function frame:SetScript(script, callback) assert(script == "OnEvent"); self.callback = callback end
     end
     return frame
@@ -95,7 +111,7 @@ ns.RegisterModule = function(id, initialize) assert(id == "unitFrames"); initial
 assert(loadfile("Modules/UnitFrames/TargetDebuffs.lua"))("PyresinQoL", ns)
 module.UpdateTargetDebuffs() -- Settings can initialize before login.
 events:callback("PLAYER_LOGIN")
-assert(not events.event and native.maximum == 0 and container.enabled and container.shown)
+assert(not events.events.PLAYER_LOGIN and events.events.PLAYER_REGEN_ENABLED and native.maximum == 0 and container.enabled and container.shown)
 assert(casterTooltipEnabled, "Blizzard's native caster line must be enabled")
 local own, other, timed = container.groups.Own, container.groups.Other, container.groups.OtherTimed
 assert(own.filter == "HARMFUL|INCLUDE_NAME_PLATE_ONLY|PLAYER")
@@ -112,6 +128,7 @@ end
 assert(container.point[1] == "TOPLEFT" and container.point[2] == native and container.lineWidth == 122,
     "Debuffs must follow the target's aura area, not the castbar below target-of-target")
 assert(container.point[3] == "BOTTOMLEFT" and container.point[4] == 0 and container.point[5] == -3)
+assert(own.button.width == 21 and other.button.width == 17 and native.smallSize == 17 and native.largeSize == 21)
 assert(TargetFrame.spellbar.point[1] == "native" and not TargetFrame.spellbar.aspects)
 PyresinQoLDB.targetDebuffsOnlyMine = false
 module.UpdateTargetDebuffs()
@@ -146,4 +163,33 @@ assert(container.point[2] == native and container.point[1] == "TOPLEFT")
 TargetFrame.spellbar = spellbar
 TargetFrame:ConfigureAuraContainer()
 assert(container.point[2] == native and spellbar.point[1] == "native")
+PyresinQoLDB.targetAuraOwnSize = 36
+PyresinQoLDB.targetAuraSize = 24
+PyresinQoLDB.targetAuraRowWidth = 240
+PyresinQoLDB.targetAuraToTRowWidth = 160
+PyresinQoLDB.targetAuraGapX = 7
+PyresinQoLDB.targetAuraGapY = 9
+TargetFrame.haveToT = false
+module.UpdateTargetDebuffs()
+assert(own.button.width == 36 and other.button.width == 24 and timed.button.width == 24)
+assert(native.smallSize == 24 and native.largeSize == 36 and native.lineWidth == 240)
+assert(container.lineWidth == 240 and container.point[5] == -9)
+assert(own.options.layout.elementWidth == 36 and own.options.layout.elementSpacing == 7 and own.options.layout.lineSpacing == 9)
+TargetFrame.haveToT = true
+TargetFrame:ConfigureAuraContainer()
+assert(container.lineWidth == 160 and native.narrowWidth == 160)
+restricted = true
+PyresinQoLDB.targetAuraOwnSize = 48
+module.UpdateTargetDebuffs()
+assert(own.button.width == 36, "Keep custom packing and icon size unchanged while restricted")
+restricted = false
+events:callback("PLAYER_REGEN_ENABLED")
+assert(own.button.width == 48 and own.options.layout.elementWidth == 48)
+PyresinQoLDB.targetAuraLargeOwn = false
+module.UpdateTargetDebuffs()
+assert(own.button.width == 24 and native.largeSize == 24)
+PyresinQoLDB.targetAuraSize = 0 / 0
+PyresinQoLDB.targetAuraRowWidth = -10
+module.UpdateTargetDebuffs()
+assert(other.button.width == 17 and native.smallSize == 17 and native.lineWidth == 32)
 print("PASS: own/all timer toggle, native caster tooltip, permanent stacks, native restoration and aura placement independent of castbar/ToT")

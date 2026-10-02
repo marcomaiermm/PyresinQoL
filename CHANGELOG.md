@@ -3,7 +3,13 @@
 ## Unreleased
 
 ### Added
+- Configure player buff/debuff grouping, sorting, growth, rows, spacing and timers in **Unit Frames → Buffs & Debuffs**. Customize target aura sizes, larger own auras, row widths and spacing, including debuff timers.
 - QoL settings and addon positions now follow Blizzard Edit Mode layouts automatically. New layouts copy current settings; existing settings are preserved. Manage profiles in the standalone **Profiles** tab at the bottom of `/pqol`. Multiple profiles can share a layout, with a separate choice per character. Profile actions never change Blizzard layouts or add Edit Mode controls. Automatic switches apply settings live; changed module choices offer a reload after leaving Edit Mode. Manual switches reload the UI
+- Configure player buff/debuff grouping, sorting, growth, rows, spacing and timers in **Unit Frames → Buffs & Debuffs**. Customize target aura sizes, larger own auras, row widths and spacing, including debuff timers
+
+### Fixed
+- Player aura settings no longer invoke Blizzard's aura rendering from addon code, avoiding its restricted stack-count comparison. Correct custom spacing at non-default icon scales and preserve vertical private aura footprints.
+- Player aura settings no longer invoke Blizzard's aura rendering from addon code, avoiding its restricted stack-count comparison. Correct custom spacing at non-default icon scales and preserve vertical private aura footprints
 ## 0.1.5
 
 - Choose Off, Automatic (Blizzard), In combat or Always for target and focus threat percentages. Existing enabled/disabled settings keep their behavior; the new visibility modes keep the number visible after taking aggro and distinguish missing data from 0%.

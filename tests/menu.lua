@@ -35,6 +35,8 @@ local comboUpdates = 0
 ns.GetModule("unitFrames").UpdateNameplateComboPoints = function() comboUpdates = comboUpdates + 1 end
 local debuffUpdates = 0
 ns.GetModule("unitFrames").UpdateTargetDebuffs = function() debuffUpdates = debuffUpdates + 1 end
+local auraUpdates = 0
+ns.GetModule("unitFrames").UpdatePlayerAuras = function() auraUpdates = auraUpdates + 1 end
 local tooltipUpdates = 0
 ns.GetModule("tooltips").UpdateTooltips = function() tooltipUpdates = tooltipUpdates + 1 end
 PyresinQoLDB = arg[1] == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
@@ -217,6 +219,8 @@ Settings = {
     end,
     CreateDropdownInitializer = function(setting, options)
         local count = (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
+            or setting.key:match("TimerPosition$") and 5
+            or (setting.key == "buffOwn" or setting.key == "debuffOwn" or setting.key == "buffSort" or setting.key == "debuffSort") and 3
             or setting.key == "tooltipAnchorPoint" and 9
             or (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
             or setting.key == "xpTextFormat" and 4 or 2
@@ -236,12 +240,13 @@ Settings = {
     end,
     CreateSliderOptions = function(minimum, maximum, step)
         assert((minimum == 0 and maximum == 40 and step == 1)
+            or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and maximum == 16))
             or (minimum == -2500 and maximum == 2500 and step == 1)
             or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
             assert(label == MinimalSliderWithSteppersMixin.Label.Right)
             assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
-                or maximum ~= 1 and formatter(12) == "12 px")
+                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12"))
         end }
     end,
     CreateSliderInitializer = function(setting, options)
@@ -439,7 +444,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not events.registered.ADDON_LOADED)
-assert(canvas and #navigation == 12 and #sections == 0)
+assert(canvas and #navigation == 13 and #sections == 0)
 local profileButton = NavigationButton(ns.L.profiles)
 assert(profileButton == navigation[#navigation] and profileButton.points[1][1] == "BOTTOMLEFT")
 assert(#profileDropdowns == 3 and profileDropdowns[1].parent == profilePanel
@@ -567,11 +572,12 @@ assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("width") == 0)
 assert(PyresinQoLDB.druidMana and druidManaUpdates == 2)
 assert(playerUpdates == 9 and not PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor)
 navigation[8].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.targetFrame and #settingsList.rendered == 6)
+assert(settingsList.Header.Title.value == ns.L.targetFrame and #settingsList.rendered == 14)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(playerUpdates == 12 and not PyresinQoLDB.targetClassColor)
 assert(threatUpdates == 2 and PyresinQoLDB.targetThreat == "auto")
-assert(debuffUpdates == 4 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
+assert(debuffUpdates == 11 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targetDebuffsOnlyMine)
+assert(PyresinQoLDB.targetAuraLargeOwn and PyresinQoLDB.targetAuraSize == 17 and PyresinQoLDB.targetAuraOwnSize == 21)
 assert(PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")
 navigation[9].scripts.OnClick()
@@ -604,6 +610,15 @@ for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
 end
 assert(statusTextUpdates == 8)
 navigation[11].scripts.OnClick()
+assert(settingsList.Header.Title.value == ns.L.auras and #settingsList.rendered == 36)
+assert(not PyresinQoLDB.buffLayout and not PyresinQoLDB.debuffLayout)
+settings.buffLayout:SetValue(true)
+settings.buffOwn:SetValue("first")
+settings.debuffGapX:SetValue(12)
+assert(auraUpdates == 3 and PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "first")
+settingsList.Header.DefaultsButton.scripts.OnClick()
+assert(auraUpdates == 37 and not PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "mixed" and PyresinQoLDB.debuffGapX == 5)
+navigation[12].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 36)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
 settings.tooltipHealth:SetValue(false)

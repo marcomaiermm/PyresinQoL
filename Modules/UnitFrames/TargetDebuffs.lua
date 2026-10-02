@@ -2,9 +2,12 @@ local _, ns = ...
 
 ns.RegisterModule("unitFrames", function(module)
     local debuffs
+    local buttons = {}
+    local appearance = { ownSize = 21, otherSize = 17 }
 
-    local function InitializeDebuff(button, showTimer)
-        button:SetSize(21, 21)
+    local function InitializeDebuff(button, showTimer, own)
+        local size = own and appearance.ownSize or appearance.otherSize
+        button:SetSize(size, size)
         button:SetTooltipAnchorPoint("ANCHOR_RIGHT")
         local icon = button:CreateTexture(nil, "BACKGROUND")
         icon:SetAllPoints()
@@ -29,6 +32,31 @@ ns.RegisterModule("unitFrames", function(module)
         local count = overlay:CreateFontString(nil, "OVERLAY", "NumberFontNormalSmall")
         count:SetPoint("BOTTOMRIGHT", 1, -1)
         button:SetApplicationCount(count)
+        buttons[#buttons + 1] = { button = button, own = own }
+    end
+
+    local function UpdateAppearance()
+        -- These buttons deny addon access while aura data is restricted.
+        -- Defer sizes and group geometry together; container positioning remains available.
+        for _, record in ipairs(buttons) do
+            local accessible = record.button:CanBeAccessedInContext()
+            if issecretvalue(accessible) or not accessible then return false end
+        end
+        appearance.otherSize = ns.AuraNumber("targetAuraSize", 17, 8, 64)
+        appearance.ownSize = PyresinQoLDB.targetAuraLargeOwn ~= false
+            and ns.AuraNumber("targetAuraOwnSize", 21, 8, 64) or appearance.otherSize
+        for _, record in ipairs(buttons) do
+            local size = record.own and appearance.ownSize or appearance.otherSize
+            record.button:SetSize(size, size)
+        end
+        local spacing = ns.AuraNumber("targetAuraGapX", 3, 0, 16)
+        local lineSpacing = ns.AuraNumber("targetAuraGapY", 3, 0, 16)
+        for _, group in ipairs({ "Own", "Other", "OtherTimed" }) do
+            local size = group == "Own" and appearance.ownSize or appearance.otherSize
+            debuffs:SetAuraGroupLayout(group, { elementWidth = size, elementHeight = size,
+                elementSpacing = spacing, lineSpacing = lineSpacing })
+        end
+        return true
     end
 
     function module.UpdateTargetDebuffs()
@@ -36,6 +64,15 @@ ns.RegisterModule("unitFrames", function(module)
         local enabled = PyresinQoLDB.targetDebuffs ~= false
         local onlyMine = PyresinQoLDB.targetDebuffsOnlyMine ~= false
         local native = TargetFrame:GetAuraContainer()
+        local otherSize = ns.AuraNumber("targetAuraSize", 17, 8, 64)
+        native:SetSmallAuraSize(otherSize)
+        native:SetLargeAuraSize(PyresinQoLDB.targetAuraLargeOwn ~= false
+            and ns.AuraNumber("targetAuraOwnSize", 21, 8, 64) or otherSize)
+        native:SetFlowLayoutSpacing(ns.AuraNumber("targetAuraGapX", 3, 0, 16), ns.AuraNumber("targetAuraGapY", 3, 0, 16))
+        local width = ns.AuraNumber("targetAuraRowWidth", 122, 32, 512)
+        local narrowWidth = ns.AuraNumber("targetAuraToTRowWidth", 101, 32, 512)
+        native:SetFlowLayoutMaximumLineSize(width)
+        native:SetConstrainedFlowLayoutLineSize(TargetFrame:IsTargetOfTargetShown() and narrowWidth or width)
         native:SetMaxDebuffs(enabled and 0 or TargetFrame.maxDebuffs or TargetFrameAuraContainerDefaults.MaxDebuffs)
         debuffs:SetEnabled(enabled)
         debuffs:SetShown(enabled)
@@ -43,34 +80,42 @@ ns.RegisterModule("unitFrames", function(module)
         debuffs:SetAuraGroupEnabled("Other", onlyMine)
         debuffs:SetAuraGroupEnabled("OtherTimed", not onlyMine)
         if enabled then
+            UpdateAppearance()
             local onTop = TargetFrame.buffsOnTop
             debuffs:ClearAllPoints()
             -- Only our container may depend on native layout, never the other way around.
             debuffs:SetPoint(onTop and "BOTTOMLEFT" or "TOPLEFT", native,
-                onTop and "TOPLEFT" or "BOTTOMLEFT", 0, onTop and 3 or -3)
+                onTop and "TOPLEFT" or "BOTTOMLEFT", 0,
+                (onTop and 1 or -1) * ns.AuraNumber("targetAuraGapY", 3, 0, 16))
             debuffs:SetFlowLayoutAnchorPoint(onTop and "BOTTOMLEFT" or "TOPLEFT")
             debuffs:SetFlowLayoutGrowthDirection(AnchorUtil.FlowDirection.Right,
                 onTop and AnchorUtil.FlowDirection.Up or AnchorUtil.FlowDirection.Down)
-            debuffs:SetFlowLayoutMaximumLineSize(TargetFrame:IsTargetOfTargetShown() and 101 or 122)
+            debuffs:SetFlowLayoutMaximumLineSize(TargetFrame:IsTargetOfTargetShown() and narrowWidth or width)
             debuffs:UpdateAllAuras()
         end
     end
 
     local events = CreateFrame("Frame")
     events:RegisterEvent("PLAYER_LOGIN")
-    events:SetScript("OnEvent", function(self)
+    events:RegisterEvent("PLAYER_REGEN_ENABLED")
+    events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    events:SetScript("OnEvent", function(self, event)
+        if event ~= "PLAYER_LOGIN" then module.UpdateTargetDebuffs(); return end
         self:UnregisterEvent("PLAYER_LOGIN")
         SetCVar("tooltipShowAuraCasterNames", "1")
         -- Native target aura buttons and their tooltip are private in this client.
         -- Register display elements once; Blizzard owns all aura data and updates.
         debuffs = CreateFrame("AuraContainer", nil, TargetFrame, "CustomAuraContainerTemplate")
         debuffs:SetUnit("target")
+        appearance.otherSize = ns.AuraNumber("targetAuraSize", 17, 8, 64)
+        appearance.ownSize = PyresinQoLDB.targetAuraLargeOwn ~= false
+            and ns.AuraNumber("targetAuraOwnSize", 21, 8, 64) or appearance.otherSize
         for _, group in ipairs({ { "Own", "PLAYER", true }, { "Other", "!PLAYER", false }, { "OtherTimed", "!PLAYER", true } }) do
             local showTimer = group[3]
             debuffs:AddAuraGroup(group[1], "HARMFUL|INCLUDE_NAME_PLATE_ONLY|" .. group[2], {
                 maxFrameCount = TargetFrameAuraContainerDefaults.MaxDebuffs,
-                initializeFrame = function(button) InitializeDebuff(button, showTimer) end,
-                layout = { elementWidth = 21, elementHeight = 21, elementSpacing = 3, lineSpacing = 3 },
+                initializeFrame = function(button) InitializeDebuff(button, showTimer, group[1] == "Own") end,
+                layout = { elementSpacing = 3, lineSpacing = 3 },
             })
         end
         hooksecurefunc(TargetFrame, "ConfigureAuraContainer", module.UpdateTargetDebuffs)
