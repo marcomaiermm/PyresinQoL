@@ -13,6 +13,7 @@ ns.modules = {
             { id = "target", name = L.targetFrame },
             { id = "nameplates", name = L.nameplates },
             { id = "statusText", name = L.statusText },
+            { id = "auras", name = L.auras },
         },
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },

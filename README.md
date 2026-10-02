@@ -9,6 +9,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 ## Features
 
 - **Unit frames & threat:** class colors, health/resource text, druid mana, debuff timers, threat displays and combo points per enemy nameplate.
+- **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview and quest levels.
 - **Edit Mode:** precise positioning and snapping.
@@ -52,6 +53,15 @@ Customization**, then choose **Configure in Edit Mode**. Use **Appearance**,
 texture animation; model styles always animate. Blizzard controls position, scale
 and **Show Cast Time**. Reset restores native presentation without changing your
 Blizzard layout.
+
+Open **Unit Frames → Buffs & Debuffs** to enable custom arrangements independently
+for player buffs and debuffs. Choose own auras first/last, separate rows, sort by
+order/name/remaining time, growth directions, icon sizes, row limits and spacing.
+Duration text position, font and spacing, cooldown swipe and icon countdowns are
+independent options. Blizzard Edit Mode retains position and scale.
+Under **Unit Frames → Target**, choose regular/own icon sizes, row width (including
+target-of-target) and spacing for buffs and debuffs. Restricted target icon sizes
+apply once aura data becomes accessible again, normally after combat.
 
 [Report an issue](https://github.com/marcomaiermm/PyresinQoL/issues) ·
 [Developer guide](docs/development.md) · [MIT License](LICENSE)

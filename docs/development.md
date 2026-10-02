@@ -306,6 +306,42 @@ Check texture clipping at partial progress, native fonts and decorative tints,
 then disable/reset during a cast, `/reload`, relog, and verify saved settings.
 Watch for Lua/taint errors both in and out of combat.
 
+### Player and target aura layouts
+
+`PlayerAuras.lua` post-hooks the native player buff/debuff button and grid updates.
+The optional layouts only reposition existing buttons; native aura assignment,
+tooltips, cancellation, weapon enchants, consolidation and Edit Mode remain active.
+Separate saved `buff*`/`debuff*` settings control ownership groups, index/name/time
+sorting, direction, rows, icon size, spacing and timer presentation. Position and
+scale remain native. Restricted sort fields use a stable fallback. Private boss
+aura anchors retain their native contents, horizontal 30×40 or vertical 60×30
+footprint, and reserved space beyond row limits. Button offsets use unscaled
+coordinates because native button scale already applies; owner bounds scale once.
+Settings callbacks apply presentation directly and never invoke native aura
+rendering, which compares restricted stack counts. Native grid post-hooks capture
+geometry so disabling restores it without calling Blizzard's data refresh.
+Disabling also restores icon art, duration fonts and mouse access.
+
+`TargetDebuffs.lua` applies target sizes, spacing and widths through the native
+container's public setters, and applies matching geometry to its custom debuff
+groups. Custom button sizes are updated only when every allocated button reports
+public access through `CanBeAccessedInContext`; combat exit and world entry retry
+deferred changes. New buttons use the last applied group sizes. Timer-group
+switches and container positioning remain available while buttons are restricted.
+Native castbars never depend on the custom container's restricted geometry.
+
+These methods were checked against Forever **1.60.1.69913**
+([player aura source](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_BuffFrame/BuffFrame.lua),
+[target container](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UnitFrame/Shared/TargetFrameAuraContainer.lua),
+[custom container](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua)).
+Run `luajit tests/playerauras.lua`, `luajit tests/targetdebuffs.lua` and
+`sh tests/run.sh`. To exercise native grid restoration, run
+`luajit tests/playerauras.lua /path/to/BuffFrame.lua` with the pinned source above.
+Mock checks do not certify rendering, access restrictions or taint safety. In game,
+check both layouts, ownership/reverse sorting, row limits, private boss auras,
+weapon enchants, collapsed/consolidated buffs, UI scales, Edit Mode examples,
+target-of-target, mirrored target auras, combat changes, defaults and `/reload`.
+
 ### Target and focus threat visibility
 
 `targetThreat` is now a string: `off`, `auto`, `combat` or `always`. Database
