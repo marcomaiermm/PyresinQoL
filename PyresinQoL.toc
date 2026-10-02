@@ -9,6 +9,7 @@
 Core/Localization.lua
 Core/Modules.lua
 Core/Database.lua
+Core/Profiles.lua
 Settings/Controls.lua
 Settings/Window.lua
 Core/Bootstrap.lua

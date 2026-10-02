@@ -108,6 +108,12 @@ function ns.InitializeSettings()
             featurePages[definition.id] = page
         end
     end
+    local profilePage = { name = L.profiles, description = L.profileHelp, initializers = {}, settings = {} }
+    pages[#pages + 1] = profilePage
+    local profiles = ns.CreateProfilesPage(list)
+    profiles:SetPoint("TOPLEFT", 8, -78)
+    profiles:SetPoint("BOTTOMRIGHT", -8, 8)
+    profiles:Hide()
     local footer = canvas:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     footer:SetPoint("BOTTOMLEFT", 24, 22)
     footer:SetPoint("RIGHT", canvas, "RIGHT", -300, 0)
@@ -142,11 +148,13 @@ function ns.InitializeSettings()
         reload:SetShown(pending)
         reload:SetEnabled(pending and not InCombatLockdown())
         list.Header.DefaultsButton:SetEnabled(enabled)
+        list.Header.DefaultsButton:SetShown(currentPage ~= profilePage)
     end
     local function DisplayPage(page)
         currentPage = page
         list.Header.Title:SetText(page.name)
         list:Display(page.initializers)
+        profiles:SetShown(page == profilePage)
         for _, entry in ipairs(pages) do entry.button.selected:SetShown(entry == page) end
         UpdateModuleState()
     end
@@ -158,7 +166,7 @@ function ns.InitializeSettings()
         button.selected:SetAllPoints()
         button.selected:SetAtlas("Options_List_Active")
         button.text = button:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        button.text:SetPoint("LEFT", 34, 0)
+        button.text:SetPoint("LEFT", page == profilePage and 16 or 34, 0)
         button.text:SetPoint("RIGHT", -8, 0)
         button.text:SetJustifyH("LEFT")
         button.text:SetText(page.name)
@@ -177,6 +185,8 @@ function ns.InitializeSettings()
         button:SetScript("OnLeave", function() GameTooltip:Hide() end)
         page.button = button
     end
+    profilePage.button:SetPoint("BOTTOMLEFT", 0, 0)
+    profilePage.button:SetPoint("BOTTOMRIGHT", 0, 0)
     local function LayoutNavigation()
         local y = 0
         for _, group in ipairs(groups) do
@@ -253,4 +263,17 @@ function ns.InitializeSettings()
     launcher.OnDefault = canvas.OnDefault
     canvas.OnRefresh = function() DisplayPage(currentPage) end
     canvas:SetScript("OnShow", canvas.OnRefresh)
+
+    function ns.RefreshProfileSettings()
+        for _, page in ipairs(pages) do
+            if page.module then
+                for _, entry in ipairs(page.settings) do
+                    if entry.setting:GetValue() == nil then entry.setting:SetValue(entry.default)
+                    else entry.setting:NotifyUpdate() end
+                end
+            end
+        end
+        DisplayPage(currentPage)
+    end
+    EventRegistry:RegisterCallback("EditMode.Exit", ns.MaybePromptProfileReload, ns)
 end

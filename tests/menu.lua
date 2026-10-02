@@ -5,10 +5,13 @@ local category = {}
 local settings, performanceUpdates = {}, 0
 local sections, navigation = {}, {}
 local canvas, launcher, settingsList, reloadButton, combatEvents, openButton, closeButton
+local profilePanel, profileDropdowns = nil, {}
 local groupButtons = {}
 local logos = {}
 local ns = {}
 function GetLocale() return arg[1] == "de" and "deDE" or "enUS" end
+function UnitGUID() return nil end
+function UnitName() return "Test character" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Modules.lua"))("PyresinQoL", ns)
 ns.GetModule("performance").UpdatePerformanceLayout = function() performanceUpdates = performanceUpdates + 1 end
@@ -36,6 +39,8 @@ local tooltipUpdates = 0
 ns.GetModule("tooltips").UpdateTooltips = function() tooltipUpdates = tooltipUpdates + 1 end
 PyresinQoLDB = arg[1] == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
 DEFAULTS, CLOSE = "Defaults", "Close"
+StaticPopupDialogs = {}
+EventRegistry = { RegisterCallback = function() end, TriggerEvent = function() end }
 UISpecialFrames, SlashCmdList = {}, {}
 UIParent = { GetWidth = function() return 1280 end, GetHeight = function() return 800 end }
 SettingsPanel = { shown = true, IsShown = function(self) return self.shown end }
@@ -66,7 +71,10 @@ local function Widget(kind)
     function widget:SetWidth(w) self.width = w end
     function widget:SetHeight(h) self.height = h end
     function widget:SetEnabled(value) self.enabled = value end
+    function widget:SetupMenu(generator) self.menuGenerator = generator end
+    function widget:GenerateMenu() end -- Profile menu behavior is exercised in tests/profiles.lua.
     function widget:SetText(value) self.value = value end
+    function widget:SetDefaultText(value) self.defaultText = value end
     function widget:SetTextColor(...) self.color = { ... } end
     function widget:SetFontObject(value) self.font = value end
     function widget:SetWordWrap(value) self.wordWrap = value end
@@ -89,6 +97,13 @@ local function Widget(kind)
     function widget:SetScript(event, callback)
         self.scripts[event] = callback
         if event == "OnEvent" then self.callback = callback end
+    end
+    function widget:HookScript(event, callback)
+        local original = self.scripts[event]
+        self.scripts[event] = function(...)
+            if original then original(...) end
+            callback(...)
+        end
     end
     function widget:RegisterEvent(event)
         self.registered[event] = true
@@ -179,6 +194,8 @@ Settings = {
         if db[key] == nil then db[key] = default end
         local setting = { name = name, key = key, valueType = valueType }
         function setting:SetValueChangedCallback(callback) assert(callback); self.callback = callback end
+        function setting:GetValue() return db[key] end
+        function setting:NotifyUpdate() self.callback(self, db[key]) end
         function setting:SetValue(value)
             db[key] = value
             addonContext = true
@@ -268,6 +285,9 @@ function CreateFrame(kind, name, parent, template)
         return addonButton
     end
     local frame = Widget(kind)
+    frame.parent = parent
+    if kind == "Frame" and parent == settingsList then profilePanel = frame end
+    if kind == "DropdownButton" then profileDropdowns[#profileDropdowns + 1] = frame end
     if kind == "Button" and not template then navigation[#navigation + 1] = frame end
     if template == "SettingsFrameTemplate" then
         assert(parent == UIParent and name == "PyresinQoLSettingsFrame")
@@ -279,8 +299,9 @@ function CreateFrame(kind, name, parent, template)
     if kind == "Button" and template == "BackdropTemplate" then groupButtons[#groupButtons + 1] = frame end
     if template == "UIPanelButtonTemplate" then
         if parent == launcher then openButton = frame
-        elseif not closeButton then closeButton = frame
-        else reloadButton = frame end
+        elseif parent == canvas then
+            if not closeButton then closeButton = frame else reloadButton = frame end
+        end
     end
     if template == "SettingsListTemplate" then
         settingsList = frame
@@ -357,6 +378,7 @@ if arg[1] == "modules-disabled" then
 end
 assert(loadfile("Modules/GameMenu/GameMenu.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Database.lua"))("PyresinQoL", ns)
+assert(loadfile("Core/Profiles.lua"))("PyresinQoL", ns)
 assert(loadfile("Settings/Controls.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/CastBar/Config.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/CastBar/Textures.lua"))("PyresinQoL", ns)
@@ -406,6 +428,10 @@ if arg[1] == "modules-disabled" then
         assert(controls > 0)
         assert(not settingsList.Header.DefaultsButton.enabled)
     end
+    NavigationButton(ns.L.profiles).scripts.OnClick()
+    assert(profilePanel.shown and not settingsList.Header.DefaultsButton.shown
+        and NavigationButton(ns.L.profiles).text.color[1] == 1,
+        "Profiles remains available when every module is disabled")
     navigation[1].scripts.OnClick()
     settingsList.Header.DefaultsButton.scripts.OnClick()
     assert(ns.ModulesNeedReload() and reloadButton.enabled and addonButtonCount == 0)
@@ -413,7 +439,18 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not events.registered.ADDON_LOADED)
-assert(canvas and #navigation == 11 and #sections == 0)
+assert(canvas and #navigation == 12 and #sections == 0)
+local profileButton = NavigationButton(ns.L.profiles)
+assert(profileButton == navigation[#navigation] and profileButton.points[1][1] == "BOTTOMLEFT")
+assert(#profileDropdowns == 3 and profileDropdowns[1].parent == profilePanel
+    and profilePanel.parent == settingsList, "Profile controls belong to their page, not the window header")
+profileButton.scripts.OnClick()
+assert(settingsList.Header.Title.value == ns.L.profiles and profilePanel.shown
+    and profileButton.selected.shown and not settingsList.Header.DefaultsButton.shown)
+canvas.OnRefresh()
+assert(profilePanel.shown, "Reopening preserves the Profiles tab")
+navigation[1].scripts.OnClick()
+assert(not profilePanel.shown and settingsList.Header.DefaultsButton.shown)
 assert(navigation[2].text.value == ns.L.gameMenu and navigation[3].text.value == ns.L.editMode and navigation[4].text.value == ns.L.performance)
 assert(not canvas.shown and canvas.width == 960 and canvas.height == 720)
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and canvas.clamped and canvas.movable)
@@ -445,6 +482,7 @@ assert(not canvas.shown)
 assert(#groupButtons == 3)
 groupButtons[1].scripts.OnClick()
 assert(not navigation[1].shown and not navigation[2].shown and not navigation[3].shown)
+assert(profileButton.shown and profileButton.points[1][1] == "BOTTOMLEFT", "Profiles stays outside collapsed groups")
 assert(navigation[4].shown and navigation[7].shown)
 groupButtons[1].scripts.OnClick()
 assert(navigation[1].shown and navigation[2].shown and navigation[3].shown)
@@ -760,3 +798,44 @@ groupButtons[4].scripts.OnClick()
 assert(not detailButton.shown and not NavigationButton("Test main").shown)
 assert(NavigationButton(ns.L.performance).shown, "Group collapse must preserve unrelated pages")
 print("PASS: metadata-defined groups, subpages and settings-builder contexts")
+
+-- Automatic profiles must refresh real registered controls and their callbacks.
+function CopyTable(value)
+    local copy = {}
+    for key, item in pairs(value) do copy[key] = type(item) == "table" and CopyTable(item) or item end
+    return copy
+end
+function UnitGUID() return "Player-settings" end
+Enum = { EditModeLayoutType = { Account = 1, Character = 2 }, EditModePresetLayoutsMeta = { NumValues = 3 } }
+local layoutInfo = { activeLayout = 4, layouts = {
+    { layoutType = 1, layoutName = "Original layout" }, { layoutType = 1, layoutName = "Other layout" },
+} }
+C_EditMode = { GetLayouts = function() return CopyTable(layoutInfo) end }
+ns.SyncLayoutProfile()
+local originalProfile = PyresinQoLDB.profileStore.active
+local root, moduleTable = PyresinQoLDB, PyresinQoLDB.modules
+local originalFPS = settings.showFPS:GetValue()
+layoutInfo.activeLayout = 5
+ns.SyncLayoutProfile()
+settings.showFPS:SetValue(not originalFPS)
+settings.targetClassColor:SetValue(true)
+settings.castBarCustomization:SetValue(true)
+ns.CastBar.Set("customColor", { r = .2, g = .4, b = .6 })
+local beforePerformance, beforeTooltips = performanceUpdates, tooltipUpdates
+layoutInfo.activeLayout = 4
+ns.SyncLayoutProfile()
+assert(PyresinQoLDB == root and PyresinQoLDB.modules == moduleTable)
+assert(settings.showFPS:GetValue() == originalFPS and performanceUpdates > beforePerformance)
+assert(tooltipUpdates > beforeTooltips and PyresinQoLDB.profileStore.active == originalProfile)
+assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == 1)
+layoutInfo.activeLayout = 5
+ns.SyncLayoutProfile()
+assert(settings.showFPS:GetValue() == not originalFPS and settings.targetClassColor:GetValue())
+assert(ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == .2)
+settings.PyresinQoL_Module_performance:SetValue(false)
+layoutInfo.activeLayout = 4
+ns.SyncLayoutProfile()
+layoutInfo.activeLayout = 5
+ns.SyncLayoutProfile()
+assert(not settings.PyresinQoL_Module_performance:GetValue() and reloadButton.enabled and ns.ModulesNeedReload())
+print("PASS: automatic profiles preserve registered settings, refresh callbacks/cast-bar overrides and expose pending module reloads")

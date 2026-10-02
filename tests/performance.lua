@@ -184,4 +184,15 @@ standaloneMover.scripts.OnDragStop()
 assert(not display.moving and PyresinQoLDB.performancePosition.x == 20)
 callbacks["EditMode.Exit"]()
 assert(not standaloneMover.shown)
+PyresinQoLDB.performancePosition = { x = -50, y = 70 }
+module.RestorePerformancePosition()
+assert(frames[1].point[4] == -50 and frames[1].point[5] == 70)
+callbacks["EditMode.Enter"]()
+standaloneMover.scripts.OnDragStart()
+frames[1].x, frames[1].y = 1200, 700
+module.StopPerformanceDragging()
+assert(not frames[1].moving and PyresinQoLDB.performancePosition.x == 240)
+PyresinQoLDB.performancePosition = nil
+module.RestorePerformancePosition()
+assert(frames[1].point[1] == "BOTTOMRIGHT", "Profiles without a saved position restore the default anchor")
 print("PASS: FPS/latency, polling, EditMode, combat, live toggles and persisted state/position")

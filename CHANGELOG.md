@@ -1,5 +1,9 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+### Added
+- QoL settings and addon positions now follow Blizzard Edit Mode layouts automatically. New layouts copy current settings; existing settings are preserved. Manage profiles in the standalone **Profiles** tab at the bottom of `/pqol`. Multiple profiles can share a layout, with a separate choice per character. Profile actions never change Blizzard layouts or add Edit Mode controls. Automatic switches apply settings live; changed module choices offer a reload after leaving Edit Mode. Manual switches reload the UI
 ## 0.1.5
 
 - Choose Off, Automatic (Blizzard), In combat or Always for target and focus threat percentages. Existing enabled/disabled settings keep their behavior; the new visibility modes keep the number visible after taking aggro and distinguish missing data from 0%.
