@@ -12,6 +12,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview and quest levels.
 - **Edit Mode:** precise positioning and snapping.
+- **Addon profiles:** QoL settings automatically follow your Blizzard Edit Mode layout; manage profiles in `/pqol`.
 - **Player cast bar:** native textures, four border styles, integrated or external icons, and a complete preview directly in Edit Mode.
 - **Convenience:** FPS/latency display and a cooldown-manager shortcut.
 
@@ -28,6 +29,22 @@ Upgrading from the old addon name? See [settings migration](docs/development.md#
 
 Open **`/pqol`**, select the modules you want, and use **Reload UI** to apply
 module changes. Individual settings and positions are preserved.
+
+QoL settings automatically switch with your Blizzard Edit Mode layout. The first
+layout keeps your existing settings; new layouts start with a copy of the current
+settings. Changes are saved in the associated profile. Edit Mode uses its normal
+layout selector.
+
+Use the **Profiles** tab at the bottom of the `/pqol` sidebar to choose, create,
+rename or delete profiles. Its **Edit Mode Layout** field links the selected
+profile to a layout for the current character. Several profiles can share a
+layout; each character remembers the last profile chosen for it. Profile actions
+never change the Blizzard layout. A manual profile choice assigns it to the
+current layout.
+Automatic switches apply options and addon positions directly. Changed module
+choices require a UI reload, offered after leaving Edit Mode. Manual profile
+switches reload immediately; save or revert pending Blizzard layout changes first.
+The active profile and Default cannot be deleted.
 
 For cast-bar customization, open **Unit Frames → Player**, enable **Cast Bar
 Customization**, then choose **Configure in Edit Mode**. Use **Appearance**,

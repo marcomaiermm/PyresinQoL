@@ -57,6 +57,17 @@ ns.RegisterModule("performance", function(module)
         display.isDragging = false
         module.SavePerformancePosition()
     end
+    module.StopPerformanceDragging = StopDragging
+
+    function module.RestorePerformancePosition()
+        local position = PyresinQoLDB.performancePosition
+        display:ClearAllPoints()
+        if position then
+            display:SetPoint("CENTER", UIParent, "CENTER", position.x, position.y)
+        else
+            display:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -260, 20)
+        end
+    end
 
     function module.UpdatePerformanceVisibility()
         local enabled = PyresinQoLDB.showFPS ~= false or PyresinQoLDB.showLatency ~= false
@@ -135,13 +146,7 @@ ns.RegisterModule("performance", function(module)
     display:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then
             PyresinQoLDB = PyresinQoLDB or {}
-            local position = PyresinQoLDB.performancePosition
-            display:ClearAllPoints()
-            if position then
-                display:SetPoint("CENTER", UIParent, "CENTER", position.x, position.y)
-            else
-                display:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -260, 20)
-            end
+            module.RestorePerformancePosition()
             UpdateValues()
             module.UpdatePerformanceLayout()
             display:UnregisterEvent("PLAYER_LOGIN")

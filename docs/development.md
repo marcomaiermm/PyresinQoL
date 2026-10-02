@@ -467,6 +467,60 @@ this mitigation, `/reload` discards frames tainted by the previous implementatio
 
 ## Settings migration
 
+Addon profiles keep the current settings at the existing `PyresinQoLDB` keys.
+`profileStore` contains the active name, inactive snapshots, per-character
+`characterBindings` (layout → last chosen profile), per-character `profileLayouts`
+(profile → assigned layout) and a pending manual switch.
+Legacy flat `layoutBindings` migrate to the current character without resetting
+settings. Profile rename/delete updates references for every character.
+On first use, existing settings become **Default** without changing their values.
+The live root is authoritative for the active profile; snapshots are deep copies,
+excluding `profileStore`. A manual switch records its target and reloads. Startup
+captures the outgoing profile, including logout writes, applies the target, then
+runs existing migrations and initializes modules/settings.
+
+`C_EditMode.GetLayouts()` returns saved layouts without presets; `activeLayout`
+includes preset indices. Use `Enum.EditModePresetLayoutsMeta.NumValues` for the
+offset. Bind presets by index, account layouts by type/name and character layouts
+by GUID/type/name. Names, rather than list positions, survive deletions. A single
+rename between consecutive observations of the same character in the current
+runtime carries its binding forward. The first observation after login/reload or
+a character change only establishes a baseline; discard legacy saved catalogs,
+which may have missed deletions and creations while that character was offline.
+Capture the catalog synchronously on every native update so a delete/add burst
+cannot look like a rename, then defer
+applying profiles until the next frame. Specialization, login and combat-exit events
+also synchronize; combat defers application. Read fresh API data rather than the
+event payload, which Blizzard mutates when inserting preset layouts.
+
+The first layout binds to the existing profile. New layouts copy current settings;
+manual create/select rebinds the current layout. Several profiles may share a
+layout; each character remembers its own choice, including account layouts and
+presets. Explicit assignment in **Profiles → Edit Mode Layout** changes the link
+without selecting or saving a Blizzard layout. Same-layout events refresh the
+page without overriding that assignment. Automatic switches preserve the
+root and module table identities retained by native settings, restore all values,
+run migrations, and use `SettingMixin:NotifyUpdate()` to refresh controls/callbacks.
+Stop an FPS/latency drag before saving its outgoing profile, and restore the incoming
+position after callbacks. Modules still need a fresh runtime when enabled/disabled;
+the normal reload footer remains available and a reload prompt waits until Edit
+Mode closes. Profiles remain account-wide; character-layout bindings include their
+owner. Profile operations never write native layout data or add Edit Mode controls.
+
+The **Profiles** page sits outside category groups at the bottom of the sidebar;
+there is no header dropdown. It has separate profile selection, layout assignment,
+create/rename and inactive-profile deletion controls. Page defaults are hidden.
+
+Run `luajit tests/profiles.lua` and `sh tests/run.sh`. In Forever, verify the `/pqol`
+Profiles tab, German labels, create/rename/delete, manual assignments and automatic
+layout switching with different module choices, cast-bar overrides and FPS/latency
+positions. Check presets, layout renames/deletions, character layouts on two
+characters, multiple profiles sharing a layout, separate character choices for
+account layouts/presets, `/reload`, relog and specialization changes. Confirm combat defers
+automatic application, unsaved Blizzard changes block manual switches, and reload
+prompts wait until Edit Mode closes. Mock tests cannot certify in-client layout,
+taint or combat safety.
+
 When moving from the old addon name, close WoW and back up the account's
 `WTF/Account/<account>/SavedVariables/` directory. Copy the old addon's `.lua`
 file to `PyresinQoL.lua` and rename its top-level table to `PyresinQoLDB`.

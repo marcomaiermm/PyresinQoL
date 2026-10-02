@@ -10,6 +10,7 @@ for variant in de disabled modules-disabled; do
 done
 luajit tests/experience.lua de
 luajit tests/tooltip.lua de
+luajit tests/profiles.lua de
 for mode in editMode performance neither; do
     luajit tests/editmode-integration.lua "$mode"
 done
