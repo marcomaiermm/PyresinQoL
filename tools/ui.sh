@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root=$(pwd -P)
-image=pyresinqol-ui:dev
+image=${WOW_UI_IMAGE:-}
 # Give each checkout its own simulator and IPC socket namespace.
 container=pyresinqol-ui-$(printf '%s' "$root" | sha256sum | cut -c1-12)
 resolution=${WOW_UI_RESOLUTION:-1920x1080}
@@ -82,8 +82,13 @@ case "${1:-}" in
         fi
         build_dir=$(mktemp -d)
         trap 'rm -rf "$build_dir"' EXIT
-        docker build --target dev --iidfile "$build_dir/image-id" -t "$image" -f tests/ui/Dockerfile tests/ui
-        image=$(< "$build_dir/image-id")
+        if [[ -n "$image" ]]; then
+            [[ "$image" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'WOW_UI_IMAGE must be an immutable image ID.' >&2; exit 1; }
+            docker image inspect "$image" >/dev/null
+        else
+            docker build --target dev --iidfile "$build_dir/image-id" -t pyresinqol-ui:dev -f tests/ui/Dockerfile tests/ui
+            image=$(< "$build_dir/image-id")
+        fi
         if [[ $mode != preview ]]; then
             render_container=$container-render-$$
             trap 'docker rm -f "$render_container" >/dev/null 2>&1 || true; rm -rf "$build_dir"' EXIT

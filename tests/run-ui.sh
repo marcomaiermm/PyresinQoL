@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 root=$(pwd -P)
-image=pyresinqol-ui:forever
+image=${WOW_UI_IMAGE:-}
 if (( $# )); then resolutions=("$@")
 else mapfile -t resolutions < tests/ui/resolutions.txt
 fi
@@ -14,9 +14,14 @@ for resolution in "${resolutions[@]}"; do
 done
 build_dir=$(mktemp -d)
 trap 'rm -rf "$build_dir"' EXIT
-docker build --target headless --iidfile "$build_dir/image-id" -t "$image" -f tests/ui/Dockerfile tests/ui
-# Tags may be replaced by another checkout; retain this build's immutable ID.
-image=$(< "$build_dir/image-id")
+if [[ -n "$image" ]]; then
+    [[ "$image" =~ ^sha256:[0-9a-f]{64}$ ]] || { echo 'WOW_UI_IMAGE must be an immutable image ID.' >&2; exit 1; }
+    docker image inspect "$image" >/dev/null
+else
+    docker build --target headless --iidfile "$build_dir/image-id" -t pyresinqol-ui:forever -f tests/ui/Dockerfile tests/ui
+    # Tags may be replaced by another checkout; retain this build's immutable ID.
+    image=$(< "$build_dir/image-id")
+fi
 
 run() {
     local resolution=$1

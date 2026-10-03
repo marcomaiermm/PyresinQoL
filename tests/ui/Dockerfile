@@ -14,8 +14,6 @@ RUN git apply --check /tmp/simulator.patch && git apply /tmp/simulator.patch
 # Set the simulation size before addon loading, independently of desktop chrome.
 COPY viewport.patch /tmp/viewport.patch
 RUN git apply --check /tmp/viewport.patch && git apply /tmp/viewport.patch
-RUN cargo build --release --locked --bin wow-sim --no-default-features --features client-wowforever \
-    && strip target/release/wow-sim
 
 FROM debian:bookworm-slim AS blizzard-ui
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
@@ -57,6 +55,10 @@ ENV XDG_RUNTIME_DIR=/run/user/0
 COPY --from=gui-builder /build/target/release/wow-sim /build/target/release/wow-cli /app/
 COPY --from=builder /build/data/ /app/data/
 
-# Keep the default build small for tests/run-ui.sh and CI.
+FROM builder AS headless-builder
+RUN cargo build --release --locked --bin wow-sim --no-default-features --features client-wowforever \
+    && strip target/release/wow-sim
+
+# Each target compiles once; the GUI does not need a headless binary first.
 FROM runtime AS headless
-COPY --from=builder /build/target/release/wow-sim /app/wow-sim
+COPY --from=headless-builder /build/target/release/wow-sim /app/wow-sim

@@ -129,6 +129,19 @@ image ID with `--iidfile` and use that ID for every container start. Both matric
 build once and retain the same image for all sizes, even if another checkout
 replaces the shared convenience tags while they run.
 
+CI caches each final simulator image and its immutable ID, keyed by runner OS,
+architecture, Docker target, Dockerfile and simulator patches. Addon code and test
+changes are mounted into the restored image and do not trigger Rust compilation.
+A cache miss builds once per target and saves the image before the assertions,
+so failed addon tests can also reuse the build. The GUI target compiles directly
+instead of first building a headless binary. Required tests and optional rendering
+keep their independent workflows and time budgets. Only the final images are
+cached, avoiding Cargo's much larger intermediate build trees.
+Both runners accept `WOW_UI_IMAGE=sha256:...` to use a loaded immutable image;
+mutable tags are rejected. Normal local commands continue to build using Docker's
+layer cache. Changing the Dockerfile or either simulator patch invalidates CI's
+image cache.
+
 The simulated UI canvas defaults to **1920×1080**. Select another size with
 `WOW_UI_RESOLUTION=3440x1440 bash tools/ui.sh preview`.
 `tests/ui/viewport.patch` sets the simulation size before addon loading and fixes
