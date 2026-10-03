@@ -31,7 +31,9 @@ local auraData = {
 }
 C_UnitAuras = { GetAuraDataByAuraInstanceID = function(unit, id) assert(unit == PlayerFrame.unit); return auraData[id] end }
 function GetTime() return 100 end
-function issecretvalue(value) return type(value) == "table" and value.secret == true end
+-- Numeric stand-in also catches fixes that only check type(count).
+local secretNumber = 987654
+function issecretvalue(value) return value == secretNumber or type(value) == "table" and value.secret == true end
 local function Region()
     local region = { scripts = {}, width = 30, height = 40, alpha = 1 }
     function region:SetPoint(...) self.point = { ... } end
@@ -177,6 +179,30 @@ events:callback("PLAYER_LOGIN")
 local first, own, pet, permanent, enchant = unpack(BuffFrame.auraFrames)
 local click = own.scripts.OnClick
 assert(not own.cooldown and not own.scripts.OnUpdate, "Default layout leaves native buttons alone")
+-- Login/zone transitions can expose restricted geometry before a native layout
+-- has ever been captured. Never interpret a restricted count as zero anchors.
+local restrictedCount = { secret = true }
+local nativeCount, nativePoint = first.Icon.GetNumPoints, first.Icon.GetPoint
+first.Icon.GetPoint = function() error("Do not enumerate unavailable native texture anchors") end
+for _, case in ipairs({
+    { label = "secret token", value = restrictedCount },
+    { label = "secret number", value = secretNumber },
+    { label = "missing" },
+    { label = "wrong type", value = "1" },
+}) do
+    first.Icon.GetNumPoints = function() return case.value end
+    -- The native grid hook also runs while customization is disabled.
+    nativeContext = true
+    BuffFrame:UpdateGridLayout()
+    nativeContext = false
+    PyresinQoLDB.buffLayout = true
+    module.UpdatePlayerAuras()
+    assert(not own.scripts.OnUpdate and own.Icon.width == 30,
+        case.label .. ": defer customization until a complete native layout can be saved")
+    PyresinQoLDB.buffLayout = false
+end
+first.Icon.GetNumPoints, first.Icon.GetPoint = nativeCount, nativePoint
+
 PyresinQoLDB.buffLayout, PyresinQoLDB.buffOwn, PyresinQoLDB.buffOwnRow = true, "first", true
 PyresinQoLDB.buffWrap, PyresinQoLDB.buffSort = 2, "name"
 PyresinQoLDB.buffTimerPosition = "inside"
@@ -317,4 +343,38 @@ assert(removed.point[4] == 0 and survivorA.point[4] == 30 + PyresinQoLDB.buffGap
     "New shortest aura sorts first despite reusing the middle button")
 assert(removed.cooldown.duration == 10 and removed.cooldown.start == 100,
     "Reused swipe uses the new aura duration, not the removed aura")
+
+-- Capture a complete native baseline, then fail late in a later grid snapshot.
+-- The last complete snapshot must survive both restricted and missing counts.
+nativeContext = true
+BuffFrame:UpdateGridLayout()
+nativeContext = false
+local iconCount = survivorB.Icon.GetNumPoints
+for _, case in ipairs({
+    { label = "secret", value = restrictedCount },
+    { label = "secret number", value = secretNumber },
+    { label = "missing" },
+}) do
+    survivorB.Icon.GetNumPoints = function() return case.value end
+    nativeContext = true
+    BuffFrame:UpdateGridLayout()
+    nativeContext = false
+    PyresinQoLDB.buffLayout = false
+    module.UpdatePlayerAuras()
+    assert(survivorB.point[1] == "TOPRIGHT" and survivorB.Duration.point[1] == "TOP",
+        case.label .. ": retain all native anchors after an incomplete snapshot")
+    assert(survivorB.Icon.width == 30 and survivorB.Duration.fontSize == 13,
+        case.label .. ": disabling customization still restores native styling")
+    PyresinQoLDB.buffLayout = true
+    module.UpdatePlayerAuras()
+end
+survivorB.Icon.GetNumPoints = iconCount
+BuffFrame.AuraContainer.isHorizontal = false
+nativeContext = true
+BuffFrame:UpdateGridLayout()
+nativeContext = false
+PyresinQoLDB.buffLayout = false
+module.UpdatePlayerAuras()
+assert(survivorB.Duration.point[1] == "RIGHT" and survivorB.Duration.point[3] == "LEFT",
+    "A later readable grid replaces the old baseline and restores the new orientation")
 print("PASS: player aura sorting, ownership, wrapping, timer geometry, cooldowns, restricted data, private anchors and native restoration")
