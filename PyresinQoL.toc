@@ -18,6 +18,9 @@ Modules/Performance/Performance.lua
 Modules/EditMode/PixelPerfect.lua
 Modules/Experience/Experience.lua
 Modules/Quests/Quests.lua
+Modules/ActionBars/Config.lua
+Modules/ActionBars/ActionBars.lua
+Modules/ActionBars/Visibility.lua
 Modules/CastBar/Config.lua
 Modules/CastBar/Models.lua
 Modules/CastBar/Textures.lua
@@ -41,3 +44,4 @@ Modules/Experience/Settings.lua
 Modules/Quests/Settings.lua
 Modules/UnitFrames/Settings.lua
 Modules/Tooltips/Settings.lua
+Modules/ActionBars/Settings.lua
