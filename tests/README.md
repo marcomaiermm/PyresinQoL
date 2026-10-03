@@ -124,10 +124,10 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
 - All 40 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
 - Package integrity, source consistency and the 0.1.6 manifest audit pass.
 - Native Dungeon Maps verification passes **62/62** at 1280×720 for the corrected
-  flat fallback hierarchy and World-menu return route. The ten-resolution CI
-  matrix is pending. The pinned simulator resolves dirty layouts before async
-  OnUpdate callbacks, so the initial MapCanvas viewport is checked without a
-  corrective test-side zoom.
+  flat fallback hierarchy and World-menu return route. CI runs the same suite
+  across ten resolutions, with the latest result recorded by the PR checks. The
+  pinned simulator resolves dirty layouts before async OnUpdate callbacks, so the
+  initial MapCanvas viewport is checked without a corrective test-side zoom.
 - That suite includes Sunken Temple and Upper/unknown Blackrock Spire fallback
   rejection plus native home/right-click, saved-floor, original-backing, tooltip
   ownership and backing-map interaction isolation coverage.

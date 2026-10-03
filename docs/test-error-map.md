@@ -63,9 +63,10 @@ with local socket permission verifies the tool contract. It is not an addon fail
 - Prior native UI baseline: **48 scenarios × 10 resolutions = 480 passed, zero failed**.
   This baseline predates Dungeon Maps.
 - Native Dungeon Maps verification passes **62/62** at 1280×720 for the corrected
-  `World > Dungeon` fallback hierarchy and World-menu return route; the
-  ten-resolution CI matrix is pending. The suite exercises the real
-  `WorldMapFrame`/MapCanvas integration, floor selection, native navigation,
+  `World > Dungeon` fallback hierarchy and World-menu return route. CI runs the
+  same suite across ten resolutions, with the latest result recorded by the PR
+  checks. The suite exercises the real `WorldMapFrame`/MapCanvas integration,
+  floor selection, native navigation,
   zoom/pan/close, pin suppression and restoration, documented map gaps,
   home/right-click round trips, saved-floor and original-backing restoration,
   hover/click isolation and scoped tooltip cleanup.
