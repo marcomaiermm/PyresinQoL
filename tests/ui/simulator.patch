@@ -1,0 +1,19 @@
+diff --git a/src/loader/lua_file.rs b/src/loader/lua_file.rs
+index f8ce114..8349581 100644
+--- a/src/loader/lua_file.rs
++++ b/src/loader/lua_file.rs
+@@ -50,7 +50,13 @@ fn begin_addon_module(
+     path: &Path,
+     ctx: &AddonContext<'_>,
+ ) -> Result<super::addon_modules::ModuleToken, LoadError> {
+-    let relative_path = path.strip_prefix(ctx.addon_root).map_err(|_| {
++    let canonical_path = path
++        .canonicalize()
++        .map_err(|error| LoadError::io_with_path(path, error))?;
++    let canonical_root = ctx.addon_root
++        .canonicalize()
++        .map_err(|error| LoadError::io_with_path(ctx.addon_root, error))?;
++    let relative_path = canonical_path.strip_prefix(&canonical_root).map_err(|_| {
+         LoadError::Lua(format!(
+             "addon module path {} is outside {}",
+             path.display(),

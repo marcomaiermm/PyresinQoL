@@ -1,0 +1,84 @@
+diff --git a/src/bin/wow_sim/startup.rs b/src/bin/wow_sim/startup.rs
+index a445f02..1f80553 100644
+--- a/src/bin/wow_sim/startup.rs
++++ b/src/bin/wow_sim/startup.rs
+@@ -60,8 +60,20 @@ fn command_screen_size(command: &Option<Commands>) -> (f32, f32) {
+         #[cfg(feature = "gui")]
+         Some(Commands::Screenshot { width, height, .. }) => (*width as f32, *height as f32),
+         Some(Commands::DumpTree { width, height, .. }) => (*width as f32, *height as f32),
+-        None => (1024.0, 768.0),
+-        _ => (1600.0, 1200.0),
++        _ => {
++            let size =
++                std::env::var("WOW_SIM_SCREEN_SIZE").unwrap_or_else(|_| "1920x1080".to_string());
++            let (width, height) = size
++                .split_once('x')
++                .expect("WOW_SIM_SCREEN_SIZE must be WIDTHxHEIGHT");
++            let width = width.parse::<u32>().expect("Invalid screen width");
++            let height = height.parse::<u32>().expect("Invalid screen height");
++            assert!(
++                width > 0 && height > 0,
++                "Screen dimensions must be positive"
++            );
++            (width as f32, height as f32)
++        }
+     }
+ }
+
+diff --git a/src/iced_app/app_icon.rs b/src/iced_app/app_icon.rs
+index 10aa513..ffebad4 100644
+--- a/src/iced_app/app_icon.rs
++++ b/src/iced_app/app_icon.rs
+@@ -20,7 +20,8 @@ pub(super) fn settings() -> window::Settings {
+ }
+
+ pub(super) fn initial_window_size() -> Size {
+-    Size::new(1024.0, 768.0)
++    // Leave room for simulator tools; smaller desktops can scroll the full canvas.
++    Size::new(1934.0, 1272.0)
+ }
+
+ #[cfg(test)]
+diff --git a/src/iced_app/view.rs b/src/iced_app/view.rs
+index 1dcd226..e8d38a6 100644
+--- a/src/iced_app/view.rs
++++ b/src/iced_app/view.rs
+@@ -118,8 +118,8 @@ impl App {
+
+     /// Build the canvas area with optional inspector panel overlay.
+     fn build_canvas_area(&self) -> Container<'_, Message> {
+-        let shader: Shader<Message, &App> =
+-            Shader::new(self).width(Length::Fill).height(Length::Fill);
++        let size = self.screen_size.get();
++        let shader: Shader<Message, &App> = Shader::new(self).width(size.width).height(size.height);
+
+         let stacked: Element<'_, Message> = if self.inspector_visible {
+             let inspector = self.build_inspector_panel();
+@@ -129,8 +129,8 @@ impl App {
+         };
+
+         container(stacked)
+-            .width(Length::Fill)
+-            .height(Length::Fill)
++            .width(size.width)
++            .height(size.height)
+             .style(|_| container::Style {
+                 background: Some(iced::Background::Color(palette::BG_DARK)),
+                 border: Border {
+@@ -273,10 +273,15 @@ impl App {
+         .align_y(iced::Alignment::Center);
+
+         let main_column = column![title, content_row, bottom_row, self.build_console()]
++            .width(self.screen_size.get().width + 14.0)
+             .spacing(5)
+             .padding(7);
+
+-        let base: Element<'_, Message> = container(main_column)
++        let viewport = scrollable(main_column).direction(scrollable::Direction::Both {
++            vertical: scrollable::Scrollbar::default(),
++            horizontal: scrollable::Scrollbar::default(),
++        });
++        let base: Element<'_, Message> = container(viewport)
+             .width(Length::Fill)
+             .height(Length::Fill)
+             .style(|_| container::Style {
