@@ -48,7 +48,7 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 | Core / settings | TOC loading, deferred module activation, malformed SavedVariables recovery, migration, navigation, defaults, callbacks, profile snapshots, layout bindings and composed active-cast/drag/editor transitions | Settings: English, German, disabled options, all modules disabled. Profiles: English and German. Native pending-reload markers/control locking, profile lifecycle, cancellation and linked-profile synchronization through specialization events |
 | Action bars | Grammar and saved values; public/secret color precedence; paging invalidation; native restoration; secure visibility; controller/combat guards; per-bar Edit Mode state | Edit Mode: English, German, late Blizzard loading. Native bar selection, visibility rules and macro editing in `ui/actionbars.lua` |
 | Cast bar | Configuration, textures, models, layout and Edit Mode controls in five isolated files | `tests/castbar.lua` remains a compatibility launcher, including the optional native source argument. Native customization, stale-editor/reset, preview and live cast/interrupt/channel/restart flows in `ui/castbar.lua` and `ui/castbar-runtime.lua`; native protection and full transition combinations remain local/manual |
-| Dungeon maps | Instance/subzone floor matching, exact 18-instance catalog and 50 map views, plus deliberate Sunken Temple/UBRS gaps without unverified coordinate projection | Native `M` binding and `WorldMapFrame` embedding, initial MapCanvas fit, floor controls, flat `World > Dungeon` fallback navigation, right-click/World-menu round trips, transitions, gap handling, pin/coordinate/area-label suppression and restoration in `ui/dungeonmaps.lua`; no mocked coordinates are treated as live-client calibration |
+| Dungeon maps | Instance/subzone floor matching, exact 18-instance catalog and 50 map views, plus deliberate Sunken Temple/UBRS gaps without unverified coordinate projection | Native `M` binding and `WorldMapFrame` embedding, known-subzone floor auto-detection and live indoor-zone updates, unknown/manual-floor fallback with one unmatched localized sample, unsupported raid/new-instance handoff, flat `World > Dungeon` navigation, and native surface restoration in `ui/dungeonmaps.lua`; no mocked coordinates are treated as live-client calibration |
 | Edit Mode / performance | Physical-pixel movement, snapping, placement, idle work, FPS/latency polling, visibility and restoration | Real addon module combinations: both enabled, editor only, performance only, neither. Native FPS/MS visibility and display height in `ui/performance.lua`; movement stays local |
 | Unit frames | Health text/class colors, druid mana, player auras, target debuffs/threat, nameplate threat/combo points, threat meter | Native player class-color restoration, visible target text opacity, seeded player-aura layout and target-threat Always/Off dropdown in `ui/unitframes.lua`, `ui/auras.lua` and `ui/threat.lua`; druid mana, target debuffs, nameplates and threat-meter behavior currently stay local/manual |
 | Experience | Formats, tooltip ownership, quest preview boundaries, resize, coalescing and invalidation | English and German; both native bars' text/visibility checkbox and percent-format dropdown in `ui/experience.lua`; quest reward/overflow cases stay local because the pinned simulator cannot seed meaningful quest rewards |
@@ -123,14 +123,17 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
 
 - All 40 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
 - Package integrity, source consistency and the 0.1.6 manifest audit pass.
-- Native Dungeon Maps verification passes **62/62** at 1280×720 for the corrected
-  flat fallback hierarchy and World-menu return route. CI runs the same suite
-  across ten resolutions, with the latest result recorded by the PR checks. The
-  pinned simulator resolves dirty layouts before async OnUpdate callbacks, so the
-  initial MapCanvas viewport is checked without a corrective test-side zoom.
-- That suite includes Sunken Temple and Upper/unknown Blackrock Spire fallback
-  rejection plus native home/right-click, saved-floor, original-backing, tooltip
-  ownership and backing-map interaction isolation coverage.
+- Native Dungeon Maps verification passes **66/66** at 1280×720, including
+  catalog/subzone auto-detection and unsupported-instance handoff. CI runs the
+  same suite across ten resolutions, with the latest result recorded by the PR
+  checks. The pinned simulator resolves dirty layouts before async OnUpdate
+  callbacks, so the initial MapCanvas viewport is checked without a corrective
+  test-side zoom.
+- That suite includes one unmatched localized-subzone sample, Sunken Temple and
+  shared/Upper/unknown Blackrock Spire fallback rejection plus native
+  home/right-click, saved-floor, original-backing, tooltip ownership and
+  backing-map interaction isolation coverage. It also renders the verified
+  client-native Ragefire Chasm and four-floor Scholomance texture families.
 - The unaffected auxiliary same-process lane passed **20/20** with both state
   checks clean; German addon labels at scale 1.25 passed **5/5**.
 - The preceding startup/exec sentinels were rejected. The separate callback/cleanup

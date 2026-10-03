@@ -8,6 +8,7 @@ local baselineHomeEntries
 local WorldHomeMenuArrow
 local resizeWasMinimized
 local SetNativeBackingMap
+local detectedFloorTexture
 
 local function HideNativeMap()
     if WorldMapFrame and WorldMapFrame:IsShown() then
@@ -15,8 +16,8 @@ local function HideNativeMap()
     end
 end
 
-local function InstallDungeonInstance(name, instanceID)
-    A_Admin.SetInstanceInfo(name, "party", 1, 5)
+local function InstallDungeonInstance(name, instanceID, instanceType)
+    A_Admin.SetInstanceInfo(name, instanceType or "party", 1, 5)
     -- The simulator's admin API does not populate the instance map ID. Keep
     -- this one documented tuple fixture; all native C_Map APIs remain intact.
     GetInstanceInfo = function()
@@ -26,8 +27,8 @@ local function InstallDungeonInstance(name, instanceID)
     end
 end
 
-local function OpenDungeon(name, instanceID, subzone)
-    InstallDungeonInstance(name, instanceID)
+local function OpenDungeon(name, instanceID, subzone, instanceType)
+    InstallDungeonInstance(name, instanceID, instanceType)
     A_Admin.SetSubZone(subzone or "Goblin Foundry")
     ToggleWorldMap()
 end
@@ -386,6 +387,53 @@ local function AssertDungeonArtGeometry()
         end
     end
     assertTrue(visibleTiles > 0, "Dungeon floor must retain visible map tiles after layout")
+end
+
+local function AssertSelectedDungeonFloor(dungeonName, floorIndex, floorName)
+    provider = assert(WorldMapFrame.PyresinDungeonMaps,
+        "Missing native dungeon-map provider")
+    assertTrue(WorldMapFrame:IsShown(), "Dungeon detection must keep the native world map open")
+    assertEquals("dungeon", provider.displayMode,
+        "Supported dungeon detection must activate illustrated art")
+    local selection = assert(provider.selection, "Supported dungeon detection must retain a selection")
+    assertEquals(dungeonName, selection.dungeon.name,
+        "Instance detection selected the wrong dungeon catalog entry")
+    assertEquals(floorIndex, selection.floor,
+        "Subzone detection selected the wrong dungeon floor")
+    local floor = assert(selection.dungeon.floors[floorIndex])
+    assertEquals(floorName, floor.name)
+    if dungeonName == "Scholomance" then
+        for tileIndex, texture in ipairs(floor.textures) do
+            assertEquals("Interface\\WorldMap\\ScholomanceOLD\\ScholomanceOLD"
+                .. floorIndex .. "_" .. tileIndex, texture,
+                "Rendered Scholomance floor must use the verified client-native texture family")
+        end
+    elseif dungeonName == "Ragefire Chasm" then
+        for tileIndex, texture in ipairs(floor.textures) do
+            assertEquals("Interface\\WorldMap\\Ragefire\\Ragefire1_" .. tileIndex, texture,
+                "Rendered Ragefire Chasm must use the verified client-native texture family")
+        end
+    end
+    assertEquals(floorName, provider.FloorDropdown:GetDefaultText(),
+        "The rendered native floor control must show the detected floor")
+    local firstTile = assert(provider.Tiles[1], "Missing first rendered dungeon tile")
+    assertTrue(firstTile:IsShown(), "Detected floor artwork must be visible")
+    local texture = firstTile:GetTexture()
+    assertNotNil(texture, "Detected floor must retain a rendered texture asset")
+    return texture
+end
+
+local function AssertUnsupportedNativeMap(reason)
+    provider = assert(WorldMapFrame.PyresinDungeonMaps)
+    assertTrue(WorldMapFrame:IsShown(), reason .. " must leave Blizzard's world map open")
+    assertEquals("idle", provider.displayMode, reason .. " must not retain a dungeon route")
+    assertNil(provider.selection, reason .. " must not select addon dungeon art")
+    assertFalse(provider.ArtFrame:IsShown(), reason .. " must not display stale dungeon artwork")
+    AssertNoDungeonNavEntry()
+    local arrow = WorldHomeMenuArrow(false)
+    if arrow then
+        assertFalse(arrow:IsShown(), reason .. " must not expose a stale dungeon return menu")
+    end
 end
 
 local function AssertDungeonViewportGeometry(resetZoom)
@@ -930,6 +978,132 @@ UI.Flow("native world-map navigation leaves and re-enters dungeon artwork", {
     if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
 end)
 
+UI.Flow("native dungeon detection selects and follows known catalog subzones", {
+    function()
+        BeginInstance("Scholomance", 289, "The Laboratory")
+    end,
+    function()
+        detectedFloorTexture = AssertSelectedDungeonFloor(
+            "Scholomance", 4, "The Laboratory and Vaults")
+        A_Admin.SetSubZone("Chamber of Summoning")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        local texture = AssertSelectedDungeonFloor("Scholomance", 2, "Chamber of Summoning")
+        assertTrue(texture ~= detectedFloorTexture,
+            "Known subzone movement must replace the visible floor artwork")
+        detectedFloorTexture = texture
+        A_Admin.SetSubZone("Hall of Secrets")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        local texture = AssertSelectedDungeonFloor(
+            "Scholomance", 3, "The Great Ossuary and Headmaster's Study")
+        assertTrue(texture ~= detectedFloorTexture,
+            "The third Scholomance floor must replace the visible artwork")
+        detectedFloorTexture = texture
+        A_Admin.SetSubZone("The Reliquary")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        local texture = AssertSelectedDungeonFloor("Scholomance", 1, "The Reliquary")
+        assertTrue(texture ~= detectedFloorTexture,
+            "A second known subzone movement must replace the visible floor artwork")
+    end,
+}, function()
+    detectedFloorTexture = nil
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("Ragefire Chasm renders the client-native original-layout tiles", {
+    function()
+        BeginInstance("Ragefire Chasm", 389, "Ragefire Chasm")
+    end,
+    function()
+        AssertSelectedDungeonFloor("Ragefire Chasm", 1, "Ragefire Chasm")
+    end,
+}, function()
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("unknown and localized subzones use honest floor fallback rules", {
+    function()
+        BeginInstance("The Deadmines", 36, "Ironclad Cove")
+    end,
+    function()
+        detectedFloorTexture = AssertSelectedDungeonFloor("The Deadmines", 2, "Ironclad Cove")
+        HideNativeMap()
+        A_Admin.SetSubZone("Eisenbucht")
+        ToggleWorldMap()
+    end,
+    function()
+        local texture = AssertSelectedDungeonFloor("The Deadmines", 1, "The Deadmines")
+        assertTrue(texture ~= detectedFloorTexture,
+            "Fresh unknown-subzone fallback must not reuse the previously selected floor artwork")
+        assertTrue(provider.FloorDropdown:IsShown())
+        UI.OpenMenu(provider.FloorDropdown)
+        UI.Click(FindMenuOption(provider.FloorDropdown, "Ironclad Cove"), UIParent,
+            "Manual floor after unmatched localized subzone")
+    end,
+    function()
+        AssertSelectedDungeonFloor("The Deadmines", 2, "Ironclad Cove")
+        A_Admin.SetSubZone("Unmapped passage")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        AssertSelectedDungeonFloor("The Deadmines", 2, "Ironclad Cove")
+        A_Admin.SetSubZone("Goblin Foundry")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        AssertSelectedDungeonFloor("The Deadmines", 1, "The Deadmines")
+    end,
+}, function()
+    detectedFloorTexture = nil
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("unsupported raids and Forever instances restore the native map", {
+    function()
+        BeginDungeon()
+    end,
+    function()
+        AssertSelectedDungeonFloor("The Deadmines", 1, "The Deadmines")
+        InstallDungeonInstance("Molten Core", 409, "raid")
+        A_Admin.SetSubZone("Molten Core")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        AssertUnsupportedNativeMap("A raid instance")
+        AssertHomeBaselineRestored()
+        assertTrue(provider.NativeCoordsPanel:IsShown(),
+            "Leaving supported dungeon art for a raid must restore native coordinates")
+        assertTrue(provider.NativeAreaLabel:IsShown(),
+            "Leaving supported dungeon art for a raid must restore native area labels")
+        for pin in WorldMapFrame:EnumeratePinsByTemplate("GroupMembersPinTemplate") do
+            assertFalse(pin:IsSuppressed(),
+                "Leaving supported dungeon art for a raid must restore native pins")
+        end
+        HideNativeMap()
+        OpenDungeon("Hall of Thanes", 3065, "Hall of Thanes")
+    end,
+    function()
+        AssertUnsupportedNativeMap("The new Hall of Thanes party instance")
+        HideNativeMap()
+        OpenDungeon("Ruins of Lordaeron", 2999, "Ruins of Lordaeron")
+    end,
+    function()
+        AssertUnsupportedNativeMap("The new Ruins of Lordaeron party instance")
+        HideNativeMap()
+        OpenDungeon("Unknown party instance", 987654, "Unknown area")
+    end,
+    function()
+        AssertUnsupportedNativeMap("An unknown party instance")
+    end,
+}, function()
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
 UI.Flow("missing original Vanilla layouts never display substitute dungeon art", {
     function()
         BeginInstance("The Temple of Atal'Hakkar", 109, "The Temple of Atal'Hakkar")
@@ -947,8 +1121,25 @@ UI.Flow("missing original Vanilla layouts never display substitute dungeon art",
         assertTrue(provider.displayMode == "dungeon" and provider.ArtFrame:IsShown(),
             "A recognized Lower Blackrock Spire subzone must retain its native-art map")
         assertEquals("Lower Blackrock Spire", provider.selection.dungeon.name)
+        assertEquals(229, provider.selection.dungeon.instanceID,
+            "Recognized LBRS detection must use the single physical-instance catalog entry")
+        A_Admin.SetSubZone("Hall of Blackhand")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
+    end,
+    function()
+        assertEquals("world", provider.displayMode,
+            "Shared Hall of Blackhand must not guess the Lower Blackrock Spire wing")
+        assertFalse(provider.ArtFrame:IsShown(),
+            "Shared Hall of Blackhand must not display a false wing map")
+        assertNil(provider.selection)
+        HideNativeMap()
+        OpenDungeon("Blackrock Spire", 229, "Hordemar City")
+    end,
+    function()
+        assertEquals("dungeon", provider.displayMode)
+        assertEquals("Lower Blackrock Spire", provider.selection.dungeon.name)
         A_Admin.SetSubZone("The Rookery")
-        A_Admin.FireEvent("ZONE_CHANGED_NEW_AREA")
+        A_Admin.FireEvent("ZONE_CHANGED_INDOORS")
     end,
     function()
         assertEquals("world", provider.displayMode, "A recognized Upper Blackrock Spire subzone must close LBRS art")
