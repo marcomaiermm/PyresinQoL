@@ -14,24 +14,31 @@ ns.RegisterModule("unitFrames", function(module)
     timerMeasure:SetText("0")
     timerMeasure:Hide()
 
+    local function Public(value)
+        return not (issecretvalue and issecretvalue(value))
+    end
+
     local function CaptureLayout(owner)
         local layout = { size = { owner:GetSize() }, regions = {} }
         local function Capture(region, size)
+            local count = region:GetNumPoints()
+            -- Native aura geometry can become secret on combat/respawn updates.
+            -- Keep the last complete snapshot rather than saving empty anchors.
+            if not Public(count) or type(count) ~= "number" then return false end
             local state = { region = region, points = {}, size = size and { region:GetSize() } }
-            for index = 1, region:GetNumPoints() do state.points[index] = { region:GetPoint(index) } end
+            for index = 1, count do state.points[index] = { region:GetPoint(index) } end
             layout.regions[#layout.regions + 1] = state
+            return true
         end
-        Capture(owner.AuraContainer)
+        if not Capture(owner.AuraContainer) then return end
         local buttons = {}
         for _, button in ipairs(owner.auraFrames or {}) do buttons[#buttons + 1] = button end
         if owner.ConsolidatedBuffs then buttons[#buttons + 1] = owner.ConsolidatedBuffs end
         for _, button in ipairs(buttons) do
-            Capture(button, true)
-            Capture(button.Icon)
-            Capture(button.Duration)
+            if not Capture(button, true) or not Capture(button.Icon) or not Capture(button.Duration) then return end
         end
         if owner.CollapseAndExpandButton then
-            Capture(owner.CollapseAndExpandButton)
+            if not Capture(owner.CollapseAndExpandButton) then return end
             layout.orientation = owner.CollapseAndExpandButton.orientation
             layout.expandDirection = owner.CollapseAndExpandButton.expandDirection
         end
@@ -52,10 +59,6 @@ ns.RegisterModule("unitFrames", function(module)
             toggle:UpdateOrientation()
         end
         layout.applied = false
-    end
-
-    local function Public(value)
-        return not (issecretvalue and issecretvalue(value))
     end
 
     local function StyleTimer(button, record)
@@ -82,6 +85,7 @@ ns.RegisterModule("unitFrames", function(module)
         local nativeLayout = nativeLayouts[owner]
         if enabled then
             nativeLayout = nativeLayout or CaptureLayout(owner)
+            if not nativeLayout then return end
             nativeLayout.applied = true
         end
         local config = {
