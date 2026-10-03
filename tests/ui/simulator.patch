@@ -76,3 +76,82 @@ index f8ce114..8349581 100644
          LoadError::Lua(format!(
              "addon module path {} is outside {}",
              path.display(),
+diff --git a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
+--- a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
++++ b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
+@@ -13,6 +13,11 @@ pub(crate) fn restore_post_cleanup_globals(
+     lua: &mut rilua::Lua,
+     _state: Rc<RefCell<SimState>>,
+ ) -> crate::Result<()> {
++    // Forever loads RestrictedExecution after cleanup; it captures this compiler.
++    let compiler = crate::lua_api::methods::registry_get(
++        lua.state_mut(), "__original_loadstring",
++    );
++    LuaApiMut::set_global_val(lua, "loadstring_untainted", compiler)?;
+     crate::lua_api::env_init::init_shared_bootstrap(lua)?;
+     crate::lua_api::env_init::init_runtime_surface_bootstrap(lua)?;
+     crate::lua_api::env_init::init_enum_globals(lua)?;
+diff --git a/src/lua_api/frame/methods/text_attribute_event/attributes.rs b/src/lua_api/frame/methods/text_attribute_event/attributes.rs
+--- a/src/lua_api/frame/methods/text_attribute_event/attributes.rs
++++ b/src/lua_api/frame/methods/text_attribute_event/attributes.rs
+@@ -101,7 +101,9 @@ pub(super) fn set_attribute(state: &mut LuaState) -> LuaResult<u32> {
+     if value != Val::Bool(false) {
+         dispatch(state)?;
+     }
+-    if changed {
++    // Native SecureHandlerStateTemplate already dispatches through its script.
++    // The fallback passes a raw frame instead of a restricted handle.
++    if changed && get_rilua_script(state, id, "OnAttributeChanged").is_none() {
+         run_state_attribute_snippet(state, id, &name, value)?;
+     }
+     Ok(0)
+diff --git a/src/xml/types_support.rs b/src/xml/types_support.rs
+--- a/src/xml/types_support.rs
++++ b/src/xml/types_support.rs
+@@ -207,6 +207,12 @@
+     pub on_mouse_up: Vec<ScriptBodyXml>,
+     #[serde(rename = "OnMouseWheel", default)]
+     pub on_mouse_wheel: Vec<ScriptBodyXml>,
++    #[serde(rename = "OnVerticalScroll", default)]
++    pub on_vertical_scroll: Vec<ScriptBodyXml>,
++    #[serde(rename = "OnHorizontalScroll", default)]
++    pub on_horizontal_scroll: Vec<ScriptBodyXml>,
++    #[serde(rename = "OnScrollRangeChanged", default)]
++    pub on_scroll_range_changed: Vec<ScriptBodyXml>,
+     #[serde(rename = "OnDragStart", default)]
+     pub on_drag_start: Vec<ScriptBodyXml>,
+     #[serde(rename = "OnDragStop", default)]
+diff --git a/src/loader/helpers.rs b/src/loader/helpers.rs
+--- a/src/loader/helpers.rs
++++ b/src/loader/helpers.rs
+@@ -635,6 +635,9 @@
+             ("OnMouseDown", scripts.on_mouse_down.last()),
+             ("OnMouseUp", scripts.on_mouse_up.last()),
+             ("OnMouseWheel", scripts.on_mouse_wheel.last()),
++            ("OnVerticalScroll", scripts.on_vertical_scroll.last()),
++            ("OnHorizontalScroll", scripts.on_horizontal_scroll.last()),
++            ("OnScrollRangeChanged", scripts.on_scroll_range_changed.last()),
+             ("OnDragStart", scripts.on_drag_start.last()),
+             ("OnDragStop", scripts.on_drag_stop.last()),
+             ("OnReceiveDrag", scripts.on_receive_drag.last()),
+diff --git a/src/lua_api/globals/create_frame/template_chain.rs b/src/lua_api/globals/create_frame/template_chain.rs
+--- a/src/lua_api/globals/create_frame/template_chain.rs
++++ b/src/lua_api/globals/create_frame/template_chain.rs
+@@ -658,13 +658,16 @@
+     ]
+ }
+
+-fn pointer_method_only_handlers(scripts: &crate::xml::ScriptsXml) -> [MethodOnlyScript<'_>; 8] {
++fn pointer_method_only_handlers(scripts: &crate::xml::ScriptsXml) -> [MethodOnlyScript<'_>; 11] {
+     [
+         ("OnEnter", scripts.on_enter.last()),
+         ("OnLeave", scripts.on_leave.last()),
+         ("OnMouseDown", scripts.on_mouse_down.last()),
+         ("OnMouseUp", scripts.on_mouse_up.last()),
+         ("OnMouseWheel", scripts.on_mouse_wheel.last()),
++        ("OnVerticalScroll", scripts.on_vertical_scroll.last()),
++        ("OnHorizontalScroll", scripts.on_horizontal_scroll.last()),
++        ("OnScrollRangeChanged", scripts.on_scroll_range_changed.last()),
+         ("OnDragStart", scripts.on_drag_start.last()),
+         ("OnDragStop", scripts.on_drag_stop.last()),
+         ("OnReceiveDrag", scripts.on_receive_drag.last()),

@@ -9,6 +9,7 @@
 - Customize tooltip cursor or fixed-screen anchors, combat behavior and spell placement. Show spell/item/icon IDs, maximum item stack sizes and unit targets, and choose custom or quality/class/reaction-based border and background colors.
 
 ### Fixed
+- Reapply action-bar hide rules after leaving Edit Mode even when their macro condition has not changed.
 - Keep the cooldown shortcut visible and clickable inside the game menu below Options while isolating it from the native button pool and layout traversal. Suspend it in controller mode to prevent blocked controller interaction when opening Blizzard settings.
 - Keep the native popup registry untainted when registering action-bar settings, preventing blocked Escape actions such as `SpellStopCasting()`.
 - Player aura settings no longer invoke Blizzard's aura rendering from addon code, avoiding its restricted stack-count comparison. Correct custom spacing at non-default icon scales and preserve vertical private aura footprints.

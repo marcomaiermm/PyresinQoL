@@ -262,10 +262,10 @@ ns.RegisterModule("actionBars", function(module)
         RegisterStateDriver(entry.handler, "alpha", "[combat] combat; normal")
         if controller or editing then
             setSuspended(entry, true, editing)
-        elseif entry.hovered and entry.mouseover then
-            entry.bar:SetAlpha(1)
         else
-            entry.bar:SetAlpha(entry.handler:GetAttribute("baseAlpha"))
+            -- Re-registering an unchanged state does not rerun its native callback.
+            run(entry.handler, [[ self:RunAttribute("applyRule") ]])
+            entry.bar:SetAlpha(entry.hovered and entry.mouseover and 1 or entry.handler:GetAttribute("baseAlpha"))
         end
     end
 

@@ -67,6 +67,15 @@ The same patch makes `run-tests` reject recorded startup errors and failed
 `--exec-lua` probes, allowing one fresh simulator per test resolution.
 It also makes `screenshot` reject startup, probe and post-probe update errors
 before rendering, so the screenshot matrix needs one process per size too.
+The patch also restores the original `loadstring_untainted` compiler after the
+simulator's environment cleanup, before Forever loads `RestrictedExecution.lua`.
+It leaves state-attribute dispatch to the native handler when one is installed,
+preventing a second execution through the simulator's raw-frame fallback. The XML
+loader also needs the scroll-range and scroll-offset scripts from native scroll
+templates. These fixes let tests exercise Blizzard's snippets and scroll controls.
+The UI fixture supplies the omitted
+`LOSS_OF_CONTROL_ACTIVE_INDEX = 1` from the pinned Forever API documentation,
+which the native Edit Mode exit path needs. Neither workaround changes addon code.
 The runner also uses a passing fixture to verify that both startup and probe
 errors produce nonzero exits before starting the regular matrix.
 
@@ -100,7 +109,23 @@ UI ticks and checks its own Lua errors before closing the window. Every resettab
 page checks a visible checkbox's setting binding, changes its value, then clicks
 Defaults and verifies both the saved value and the rendered checkbox. Profiles
 checks its visible selector and creation button; performance checks the live
-display's visibility. The nested test mount
+display's visibility. Action Bars checks the settings launcher, the separate Edit
+Mode section for all eight bars, checkbox and opacity-stepper changes, per-bar
+saved values, reopening, scrolling to the macro dialog, invalid macro input, and
+switching between action bars, cast bar and player frame. It checks that native
+settings, addon controls and native buttons stay inside the dialog without
+overlapping. A rule configured through the UI must keep the bar visible for the
+Edit Mode preview, hide it afterward, and restore it when customization is disabled.
+The shared `00-helpers.lua` loads first and captures errors across actual UI ticks;
+the controls, callbacks and state-driver implementation come from Blizzard's UI.
+Scroll destinations use measured content and viewport heights: the pinned
+simulator's range query does not subtract an anchor-derived viewport height.
+Rectangle comparisons include the renderer's scroll translation, which its
+`GetRect` omits. These flows run out of combat: the simulator does not model
+inherited frame protection sufficiently for native restricted execution in combat.
+Combat and controller transitions remain covered by the Lua suite and require
+the in-game checks below.
+The nested test mount
 keeps the existing mocked LuaJIT tests out of the simulator's test discovery.
 New simulator tests belong in `tests/ui/`; neither test suite ships in the addon.
 CI saves build and test output as the `forever-ui-log` artifact, including failures.

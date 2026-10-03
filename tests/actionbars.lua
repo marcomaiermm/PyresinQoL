@@ -176,12 +176,13 @@ local function SetState(frame, state, value)
         if callback then callback(frame, state, value) end
     end
 end
+local visibilityResult = "show"
 function RegisterStateDriver(frame, state, driver)
     assert(not inCombat, "RegisterStateDriver is forbidden in combat")
     assert(frame.attributes, "Visibility drivers must only be registered on addon-owned secure handlers")
     frame.drivers = frame.drivers or {}; frame.drivers[state] = driver
     stateDrivers[#stateDrivers + 1] = { frame = frame, state = state, driver = driver }
-    local value = state == "alpha" and (inCombat and "combat" or "normal") or "show"
+    local value = state == "alpha" and (inCombat and "combat" or "normal") or visibilityResult
     if nativeDriver then
         driverValues[driver] = value
         nativeDriver.RegisterStateDriver(frame, state, driver)
@@ -548,6 +549,17 @@ inCombat = false; Fire("PLAYER_REGEN_ENABLED")
 
 EventRegistry.callbacks["EditMode.Enter"](); assert(MainActionBar.alpha == 1 and visibility:GetAttribute("suspended"))
 EventRegistry.callbacks["EditMode.Exit"](); assert(not visibility:GetAttribute("suspended"))
+
+visibilityResult = "hide"
+module.UpdateActionBars()
+assert(not MainActionBar.shown)
+EventRegistry.callbacks["EditMode.Enter"]()
+assert(MainActionBar.shown, "Edit Mode previews a bar hidden by its current rule")
+EventRegistry.callbacks["EditMode.Exit"]()
+assert(not MainActionBar.shown, "An unchanged hide state must resume when Edit Mode closes")
+visibilityResult = "show"
+module.UpdateActionBars()
+
 PyresinQoLDB[prefix .. "CustomCondition"] = "[combat] RunScript(); hide"
 module.UpdateActionBars()
 assert(not visibility.drivers.barvisibility:find("RunScript", 1, true), "Invalid custom conditions fall back safely")
