@@ -1,0 +1,42 @@
+name: UI preview
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Forever UI preview (optional)
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 3 || 30 }}
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Prepare cached Forever renderer
+        id: simulator
+        uses: ./.github/actions/ui-image
+        with:
+          target: dev
+          build-on-miss: ${{ github.event_name != 'pull_request' }}
+      - name: Render resolution screenshots for inspection
+        continue-on-error: true
+        shell: bash
+        env:
+          WOW_UI_IMAGE: ${{ steps.simulator.outputs.image }}
+        run: bash tools/ui.sh render-matrix 2>&1 | tee "$RUNNER_TEMP/forever-ui-render.log"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        continue-on-error: true
+        with:
+          name: forever-ui-preview
+          path: |
+            dist/ui/render-*.webp
+            ${{ runner.temp }}/forever-ui-render.log
+            ${{ runner.temp }}/forever-ui-build.log

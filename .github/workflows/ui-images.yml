@@ -1,0 +1,32 @@
+name: UI simulator images
+
+on:
+  workflow_dispatch:
+    inputs:
+      source-ref:
+        description: Branch or commit containing the simulator inputs
+        type: string
+        default: main
+  schedule:
+    - cron: '0 4 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare Forever ${{ matrix.target }} image
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [headless, dev]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.source-ref || 'main' }}
+          persist-credentials: false
+      - uses: ./.github/actions/ui-image
+        with:
+          target: ${{ matrix.target }}

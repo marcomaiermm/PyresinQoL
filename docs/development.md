@@ -31,11 +31,12 @@ links, run `stow --delete PyresinQoL`. Releases remain normal ZIPs.
 
 ## Checks and packaging
 
-Use LuaJIT, Bash 4.3+, Git, curl, zip and unzip. Ubuntu setup:
+Use LuaJIT, Bash 4.3+, Python 3, Git, curl, zip and unzip. Ubuntu setup:
 
 ```sh
-sudo apt-get install luajit curl git zip unzip
+sudo apt-get install luajit python3 curl git zip unzip
 sh tests/run.sh
+python3 tests/ui-runner.py
 bash tests/package.sh
 bash tools/package.sh
 ```
@@ -50,10 +51,185 @@ It never uploads. The ZIP includes the TOC, license, runtime folders, `Media/` a
 the consumer-facing `CHANGELOG.md`; docs, source artwork, tests and tooling stay out.
 The packager uses this Markdown file as the CurseForge changelog instead of commit logs.
 
+### Forever UI integration tests
+
+Run `bash tests/run-ui.sh` with Docker on Linux. The first run builds a headless
+[wow-ui-sim](https://github.com/Osso/wow-ui-sim) image with `client-wowforever`;
+subsequent runs reuse Docker's build cache. It fetches the simulator and Blizzard
+FrameXML from immutable revisions in `tests/ui/Dockerfile`. The UI source is
+Forever **1.60.1.69913**, interface **16001**, matching the simulator profile.
+Update these revisions together when adopting a newer client build.
+The pinned simulator needs `tests/ui/simulator.patch` to canonicalize file and
+addon-root paths before its Forever module-boundary check; otherwise local addon
+and TestFramework Lua files are silently skipped. Remove that loader hunk when upstream
+fixes this path comparison. The startup assertion catches skipped addon loading.
+The same patch makes `run-tests` reject recorded startup errors and failed
+`--exec-lua` probes, allowing one fresh simulator per test resolution.
+It also makes `screenshot` reject startup, probe and post-probe update errors
+before rendering, so the screenshot matrix needs one process per size too.
+The runner also uses a passing fixture to verify that both startup and probe
+errors produce nonzero exits before starting the regular matrix.
+
+Every run uses the resolution matrix in `tests/ui/resolutions.txt`, starting a
+fresh simulator at each size before the addon loads:
+
+| Display | Resolution |
+| --- | --- |
+| HD / 720p | 1280×720 |
+| Common laptop | 1366×768 |
+| Full HD / 1080p | 1920×1080 |
+| 16:10 desktop | 1920×1200 |
+| QHD / 1440p | 2560×1440 |
+| UHD / 4K | 3840×2160 |
+| Ultrawide Full HD | 2560×1080 |
+| Ultrawide QHD | 3440×1440 |
+| Ultrawide 1600p | 3840×1600 |
+| Super ultrawide, 32:9 | 5120×1440 |
+
+For a quicker local check, pass one or more sizes, for example
+`bash tests/run-ui.sh 1280x720 3440x1440`. All interaction tests run at every
+selected size. They also verify the requested viewport, centered settings window,
+navigation, headers, visible setting rows and controls against their layout
+bounds, using effective scale when comparing coordinates. This catches clipping
+and misplaced controls independently of screenshots.
+
+The addon is mounted read-only and runs without network access or saved variables.
+The patched `run-tests` rejects startup errors, then runs `tests/ui/*.lua` against
+the native Blizzard frames and controls in that same process. Each interaction flow waits for actual
+UI ticks and checks its own Lua errors before closing the window. Every resettable
+page checks a visible checkbox's setting binding, changes its value, then clicks
+Defaults and verifies both the saved value and the rendered checkbox. Profiles
+checks its visible selector and creation button; performance checks the live
+display's visibility. The nested test mount
+keeps the existing mocked LuaJIT tests out of the simulator's test discovery.
+New simulator tests belong in `tests/ui/`; neither test suite ships in the addon.
+CI saves build and test output as the `forever-ui-log` artifact, including failures.
+The independent **UI preview** workflow renders each matrix size and saves the
+images and render log as `forever-ui-preview`. It runs for PRs, pushes to `main`
+and release tags with its own job budget. CI and the reusable release
+checks have no dependency on it, so render failures or timeouts do not affect
+required assertions or publishing. Do not require **Forever UI preview (optional)**
+in branch protection. No screenshot comparison gates releases.
+CI does not mount a game install, so Blizzard art is incomplete in its screenshots.
+This headless build checks UI behavior, not screenshot appearance or native-client
+taint/combat guarantees. Visual release checks still require the game client.
+
+### Develop the UI outside WoW
+
+Start the interactive Forever preview from this checkout on a Linux desktop:
+
+```sh
+bash tools/ui.sh preview
+```
+
+This builds the separate `dev` target with the same pinned simulator, patch and
+FrameXML as CI, starts a local window and opens `/pqol`. Wayland is preferred;
+X11 uses the existing display socket and `XAUTHORITY` when present. The renderer
+includes software Vulkan, so a GPU device mount is not required. The first build
+also compiles the GUI; subsequent starts reuse the build cache. Each checkout
+has its own container. Addon files are mounted read-only, so local edits are
+available immediately without rebuilding the image.
+
+The test runner, preview and rendering commands capture their build's immutable
+image ID with `--iidfile` and use that ID for every container start. Both matrices
+build once and retain the same image for all sizes, even if another checkout
+replaces the shared convenience tags while they run.
+
+CI caches each final simulator image and its immutable ID, keyed by runner OS,
+architecture, Docker target, Dockerfile and simulator patches. Addon code and test
+changes are mounted into the restored image and do not trigger Rust compilation.
+Outside PR checks, a cache miss builds once per target and saves the image before the assertions,
+so failed addon tests can also reuse the build. The GUI target compiles directly
+instead of first building a headless binary. Required tests and optional rendering
+keep their independent workflows and time budgets. Only the final images are
+cached, avoiding Cargo's much larger intermediate build trees.
+Both runners accept `WOW_UI_IMAGE=sha256:...` to use a loaded immutable image;
+mutable tags are rejected. Normal local commands continue to build using Docker's
+layer cache. Changing the Dockerfile or either simulator patch invalidates CI's
+image cache.
+
+All PR jobs have a **three-minute timeout**. PR checks restore existing simulator
+images and never compile Rust; a missing image fails promptly with preparation
+instructions. `main` and release checks can build on cache misses. The independent
+**UI simulator images** workflow refreshes the default-branch caches daily so
+normal feature branches can reuse them. It has a separate 30-minute build budget.
+For a Dockerfile, patch or simulator revision change, prepare its images before
+rerunning the PR checks:
+
+```sh
+gh workflow run ui-images.yml --ref main -f source-ref=feat/my-feature
+```
+
+The workflow runs on `main` and checks out the requested source, making its exact
+image keys available to PRs through GitHub's default-branch cache. The UI matrix
+uses ten fresh test processes plus two error-guard probes; rendering uses ten
+processes, rather than running an additional preflight for every size.
+
+The simulated UI canvas defaults to **1920×1080**. Select another size with
+`WOW_UI_RESOLUTION=3440x1440 bash tools/ui.sh preview`.
+`tests/ui/viewport.patch` sets the simulation size before addon loading and fixes
+the interactive canvas independently of the desktop window and simulator tools;
+smaller windows scroll the canvas instead of changing the addon's layout. The
+live screenshot command captures the preview's configured viewport.
+
+Use a second terminal while the preview is running:
+
+```sh
+bash tools/ui.sh reload                  # Reread changed Lua/XML and reopen /pqol
+bash tools/ui.sh inspect                 # Visible settings subtree and computed layout
+bash tools/ui.sh screenshot              # Save dist/ui/preview.webp
+bash tools/ui.sh lua 'A_Admin.SetPlayerHealth(50000, 100000)'
+bash tools/ui.sh lua 'A_Admin.SetInCombat(true)'
+bash tools/ui.sh logs                    # Startup and callback errors
+bash tools/ui.sh stop
+```
+
+For an offscreen image without a desktop or running preview, use
+`bash tools/ui.sh render`. It checks Lua errors and saves
+`dist/ui/render-1920x1080.webp`. Select another size with `WOW_UI_RESOLUTION`,
+or use `bash tools/ui.sh render-matrix` for all ten sizes. Each viewport is set
+before loading the addon, and the corresponding image has those same dimensions.
+This uses the GUI-capable image's software Vulkan renderer, without opening a
+window or mounting a display/GPU. `WOW_UI_WOW_PATH` also enables local assets for
+this command. Headless CI assertions still use `bash tests/run-ui.sh`; render
+output is a debugging artifact, not a pixel-comparison gate. An asset-backed CI
+render also needs provisioned, fixed game assets; the Gethe Lua/XML sources alone
+do not supply the textures.
+
+`reload` restarts the simulator process and resets its unsaved state. In this
+pinned version, the upstream `ReloadUI()` and `Ctrl+R` only replay events; they do
+not reread addon source files. Reapply a scenario with `lua` after restarting.
+The [simulator Admin API](https://github.com/Osso/wow-ui-sim/tree/6a1d81b1c5a1f9771a1b1a7aec6c1361753b3d3f/docs/admin-api)
+can seed health, targets, auras, casting and combat. Keep these calls in development
+scripts and tests: `A_Admin` does not exist in WoW.
+
+The pinned FrameXML checkout contains Lua/XML, not Blizzard's textures and fonts.
+Without local game assets, text and controls remain available but Blizzard art
+can be missing. Use `bash tools/ui.sh preview --debug-borders` to show frame and
+control bounds while inspecting layout. For asset-backed preview, point at a
+compatible Forever install root containing `Data/` and the launcher build/product
+metadata, or its `_classic_beta_` client folder:
+
+```sh
+WOW_UI_WOW_PATH='/path/to/World of Warcraft' bash tools/ui.sh preview
+```
+
+The install is mounted read-only; its SavedVariables and other addons are not
+loaded. Docker volumes retain the local asset index and extracted textures across
+`preview` and `stop`; the first asset-backed start builds the index. Runtime
+networking is disabled. Matching local assets are needed for
+faithful art; this preview does not establish native-client rendering parity.
+
+For each UI change: reproduce the state in the preview, edit and reload, inspect
+or capture the result, then add the corresponding behavior to `tests/ui/` and run
+`bash tests/run-ui.sh`. CI runs those tests in the headless target. Complete the
+in-game checks below before releasing changes involving visuals, taint or combat.
+
 ## Releases
 
 GitHub Actions uses the BigWigs action directly, followed by the shell package audit.
-PRs and pushes to `main` run **Tests and package** and retain an installable ZIP.
+PRs and pushes to `main` run **Tests and package** and **Forever UI (Docker)**,
+and retain an installable ZIP.
 The same checks run on release tags. Actions and the local packager are pinned;
 update the packager revision in the local build script and both workflows together.
 
@@ -86,8 +262,9 @@ download the checked ZIP from the run artifact and finish GitHub with
 `gh release create vX.Y.Z PyresinQoL-X.Y.Z.zip --verify-tag --generate-notes`.
 Do not replace published assets or move release tags; fixes get a new version.
 
-Require the **Tests and package** status check on `main`. Repository administration
-access is needed to configure this; local tests alone do not enable branch protection.
+Require the **Tests and package** and **Forever UI (Docker)** status checks on `main`.
+Repository administration access is needed to configure this; local tests alone
+do not enable branch protection.
 
 ### In-game release checklist
 
