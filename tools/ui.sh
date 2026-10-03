@@ -31,16 +31,11 @@ wait_for_preview() {
 }
 
 render_settings() {
-    docker run --rm --network none \
-        --env "WOW_SIM_SCREEN_SIZE=$resolution" \
-        --mount "type=bind,src=$root,dst=/app/Interface/AddOns/PyresinQoL,readonly" \
-        "${assets[@]}" "$image" --no-saved-vars \
-        --exec-lua "local w, h = GetPhysicalScreenSize(); assert(w == $width and h == $height, 'Unexpected UI viewport'); assert(PyresinQoLSettingsFrame and PyresinQoLDB, 'Addon did not initialize'); SlashCmdList.PQOL()" lua-errors || return
     docker run --name "$render_container" --network none \
         --env "WOW_SIM_SCREEN_SIZE=$resolution" \
         --mount "type=bind,src=$root,dst=/app/Interface/AddOns/PyresinQoL,readonly" \
         "${assets[@]}" "$image" --no-saved-vars \
-        --exec-lua "local w, h = GetPhysicalScreenSize(); assert(w == $width and h == $height, 'Unexpected UI viewport'); SlashCmdList.PQOL()" "$@" screenshot --width "$width" --height "$height" --filter PyresinQoLSettingsFrame -o /tmp/pyresinqol-render.webp || return
+        --exec-lua "local w, h = GetPhysicalScreenSize(); assert(w == $width and h == $height, 'Unexpected UI viewport'); assert(PyresinQoLSettingsFrame and PyresinQoLDB, 'Addon did not initialize'); SlashCmdList.PQOL()" "$@" screenshot --width "$width" --height "$height" --filter PyresinQoLSettingsFrame -o /tmp/pyresinqol-render.webp || return
     mkdir -p dist/ui || return
     docker cp "$render_container:/tmp/pyresinqol-render.webp" "$root/dist/ui/render-$resolution.webp" || return
     echo "Headless screenshot: $root/dist/ui/render-$resolution.webp"

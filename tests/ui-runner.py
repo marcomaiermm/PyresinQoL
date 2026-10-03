@@ -41,11 +41,14 @@ def docker_mock():
         if resolved != state["image"]:
             print("Container started from another checkout's image", file=sys.stderr)
             finish(1)
+        if args[-1] == "UIProbe":
+            print("ui-exec-sentinel" if "--exec-lua" in args else "ui-startup-sentinel", file=sys.stderr)
+            finish(1)
         if "--name" in args:
             name = args[args.index("--name") + 1]
             state["containers"][name] = {"size": size, "screenshot": "screenshot" in args}
         if size == "1280x720" and (
-            (state["failure"] == "startup" and args[-1] == "lua-errors")
+            state["failure"] == "startup"
             or (state["failure"] == "screenshot" and "screenshot" in args)
         ):
             finish(1)
@@ -99,15 +102,15 @@ def main():
         }
         cached_image = "sha256:" + f'{1:064x}'
         scenarios = (
-            ("test matrix", ["tests/run-ui.sh"], "", 2 * len(sizes), 0, True, ""),
-            ("single render", ["tools/ui.sh", "render"], "", 2, 1, True, ""),
-            ("render matrix", ["tools/ui.sh", "render-matrix"], "", 2 * len(sizes), len(sizes), True, ""),
+            ("test matrix", ["tests/run-ui.sh"], "", len(sizes) + 2, 0, True, ""),
+            ("single render", ["tools/ui.sh", "render"], "", 1, 1, True, ""),
+            ("render matrix", ["tools/ui.sh", "render-matrix"], "", len(sizes), len(sizes), True, ""),
             ("desktop preview", ["tools/ui.sh", "preview"], "", 1, 0, True, ""),
-            ("failed screenshot", ["tools/ui.sh", "render-matrix"], "screenshot", 2 * len(sizes), len(sizes) - 1, False, ""),
-            ("failed startup", ["tools/ui.sh", "render-matrix"], "startup", 2 * len(sizes) - 1, len(sizes) - 1, False, ""),
+            ("failed screenshot", ["tools/ui.sh", "render-matrix"], "screenshot", len(sizes), len(sizes) - 1, False, ""),
+            ("failed startup", ["tools/ui.sh", "render-matrix"], "startup", len(sizes), len(sizes) - 1, False, ""),
             ("failed build", ["tests/run-ui.sh"], "build", 0, 0, False, ""),
-            ("cached tests", ["tests/run-ui.sh"], "", 2 * len(sizes), 0, True, cached_image),
-            ("cached rendering", ["tools/ui.sh", "render-matrix"], "", 2 * len(sizes), len(sizes), True, cached_image),
+            ("cached tests", ["tests/run-ui.sh"], "", len(sizes) + 2, 0, True, cached_image),
+            ("cached rendering", ["tools/ui.sh", "render-matrix"], "", len(sizes), len(sizes), True, cached_image),
             ("cached preview", ["tools/ui.sh", "preview"], "", 1, 0, True, cached_image),
             ("reject mutable cached tag", ["tests/run-ui.sh"], "", 0, 0, False, "pyresinqol-ui:forever"),
             ("reject mutable renderer tag", ["tools/ui.sh", "render"], "", 0, 0, False, "pyresinqol-ui:dev"),
@@ -131,7 +134,8 @@ def main():
                 assert len(state["runs"]) == runs, (label, state["runs"])
                 assert all(run["resolved"] == state["image"] for run in state["runs"]), label
                 if label in ("test matrix", "render matrix", "cached tests", "cached rendering"):
-                    assert [run["size"] for run in state["runs"]] == [size for size in sizes for _ in range(2)]
+                    expected_sizes = ["1280x720"] * 2 + sizes if command == ["tests/run-ui.sh"] else sizes
+                    assert [run["size"] for run in state["runs"]] == expected_sizes
                 assert len(list((checkout / "dist/ui").glob("render-*.webp"))) == artifacts, label
                 assert all(not Path(path).parent.exists() for path in state["iidfiles"]), label
                 assert not any(scratch.iterdir()), label

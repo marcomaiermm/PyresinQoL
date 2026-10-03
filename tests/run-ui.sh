@@ -23,6 +23,33 @@ else
     image=$(< "$build_dir/image-id")
 fi
 
+# A passing fixture must still fail on startup or probe errors.
+probe_dir="$build_dir/probe"
+mkdir -p "$probe_dir/tests"
+printf '## Interface: 16001\nProbe.lua\n' > "$probe_dir/UIProbe.toc"
+printf 'test("passing fixture", function() assertTrue(true) end)\n' > "$probe_dir/tests/probe.lua"
+check_error_guard() {
+    local sentinel=$1
+    shift
+    if docker run --rm --network none --env WOW_SIM_SCREEN_SIZE=1280x720 \
+        --mount "type=bind,src=$probe_dir,dst=/app/Interface/AddOns/UIProbe,readonly" \
+        "$image" --no-saved-vars "$@" run-tests UIProbe > "$build_dir/probe.log" 2>&1; then
+        cat "$build_dir/probe.log" >&2
+        echo "Simulator ignored $sentinel." >&2
+        exit 1
+    fi
+    if ! grep -Fq "$sentinel" "$build_dir/probe.log"; then
+        cat "$build_dir/probe.log" >&2
+        echo "Expected $sentinel rejection was not observed." >&2
+        exit 1
+    fi
+    echo "Verified rejection: $sentinel"
+}
+printf 'error("ui-startup-sentinel")\n' > "$probe_dir/Probe.lua"
+check_error_guard ui-startup-sentinel
+printf '\n' > "$probe_dir/Probe.lua"
+check_error_guard ui-exec-sentinel --exec-lua 'error("ui-exec-sentinel")'
+
 run() {
     local resolution=$1
     shift
@@ -43,7 +70,6 @@ for resolution in "${resolutions[@]}"; do
     echo "Testing Forever UI at $resolution"
     width=${resolution%x*}
     height=${resolution#*x}
-    # run-tests reports assertion failures; lua-errors also rejects startup errors.
-    run "$resolution" --exec-lua "local w, h = GetPhysicalScreenSize(); assert(w == $width and h == $height, 'Unexpected UI viewport'); assert(PyresinQoLSettingsFrame and PyresinQoLDB, 'PyresinQoL did not initialize')" lua-errors
+    # The patched runner rejects startup/probe errors before scoped UI flows.
     run "$resolution" --exec-lua "PyresinQoLUITestResolution = {$width, $height}; $test_setup" run-tests PyresinQoL
 done

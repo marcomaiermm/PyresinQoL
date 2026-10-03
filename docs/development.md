@@ -61,8 +61,14 @@ Forever **1.60.1.69913**, interface **16001**, matching the simulator profile.
 Update these revisions together when adopting a newer client build.
 The pinned simulator needs `tests/ui/simulator.patch` to canonicalize file and
 addon-root paths before its Forever module-boundary check; otherwise local addon
-and TestFramework Lua files are silently skipped. Remove the patch when upstream
+and TestFramework Lua files are silently skipped. Remove that loader hunk when upstream
 fixes this path comparison. The startup assertion catches skipped addon loading.
+The same patch makes `run-tests` reject recorded startup errors and failed
+`--exec-lua` probes, allowing one fresh simulator per test resolution.
+It also makes `screenshot` reject startup, probe and post-probe update errors
+before rendering, so the screenshot matrix needs one process per size too.
+The runner also uses a passing fixture to verify that both startup and probe
+errors produce nonzero exits before starting the regular matrix.
 
 Every run uses the resolution matrix in `tests/ui/resolutions.txt`, starting a
 fresh simulator at each size before the addon loads:
@@ -88,8 +94,8 @@ bounds, using effective scale when comparing coordinates. This catches clipping
 and misplaced controls independently of screenshots.
 
 The addon is mounted read-only and runs without network access or saved variables.
-`lua-errors` rejects startup errors, then `run-tests` runs `tests/ui/*.lua` against
-the native Blizzard frames and controls. Each interaction flow waits for actual
+The patched `run-tests` rejects startup errors, then runs `tests/ui/*.lua` against
+the native Blizzard frames and controls in that same process. Each interaction flow waits for actual
 UI ticks and checks its own Lua errors before closing the window. Every resettable
 page checks a visible checkbox's setting binding, changes its value, then clicks
 Defaults and verifies both the saved value and the rendered checkbox. Profiles

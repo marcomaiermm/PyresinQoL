@@ -9,7 +9,7 @@ RUN git init . && git remote add origin https://github.com/Osso/wow-ui-sim.git \
 # The upstream binary targets the builder's CPU; the CI runner may differ.
 ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
 COPY simulator.patch /tmp/simulator.patch
-# Normalize the pinned Forever loader's relative overlay and absolute addon paths.
+# Normalize Forever loader paths and reject errors in single-process CI commands.
 RUN git apply --check /tmp/simulator.patch && git apply /tmp/simulator.patch
 # Set the simulation size before addon loading, independently of desktop chrome.
 COPY viewport.patch /tmp/viewport.patch
