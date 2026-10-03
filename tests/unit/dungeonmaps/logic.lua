@@ -27,6 +27,18 @@ assert(loadfile("Modules/DungeonMaps/Logic.lua"))("PyresinQoL", catalog)
 local deadmines = assert(catalog.DungeonMaps.FindDungeon(36))
 local ironclad = assert(catalog.DungeonMaps.FindFloor(deadmines, "Ironclad Cove"))
 assert(ironclad == 2 and deadmines.floors[ironclad].name == "Ironclad Cove")
+local scholomance = assert(catalog.DungeonMaps.FindDungeon(289))
+assert(#scholomance.floors == 4)
+for floorIndex, scholomanceFloor in ipairs(scholomance.floors) do
+    for tileIndex, texture in ipairs(scholomanceFloor.textures) do
+        assert(texture == "Interface\\WorldMap\\ScholomanceOLD\\ScholomanceOLD"
+            .. floorIndex .. "_" .. tileIndex)
+    end
+end
+local ragefire = assert(catalog.DungeonMaps.FindDungeon(389))
+for tileIndex, texture in ipairs(ragefire.floors[1].textures) do
+    assert(texture == "Interface\\WorldMap\\Ragefire\\Ragefire1_" .. tileIndex)
+end
 local expectedInstances = {
     [33] = true, [34] = true, [36] = true, [43] = true, [47] = true,
     [48] = true, [70] = true, [90] = true, [129] = true,

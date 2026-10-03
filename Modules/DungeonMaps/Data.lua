@@ -1,4 +1,4 @@
-local addonName, ns = ...
+local _, ns = ...
 
 ns.DungeonMaps = ns.DungeonMaps or {}
 
@@ -14,27 +14,19 @@ ns.DungeonMaps = ns.DungeonMaps or {}
 -- Forever 1.60.1.70205 has no Dungeon rows in UiMap/UiMapXMapArt and does
 -- not contain these legacy IDs; the paths below are texture references only.
 --
--- Ragefire Chasm and Scholomance changed in later expansions. Their bundled
--- tiles are the old-layout replacements from ClassicDungeonMaps; see the
--- third-party notice in Media/DungeonMaps/LICENSE-ClassicDungeonMaps.txt.
+-- Forever 1.60.1.70205 includes verified original-layout texture families for
+-- Ragefire Chasm and all four Scholomance floors, so those entries use the
+-- client-native assets rather than bundled copies.
 -- The verified Blizzard-drawn assets retained here do not match the original
 -- multi-level Sunken Temple or Upper Blackrock Spire layouts. Those maps remain
 -- gaps; do not substitute a schematic overview or a Lower Blackrock Spire floor.
 
-local function tiles(folder, prefix, extension)
+local function nativeTiles(folder, prefix)
     local result = {}
     for index = 1, 12 do
-        result[index] = folder .. "\\" .. prefix .. index .. (extension or "")
+        result[index] = "Interface\\WorldMap\\" .. folder .. "\\" .. prefix .. index
     end
     return result
-end
-
-local function nativeTiles(folder, prefix)
-    return tiles("Interface\\WorldMap\\" .. folder, prefix)
-end
-
-local function addonTiles(folder, prefix)
-    return tiles("Interface\\AddOns\\" .. addonName .. "\\Media\\DungeonMaps\\" .. folder, prefix, ".tga")
 end
 
 local function floor(name, textureList, legacyUiMapID, subzones)
@@ -54,9 +46,9 @@ ns.DungeonMaps.dungeons = {
         name = "Ragefire Chasm",
         instanceID = 389,
         floors = {
-            -- The old-layout replacement has no published calibration tying
+            -- The original-layout texture has no published calibration tying
             -- its crop to UiMap 213. Keep it static until that is measured.
-            floor("Ragefire Chasm", addonTiles("RagefireChasm", "RFC_")),
+            floor("Ragefire Chasm", nativeTiles("Ragefire", "Ragefire1_")),
         },
     },
     {
@@ -275,19 +267,19 @@ ns.DungeonMaps.dungeons = {
         name = "Scholomance",
         instanceID = 289,
         floors = {
-            -- Legacy UiMaps 306-309 describe ScholomanceOLD, but the replacement
-            -- tiles do not publish their exact crop/transform. Omitting the
-            -- references prevents a plausible-looking but unverified live marker.
-            floor("The Reliquary", addonTiles("Scholomance", "Scholomance1_"), nil, {
+            -- These verified client-native textures match the original layout,
+            -- but their crop still has no Forever map-domain calibration.
+            -- Keep legacy UiMap references omitted so no player marker is guessed.
+            floor("The Reliquary", nativeTiles("ScholomanceOLD", "ScholomanceOLD1_"), nil, {
                 "The Reliquary",
             }),
-            floor("Chamber of Summoning", addonTiles("Scholomance", "Scholomance2_"), nil, {
+            floor("Chamber of Summoning", nativeTiles("ScholomanceOLD", "ScholomanceOLD2_"), nil, {
                 "Chamber of Summoning", "The Great Ossuary", "The Viewing Room",
             }),
-            floor("The Great Ossuary and Headmaster's Study", addonTiles("Scholomance", "Scholomance3_"), nil, {
+            floor("The Great Ossuary and Headmaster's Study", nativeTiles("ScholomanceOLD", "ScholomanceOLD3_"), nil, {
                 "Hall of Secrets", "Hall of the Damned", "The Coven",
             }),
-            floor("The Laboratory and Vaults", addonTiles("Scholomance", "Scholomance4_"), nil, {
+            floor("The Laboratory and Vaults", nativeTiles("ScholomanceOLD", "ScholomanceOLD4_"), nil, {
                 "The Laboratory", "Vault of the Ravenian", "The Shadow Vault", "Barov Family Vault",
             }),
         },

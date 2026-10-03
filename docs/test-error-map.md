@@ -41,7 +41,7 @@ are documented in [tests/README.md](../tests/README.md).
 | LIMIT-003 | Visual assets | Render the simulator without a game asset mount | Layout/controls should behave; Blizzard art may be incomplete | Pinned FrameXML supplies Lua/XML rather than all textures/fonts | Geometry assertions across the ten resolutions; optional asset-backed preview and native visual checks | Known rendering limit |
 | LIMIT-004 | Reload / persistence | Use the pinned simulator's native ReloadUI/shortcut | Expect fresh source/SavedVariables reconstruction; native simulator reload only replays events | Pinned simulator lifecycle | Local reconstructed-runtime profile/cast-bar/performance tests and process restart through `tools/ui.sh reload` | Native relog check still required |
 | LIMIT-005 | Dungeon player position | Open maps on each floor of supported Vanilla dungeons | A usable native Forever dungeon map retains Blizzard's unit pins; illustrated fallback art shows the localized unavailable status and no marker | Forever 1.60.1.70205 has zero Dungeon-type `UiMap`/`UiMapXMapArt` records and its assignments do not include Vanilla dungeon instances; Blizzard's Lua `HybridMinimap` uses `C_Map.GetPlayerMapPosition`, while the public Minimap API exposes no independent player world position | Native-map capability checks plus UI assertions that fallback pins and coordinates are suppressed and restored | Source-backed Forever mapping or calibration is required before adding fallback positions; live coordinate return behavior remains a client check |
-| LIMIT-006 | Original Vanilla map gaps | Open Sunken Temple, a recognized UBRS subzone or an unknown/shared Blackrock Spire subzone | Blizzard's ordinary world map remains visible; no schematic Atlas overview, stale LBRS floor or guessed wing is shown | The addon has no verified Blizzard-drawn artwork matching the original Sunken Temple or UBRS layouts, and physical instance 229 does not identify the Blackrock Spire wing | Unit coverage fixes the 18-instance/50-view catalog and gap decisions; native UI coverage transitions from recognized LBRS art into UBRS and verifies stale art closes | Deliberate documented gap; localized unmatched LBRS subzones also remain native rather than guessing |
+| LIMIT-006 | Original Vanilla map gaps | Open Sunken Temple, Hall of Blackhand, a recognized UBRS subzone or an unknown/shared Blackrock Spire subzone | Blizzard's ordinary world map remains visible; no schematic Atlas overview, stale LBRS floor or guessed wing is shown | The addon has no verified Blizzard-drawn artwork matching the original Sunken Temple or UBRS layouts, and physical instance 229 does not identify the Blackrock Spire wing | Unit coverage fixes the 18-instance/50-view catalog and gap decisions; native UI coverage transitions from recognized LBRS art into shared Hall of Blackhand, UBRS and unknown subzones and verifies stale art closes | Deliberate documented gap; localized unmatched LBRS subzones also remain native rather than guessing |
 | SIM-001 | Game menu / cooldown viewer | Click the native cooldown-viewer shortcut | Expected Blizzard's settings to open; `CooldownViewerSettings.lua:897` attempts the length of nil `groupBuffItems` | Simulator omits GroupBuff category data from `GetCooldownViewerCategorySet` | Keep native menu layout/lifecycle assertions and mocked shortcut dispatch; actual cooldown settings opening needs the client | Reproduced simulator gap |
 | SIM-002 | Quest greeting | Call `A_Admin.OpenMultiQuestNpc` | Expected the native greeting to open; `QuestFrame.lua:614` calls missing `GetQuestBackgroundMaterial` | Simulator API omission | Native quest row hook coverage where available; full greeting path requires native client | Reproduced simulator gap |
 | SIM-003 | Quest detail | Call `A_Admin.OpenQuestNpc` | Expected native quest dialog; `GossipFrameShared.lua:292` calls missing `UpdateTheme` | Simulator/native theme integration omission | Local quest dialog reuse/wrapping/toggle suite; full NPC interaction requires native client | Reproduced simulator gap |
@@ -62,14 +62,17 @@ with local socket permission verifies the tool contract. It is not an addon fail
 - Package contents, source consistency, rejection checks and the 0.1.6 manifest audit pass.
 - Prior native UI baseline: **48 scenarios × 10 resolutions = 480 passed, zero failed**.
   This baseline predates Dungeon Maps.
-- Native Dungeon Maps verification passes **62/62** at 1280×720 for the corrected
-  `World > Dungeon` fallback hierarchy and World-menu return route. CI runs the
-  same suite across ten resolutions, with the latest result recorded by the PR
-  checks. The suite exercises the real `WorldMapFrame`/MapCanvas integration,
+- Native Dungeon Maps verification passes **66/66** at 1280×720, including known
+  subzone auto-detection, live floor changes, honest unknown fallback plus one
+  unmatched localized-subzone sample, and restoration for raids, new Forever
+  instances and unknown party IDs. CI runs
+  the same suite across ten resolutions, with the latest result recorded by the
+  PR checks. The suite exercises the real `WorldMapFrame`/MapCanvas integration,
   floor selection, native navigation,
   zoom/pan/close, pin suppression and restoration, documented map gaps,
   home/right-click round trips, saved-floor and original-backing restoration,
-  hover/click isolation and scoped tooltip cleanup.
+  hover/click isolation, scoped tooltip cleanup, and the verified client-native
+  Ragefire Chasm and four-floor Scholomance texture families.
 - The unaffected auxiliary lanes pass same-process forward/reverse
   flows **20/20** and German addon labels at scale 1.25 **5/5**.
 - The auxiliary run also rejected startup-error and exec-probe sentinels;

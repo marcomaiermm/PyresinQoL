@@ -376,6 +376,15 @@ maximize/minimize controls, close action, mouse-wheel zoom and drag pan continue
 to work. It does not replace `ToggleWorldMap`, `WorldMapFrame` or any `C_Map` API.
 Outside supported party instances the Blizzard path is unchanged.
 
+Forever 1.60.1.70205 supplies the four original-layout Scholomance floors as
+`Interface\\WorldMap\\ScholomanceOLD\\ScholomanceOLD1_1` through
+`ScholomanceOLD4_12` and original Ragefire Chasm as
+`Interface\\WorldMap\\Ragefire\\Ragefire1_1` through `Ragefire1_12`; the catalog
+uses those client-native assets. Native texture availability does not establish
+a normalized map domain, so these maps still show no player position without
+separate coordinate calibration. The addon no longer bundles downloaded dungeon
+texture files.
+
 The illustrated fallback keeps the native frame open and covers its current map
 art. Its native-style floor selector lives on the existing map chrome. The
 provider presents the illustrated fallback as `World > Dungeon` in Blizzard's
