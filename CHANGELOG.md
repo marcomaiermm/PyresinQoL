@@ -4,7 +4,7 @@
 
 ### Added
 
-- Add 50 illustrated map views across 18 original Vanilla dungeon complexes directly to Blizzard's world map, with native zoom, pan, floor selection and breadcrumb navigation between the dungeon and world map. Sunken Temple and original Upper Blackrock Spire remain documented gaps instead of using schematic Atlas or incorrect wing maps. New WoW Forever dungeons are outside this module's scope. Maps without a WoW Forever coordinate calibration report that the player position is unavailable.
+- Add 50 illustrated map views across 18 original Vanilla dungeon complexes directly to Blizzard's world map, with native zoom, pan, floor selection, a `World > Dungeon` breadcrumb and a return route in the native World menu. Sunken Temple and original Upper Blackrock Spire remain documented gaps instead of using schematic Atlas or incorrect wing maps. New WoW Forever dungeons are outside this module's scope. Maps without a WoW Forever coordinate calibration report that the player position is unavailable.
 
 ### Fixed
 

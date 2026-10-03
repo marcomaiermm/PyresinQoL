@@ -378,12 +378,14 @@ Outside supported party instances the Blizzard path is unchanged.
 
 The illustrated fallback keeps the native frame open and covers its current map
 art. Its native-style floor selector lives on the existing map chrome. The
-provider extends Blizzard's `WorldMapNavBar` with a dungeon leaf rather than
-inventing a map ID: right-click returns to the backing world map, and the enabled
-dungeon leaf returns to the saved floor without closing the frame. Native
-breadcrumb buttons can also leave the fallback, and ordinary map navigation
-continues until the player chooses the dungeon leaf. Closing the map, leaving the
-instance or disabling the module clears that route.
+provider presents the illustrated fallback as `World > Dungeon` in Blizzard's
+`WorldMapNavBar` rather than inventing a map ID or inheriting ancestry from its
+unrelated backing map. Right-click and the native World home button run Blizzard's
+World-home action. While the saved route is valid, a native dropdown arrow on the
+home button offers the dungeon and restores its saved backing map and floor. Ordinary
+native breadcrumbs remain unchanged while browsing world maps. Closing the map,
+leaving the instance or disabling the module restores the home button's previous
+dropdown state and clears that route.
 
 While fallback art is visible, the provider uses MapCanvas pin suppression and
 hides the native coordinate and area-label providers because they otherwise

@@ -197,34 +197,95 @@ ns.RegisterModule("dungeonMaps", function(module)
         end
         art.suppressedPins = provider.suppressedPins
 
-        function provider:AppendDungeonNavigation()
+        function provider:RestoreDungeonReturnMenu()
+            local nav = map.NavBar
+            local home = nav and nav.homeButton
+            local saved = self.HomeButtonState
+            if not home or not saved then return end
+            home.listFunc = saved.listFunc
+            home:SetWidth(saved.width)
+            if saved.arrow then
+                saved.arrow:SetShown(saved.arrowShown)
+                if NavButtonTemplate_SetupDropdown and saved.listFunc then
+                    NavButtonTemplate_SetupDropdown(home, saved.arrow)
+                end
+            end
+            self.HomeButtonState = nil
+            if NavBar_CheckLength then NavBar_CheckLength(nav) end
+        end
+
+        function provider:ExposeDungeonReturnMenu()
+            local nav = map.NavBar
+            local home = nav and nav.homeButton
+            local selection = self.selection
+            local dungeon = selection and selection.dungeon
+            if not home or not dungeon or not NavButtonTemplate_SetupDropdown then return end
+            local arrow = home.MenuArrowButton
+            local addonArrow = false
+            if not arrow then
+                addonArrow = true
+                if not self.HomeMenuArrowButton then
+                    arrow = CreateFrame("DropdownButton", nil, home, "WowStyle1ArrowDropdownTemplate")
+                    arrow:SetPoint("RIGHT", home, "RIGHT", -4, 0)
+                    arrow:SetFrameLevel(home:GetFrameLevel() + 2)
+                    arrow:Hide()
+                    self.HomeMenuArrowButton = arrow
+                else
+                    arrow = self.HomeMenuArrowButton
+                end
+            end
+            if not self.HomeButtonState then
+                self.HomeButtonState = {
+                    listFunc = home.listFunc,
+                    arrow = arrow,
+                    arrowShown = arrow:IsShown(),
+                    width = home:GetWidth(),
+                }
+            end
+            local nativeListFunc = self.HomeButtonState.listFunc
+            local routeSelection = selection
+            home.listFunc = function(button)
+                local nativeList = nativeListFunc and nativeListFunc(button) or {}
+                local list = {}
+                for index, entry in ipairs(nativeList) do list[index] = entry end
+                list[#list + 1] = {
+                    text = dungeon.name or L.dungeonMaps,
+                    id = dungeon.id,
+                    func = function()
+                        if provider.displayMode == MODE_WORLD
+                            and provider.selection == routeSelection then
+                            provider:ReturnToDungeon()
+                        end
+                    end,
+                }
+                return list
+            end
+            arrow:Show()
+            if not addonArrow then home:SetWidth(home.text:GetStringWidth() + 53) end
+            NavButtonTemplate_SetupDropdown(home, arrow)
+            if NavBar_CheckLength then NavBar_CheckLength(nav) end
+        end
+
+        function provider:ShowDungeonNavigation()
             local nav = map.NavBar
             local selection = self.selection
             local dungeon = selection and selection.dungeon
-            if not nav or not dungeon or not NavBar_AddButton then
-                self.NavBarDungeonButton = nil
-                return
-            end
-            local last = nav.navList and nav.navList[#nav.navList]
-            if last and last.data and last.data.pyresinDungeonMap then
-                self.NavBarDungeonButton = last
-                return
-            end
+            if not nav or not dungeon or not NavBar_Reset or not NavBar_AddButton then return end
+            self:RestoreDungeonReturnMenu()
+            NavBar_Reset(nav)
             NavBar_AddButton(nav, {
                 name = dungeon.name or L.dungeonMaps,
                 pyresinDungeonMap = true,
-                OnClick = function() provider:ReturnToDungeon() end,
             })
-            local button = nav.navList and nav.navList[#nav.navList]
-            self.NavBarDungeonButton = button
-            if button and self.displayMode ~= MODE_DUNGEON then
-                button:Enable()
-                if button.selected then button.selected:Hide() end
-                local current = nav.navList[#nav.navList - 1]
-                if current then
-                    current:Disable()
-                    if current.selected then current.selected:Show() end
-                end
+        end
+
+        function provider:ApplyNavigation()
+            if self.displayMode == MODE_DUNGEON then
+                self:ShowDungeonNavigation()
+            elseif self.displayMode == MODE_WORLD and self.selection then
+                self:ExposeDungeonReturnMenu()
+            else
+                self:RestoreDungeonReturnMenu()
             end
         end
 
@@ -232,8 +293,7 @@ ns.RegisterModule("dungeonMaps", function(module)
             local nav = map.NavBar
             if not nav then return end
             nav:Show()
-            if nav.Refresh then nav:Refresh() end
-            self:AppendDungeonNavigation()
+            if nav.Refresh then nav:Refresh() else self:ApplyNavigation() end
         end
 
         function provider:SuppressNativeSurface()
@@ -363,6 +423,8 @@ ns.RegisterModule("dungeonMaps", function(module)
         function provider:NavigateToWorldMap()
             if self.displayMode ~= MODE_DUNGEON then return false end
             self:SetDisplayMode(MODE_WORLD, self.selection)
+            local home = map.NavBar and map.NavBar.homeButton
+            if home and home.myclick then home:myclick("LeftButton") end
             return true
         end
 
@@ -411,7 +473,7 @@ ns.RegisterModule("dungeonMaps", function(module)
         local provider = CreateProvider(map)
 
         if map.NavBar and map.NavBar.Refresh then
-            hooksecurefunc(map.NavBar, "Refresh", function() provider:AppendDungeonNavigation() end)
+            hooksecurefunc(map.NavBar, "Refresh", function() provider:ApplyNavigation() end)
             if map.NavBar.GoToMap then
                 hooksecurefunc(map.NavBar, "GoToMap", function()
                     if provider.displayMode == MODE_DUNGEON then

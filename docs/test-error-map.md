@@ -18,7 +18,7 @@ are documented in [tests/README.md](../tests/README.md).
 | DUNGEON-001 | Dungeon Maps setting | Open `/pqol` → Dungeon Maps in the 1280×720 simulator | Expected the checkbox label inside its 42px row; observed bounds extended from y=442.3 to 625.5 while the row allowed y=512.9 to 554.9 | The help text was passed as `CreateCheckboxInitializer`'s second argument, which is label/options data, instead of its third tooltip argument | `tests/ui/settings.lua` checks the real rendered control; `tests/integration/core/settings.lua` records the initializer arguments and requires nil options plus the localized help tooltip | Fixed by calling `CreateCheckboxInitializer(enabled, nil, help)`; final native run passes at 1280×720, 1920×1080 and 3440×1440 |
 | DUNGEON-002 | Native map handoff | Open a dungeon map, click **World Map**, then press **M** | Expected the native map to close; observed the post-hook reopening the custom dungeon map because it did not distinguish whether the native toggle opened or closed `WorldMapFrame` | The post-hook unconditionally attempted to show the dungeon map while its frame was hidden, and the button used a toggle plus bypass state | The superseded separate-window flow reproduced and fixed the toggle defect before DUNGEON-003 replaced that architecture | Superseded by the native `WorldMapFrame` provider in DUNGEON-003 |
 | DUNGEON-003 | Blizzard map integration | Press **M** in a supported dungeon | Expected the missing dungeon art to extend Blizzard's existing world-map surface; observed a separate addon window, while its projected marker and the hidden native map used coordinate domains that were not verified for WoW Forever | The first implementation treated generic Classic UiMap references as Forever calibration and intercepted the native-map toggle | Native UI coverage asserts `WorldMapFrame` remains the visible map, the art frame belongs to its MapCanvas, native zoom/pan/close and initial fit work, misleading pins and coordinates are suppressed, and native state is restored on handoff | Fixed by installing a supplemental provider on `WorldMapFrame`; no player position is drawn until a Forever-specific map domain is verified |
-| DUNGEON-004 | Dungeon/world navigation and hover isolation | Right-click an illustrated dungeon map, return through its breadcrumb, and hover/click the art | Expected Blizzard-style navigation between dungeon and world map; observed a custom **World Map** button as the only exit, no native breadcrumb, and outdoor area labels/click targets leaking through the drawn floor | The fallback hid `WorldMapNavBar` and covered the backing map visually without isolating its non-pin area-label provider and navigation targets | Native UI coverage exercises repeated right-click/breadcrumb round trips, native map links, close/reopen and instance exit while checking that the backing area's label, highlight pins and clicks stay inactive only during fallback | Fixed by extending the native NavBar with a dungeon leaf, handling fallback clicks through MapCanvas and restoring native providers on exit |
+| DUNGEON-004 | Dungeon/world navigation and hover isolation | Right-click an illustrated dungeon map, return through the World menu, and hover/click the art | Expected Blizzard-style navigation between dungeon and world map; observed a custom **World Map** button as the only exit, no native route back, outdoor ancestry in the dungeon breadcrumb, and outdoor area labels/click targets leaking through the drawn floor | The fallback initially hid `WorldMapNavBar`, then inherited the unrelated backing map's hierarchy when the bar was added, while neither version isolated every backing-map interaction | Native UI coverage exercises repeated right-click/World-menu round trips, native map links, close/reopen and instance exit while checking the dungeon bar is only `World > Dungeon` and backing labels, highlight pins and clicks stay inactive only during fallback | Fixed by using a dungeon-only native breadcrumb, the native home dropdown for the retained return route, MapCanvas click handling and native provider restoration on exit |
 
 ## Test infrastructure and coverage work
 
@@ -62,12 +62,13 @@ with local socket permission verifies the tool contract. It is not an addon fail
 - Package contents, source consistency, rejection checks and the 0.1.6 manifest audit pass.
 - Prior native UI baseline: **48 scenarios × 10 resolutions = 480 passed, zero failed**.
   This baseline predates Dungeon Maps.
-- The native Dungeon Maps suite passes **58/58** at each of 1280×720,
-  1920×1080 and 3440×1440: **174/174** across the three viewport sizes.
-  These flows exercise the real `WorldMapFrame`/MapCanvas integration, floor
-  selection, native navigation, zoom/pan/close, pin suppression and restoration,
-  documented map gaps, breadcrumb/right-click round trips, saved-floor and
-  original-backing restoration, hover/click isolation and scoped tooltip cleanup.
+- Native Dungeon Maps verification passes **62/62** at 1280×720 for the corrected
+  `World > Dungeon` fallback hierarchy and World-menu return route; the
+  ten-resolution CI matrix is pending. The suite exercises the real
+  `WorldMapFrame`/MapCanvas integration, floor selection, native navigation,
+  zoom/pan/close, pin suppression and restoration, documented map gaps,
+  home/right-click round trips, saved-floor and original-backing restoration,
+  hover/click isolation and scoped tooltip cleanup.
 - The unaffected auxiliary lanes pass same-process forward/reverse
   flows **20/20** and German addon labels at scale 1.25 **5/5**.
 - The auxiliary run also rejected startup-error and exec-probe sentinels;

@@ -35,8 +35,8 @@ module changes. Individual settings and positions are preserved.
 Inside an original Vanilla party dungeon, press **M** to open its illustrated map.
 It opens inside Blizzard's standard world-map frame; use the floor selector for
 another level. Its name appears in Blizzard's breadcrumb: right-click the map to
-return to the backing world map, then click the dungeon breadcrumb to go back
-without closing **M**. When Forever
+return to the native World map, then choose the dungeon from the World button's
+dropdown to go back without closing **M**. When Forever
 already supplies a usable native dungeon map, the addon leaves it untouched. The
 illustrated fallback does not guess coordinates: it reports that the player
 position is unavailable until that art has a verified Forever calibration. New

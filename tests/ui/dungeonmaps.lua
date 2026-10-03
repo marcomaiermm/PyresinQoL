@@ -1,8 +1,12 @@
 local UI = PyresinQoLUITest
 
-local provider, originalInstanceInfo, restoreDungeon, dungeonFloor, expectedReturnFloor, routeSelection, panBeforeX, panBeforeY
+local provider, originalInstanceInfo, restoreDungeon, dungeonFloor, expectedReturnFloor, routeSelection
+local nativeWorldMapID, panBeforeX, panBeforeY
+local baselineHomeListFunc, baselineHomeWidth, baselineHomeArrowShown
+local staleReturnItem, staleReturnCallback, settingOriginal
+local baselineHomeEntries
+local WorldHomeMenuArrow
 local resizeWasMinimized
-local nativeBackingMapID
 local SetNativeBackingMap
 
 local function HideNativeMap()
@@ -28,26 +32,91 @@ local function OpenDungeon(name, instanceID, subzone)
     ToggleWorldMap()
 end
 
-local function BeginInstance(name, instanceID, subzone, backingMapID)
+local function BeginInstance(name, instanceID, subzone, backingMapID, homeListFunc)
     HideNativeMap()
+    local home = WorldMapFrame.NavBar and WorldMapFrame.NavBar.homeButton
+    local previousHomeListFunc = home and home.listFunc or nil
+    if home and homeListFunc then home.listFunc = homeListFunc end
+    baselineHomeListFunc = home and home.listFunc or nil
+    baselineHomeWidth = home and home:GetWidth() or nil
+    baselineHomeEntries = {}
+    if home and baselineHomeListFunc then
+        for _, entry in ipairs(baselineHomeListFunc(home) or {}) do
+            baselineHomeEntries[#baselineHomeEntries + 1] = {
+                text = entry.text, id = entry.id,
+            }
+        end
+    end
     originalInstanceInfo = GetInstanceInfo
     restoreDungeon = function()
         HideNativeMap()
         if PyresinQoLDungeonMapFrame then PyresinQoLDungeonMapFrame:Hide() end
         if A_Admin.SetMouseOverFrame then A_Admin.SetMouseOverFrame(nil) end
         if A_Admin.SetAltKeyDown then A_Admin.SetAltKeyDown(false) end
+        if home and homeListFunc then home.listFunc = previousHomeListFunc end
         GetInstanceInfo = originalInstanceInfo
         A_Admin.SetInstanceInfo("Stormwind City", "none", 0, 0)
         A_Admin.SetInInstance(false)
         A_Admin.SetZone("Stormwind City", 1519)
         A_Admin.SetSubZone("Trade District")
         if C_Map and C_Map.SetMapForQuestLog then C_Map.SetMapForQuestLog(1) end
-        nativeBackingMapID = nil
         expectedReturnFloor = nil
         routeSelection = nil
+        baselineHomeListFunc = nil
+        baselineHomeWidth = nil
+        baselineHomeArrowShown = nil
+        baselineHomeEntries = nil
+        staleReturnCallback = nil
     end
     if backingMapID then SetNativeBackingMap(backingMapID) end
+    local addonProvider = WorldMapFrame.PyresinDungeonMaps
+    local arrow = home and home.MenuArrowButton
+        or addonProvider and addonProvider.HomeMenuArrowButton
+    baselineHomeArrowShown = arrow and arrow:IsShown() or false
+    provider = WorldMapFrame.PyresinDungeonMaps
     OpenDungeon(name, instanceID, subzone)
+end
+
+local function AssertHomeBaselineRestored()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    local home = assert(nav.homeButton, "Missing native World home button")
+    assertEquals(baselineHomeListFunc, home.listFunc,
+        "Clearing the dungeon route must restore the native World-home menu function")
+    assertEquals(baselineHomeWidth, home:GetWidth(),
+        "Clearing the dungeon route must restore the native World-home width")
+    local currentArrow = WorldHomeMenuArrow(false)
+    local currentArrowShown = currentArrow and currentArrow:IsShown() or false
+    assertEquals(baselineHomeArrowShown, currentArrowShown,
+        "Clearing the dungeon route must restore the native World-home arrow visibility")
+    local current = {}
+    if home.listFunc then
+        for _, entry in ipairs(home.listFunc(home) or {}) do
+            current[#current + 1] = { text = entry.text, id = entry.id }
+        end
+    end
+    assertEquals(#baselineHomeEntries, #current,
+        "Clearing the dungeon route must restore the native World-home entries")
+    for index, expected in ipairs(baselineHomeEntries) do
+        assertEquals(expected.text, current[index].text)
+        assertEquals(expected.id, current[index].id)
+    end
+end
+
+local function AssertNativeHomeListUnchanged()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    local home = assert(nav.homeButton, "Missing native World home button")
+    local current = {}
+    if baselineHomeListFunc then
+        for _, entry in ipairs(baselineHomeListFunc(home) or {}) do
+            current[#current + 1] = { text = entry.text, id = entry.id }
+        end
+    end
+    assertEquals(#baselineHomeEntries, #current,
+        "Dungeon return setup must not mutate the native World-home entry list")
+    for index, expected in ipairs(baselineHomeEntries) do
+        assertEquals(expected.text, current[index].text)
+        assertEquals(expected.id, current[index].id)
+    end
 end
 
 local function BeginDungeon()
@@ -58,11 +127,18 @@ local function BeginDungeonOnMap(mapID)
     BeginInstance("The Deadmines", 36, "Goblin Foundry", mapID)
 end
 
+local function BeginDungeonWithSharedHomeList()
+    local entries = {
+        { text = "Native home fixture", id = 84, func = function() end },
+    }
+    BeginInstance("The Deadmines", 36, "Goblin Foundry", 84,
+        function() return entries end)
+end
+
 SetNativeBackingMap = function(mapID)
     assert(C_Map and C_Map.SetMapForQuestLog, "Native map fixture is unavailable")
     C_Map.SetMapForQuestLog(mapID)
     WorldMapFrame:SetMapID(mapID)
-    nativeBackingMapID = mapID
 end
 
 local function FindDungeonNavButton()
@@ -75,16 +151,6 @@ local function FindDungeonNavButton()
     error("Missing rendered dungeon return breadcrumb")
 end
 
-local function FindNativeNavButton(mapID)
-    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
-    for _, button in ipairs(nav.navList or {}) do
-        if button.data and button.data.id == mapID then
-            return button
-        end
-    end
-    error("Missing native breadcrumb for map " .. tostring(mapID))
-end
-
 local function FindNativeNavButtonIfPresent(mapID)
     local nav = WorldMapFrame.NavBar
     if not nav then return nil end
@@ -93,6 +159,72 @@ local function FindNativeNavButtonIfPresent(mapID)
             return button
         end
     end
+end
+
+local function NativeWorldHomeMapID()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    assertType("function", nav.GetTopMostUIMapType)
+    local info = assert(MapUtil and MapUtil.GetMapParentInfo,
+        "Missing native map parent resolver")
+    local parent = info(WorldMapFrame:GetMapID(), nav:GetTopMostUIMapType(), true)
+    return assert(parent and parent.mapID, "Native World home has no topmost map")
+end
+
+WorldHomeMenuArrow = function(required)
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    local home = assert(nav.homeButton, "Missing native World home button")
+    local arrow = home.MenuArrowButton
+        or (WorldMapFrame.PyresinDungeonMaps
+            and WorldMapFrame.PyresinDungeonMaps.HomeMenuArrowButton)
+    if required then
+        arrow = assert(arrow, "Missing native World home menu arrow")
+        assertEquals(home, arrow:GetParent(),
+            "World-home return dropdown must be attached to Blizzard's home button")
+    end
+    return arrow
+end
+
+local function AssertNoDungeonNavEntry()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    for _, button in ipairs(nav.navList or {}) do
+        assertFalse(button.data and button.data.pyresinDungeonMap,
+            "Native world browsing must not append a dungeon breadcrumb")
+    end
+end
+
+local function FindDungeonReturnMenuItem()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    assert(nav.homeButton, "Missing native World home button")
+    local dropdown = WorldHomeMenuArrow(true)
+    UI.OpenMenu(dropdown)
+    local menu = assert(dropdown.menu, "Native World home menu did not open")
+    local item, count = nil, 0
+    local function visit(frame)
+        local label = frame.fontString or frame.Text
+        local value = label and label.GetText and label:GetText()
+        if frame:IsVisible() and frame.GetElementDescription and value
+            and provider and provider.selection and provider.selection.dungeon
+            and value == provider.selection.dungeon.name then
+            item, count = frame, count + 1
+        end
+        for _, child in ipairs({ frame:GetChildren() }) do visit(child) end
+    end
+    visit(menu)
+    assertEquals(1, count, "Native World home menu must contain exactly one dungeon return entry")
+    return assert(item, "Missing rendered dungeon return menu entry")
+end
+
+local function CaptureDungeonReturnCallback()
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    local home = assert(nav.homeButton, "Missing native World home button")
+    assertType("function", home.listFunc)
+    for _, entry in ipairs(home.listFunc(home) or {}) do
+        if provider and provider.selection and provider.selection.dungeon
+            and entry.text == provider.selection.dungeon.name then
+            return assert(entry.func, "Dungeon return menu entry has no callback")
+        end
+    end
+    error("Missing dungeon return callback in native World home list")
 end
 
 local function AssertAreaLabelSuppressed()
@@ -150,9 +282,21 @@ local function AssertNativeDungeon()
     assertFalse(provider.NativeCoordsPanel:IsShown(),
         "Native coordinate overlay must be hidden while dungeon artwork is active")
     local dungeonButton = FindDungeonNavButton()
-    assertEquals(dungeonButton, provider.NavBarDungeonButton)
     assertTrue(dungeonButton:IsVisible(), "Dungeon return breadcrumb must be rendered")
     assertFalse(dungeonButton:IsEnabled(), "Active dungeon breadcrumb must be disabled")
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    assertEquals(2, #nav.navList,
+        "Active dungeon navigation must contain only World and the dungeon leaf")
+    assertEquals(nav.homeButton, nav.navList[1])
+    assertEquals(WORLD, nav.homeButton:GetText(),
+        "Active dungeon navigation must start at the native World home")
+    assertEquals(dungeonButton, nav.navList[2],
+        "Active dungeon navigation must not retain backing-map ancestors")
+    local homeArrow = WorldHomeMenuArrow(false)
+    if homeArrow then
+        assertFalse(homeArrow:IsShown(),
+            "World-home return dropdown must stay hidden while dungeon art is active")
+    end
     AssertAreaLabelSuppressed()
     AssertMapHighlightsSuppressed()
     assertEquals("dungeon", provider.displayMode)
@@ -200,9 +344,10 @@ local function AssertNativeSurfaceRestored()
         local info = provider.NativeAreaLabel:GetHighestPriorityLabelInfo()
         if info then assertTrue(info.name ~= "The Deadmines") end
     end
-    local dungeonButton = FindDungeonNavButton()
-    assertTrue(dungeonButton:IsEnabled(),
-        "Dungeon breadcrumb must be enabled as a return route outside dungeon art")
+    AssertNoDungeonNavEntry()
+    local homeArrow = WorldHomeMenuArrow(true)
+    assertTrue(homeArrow:IsShown(),
+        "Native World home must expose the dungeon return menu outside dungeon art")
     local native = FindNativeNavButtonIfPresent(WorldMapFrame:GetMapID())
     if native then
         assertFalse(native:IsEnabled(),
@@ -332,10 +477,10 @@ UI.Flow("native dungeon activation clears only map-owned tooltips", {
     end,
     function()
         AssertNativeDungeon()
-        -- Leave through the real native parent first. The tooltip fixture is
-        -- installed only after this handoff, so setup cannot clear it.
-        UI.Click(FindNativeNavButton(84), WorldMapFrame,
-            "Native parent before map-owned tooltip fixture")
+        -- Leave through the real native World-home action first. The tooltip
+        -- fixture is installed only after this handoff, so setup cannot clear it.
+        UI.Click(WorldMapFrame.NavBar.homeButton, WorldMapFrame,
+            "Native World home before map-owned tooltip fixture")
         assertEquals("world", provider.displayMode)
     end,
     function()
@@ -344,7 +489,8 @@ UI.Flow("native dungeon activation clears only map-owned tooltips", {
         GameTooltip:SetOwner(WorldMapFrame, "ANCHOR_NONE")
         GameTooltip:Show()
         assertTrue(GameTooltip:IsShown())
-        UI.Click(FindDungeonNavButton(), WorldMapFrame,
+        staleReturnItem = FindDungeonReturnMenuItem()
+        UI.Click(staleReturnItem, UIParent,
             "Dungeon return with map-owned tooltip visible")
     end,
     function()
@@ -356,14 +502,15 @@ UI.Flow("native dungeon activation clears only map-owned tooltips", {
         -- handoff and must remain visible through activation/deactivation.
         GameTooltip:SetOwner(UIParent, "ANCHOR_NONE")
         GameTooltip:Show()
-        UI.Click(FindNativeNavButton(84), WorldMapFrame,
-            "Native parent while unrelated tooltip is visible")
+        UI.Click(WorldMapFrame.NavBar.homeButton, WorldMapFrame,
+            "Native World home while unrelated tooltip is visible")
     end,
     function()
         assertEquals("world", provider.displayMode)
         assertTrue(GameTooltip:IsShown(),
             "Leaving dungeon artwork must not hide an unrelated tooltip")
-        UI.Click(FindDungeonNavButton(), WorldMapFrame,
+        staleReturnItem = FindDungeonReturnMenuItem()
+        UI.Click(staleReturnItem, UIParent,
             "Dungeon return while unrelated tooltip is visible")
     end,
     function()
@@ -376,29 +523,26 @@ UI.Flow("native dungeon activation clears only map-owned tooltips", {
     if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
 end)
 
-UI.Flow("native dungeon breadcrumbs round-trip through the backing world map", {
+UI.Flow("native dungeon navigation stays flat and returns through World menu", {
     function()
-        -- Map 84 is a seeded native backing map with a rendered breadcrumb.
-        -- The addon leaf is appended below this map and must not skip it.
+        -- Map 84 is an unrelated native fixture. Active dungeon navigation
+        -- must collapse to World + the dungeon leaf, without map ancestors.
         BeginDungeonOnMap(84)
     end,
     function()
         AssertNativeDungeon()
         assertEquals(84, WorldMapFrame:GetMapID(),
-            "Dungeon artwork must retain the native backing map ID")
-        local native = FindNativeNavButton(84)
-        assertTrue(native:IsVisible(), "The native current-map breadcrumb must render")
-        assertTrue(native:IsEnabled(), "The native backing-map breadcrumb must remain selectable")
+            "Dungeon artwork must retain the selected backing map ID")
+        nativeWorldMapID = NativeWorldHomeMapID()
 
-        -- Left and modified-left clicks are consumed while the illustrated
-        -- map is active; they must not navigate the outdoor native map.
-        local before = WorldMapFrame:GetMapID()
+        -- Modified left-click must not navigate the backing outdoor map.
         A_Admin.SetAltKeyDown(true)
         DispatchCanvasClick("LeftButton")
         A_Admin.SetAltKeyDown(false)
-        assertEquals(before, WorldMapFrame:GetMapID(),
+        assertEquals(84, WorldMapFrame:GetMapID(),
             "Modified left-click must not navigate the backing outdoor map")
-        assertEquals("dungeon", provider.displayMode, "Modified left-click must keep dungeon art active")
+        assertEquals("dungeon", provider.displayMode,
+            "Modified left-click must keep dungeon art active")
     end,
     function()
         local target = assert(provider.selection.dungeon.floors[dungeonFloor == 1 and 2 or 1])
@@ -416,104 +560,216 @@ UI.Flow("native dungeon breadcrumbs round-trip through the backing world map", {
             "The selected floor fixture must be Deadmines floor two")
     end,
     function()
-        -- The native backing breadcrumb is an immediate parent action even
-        -- when it resolves to the same C_Map ID as the custom artwork.
-        local native = FindNativeNavButton(84)
-        assertTrue(native:IsEnabled(), "The immediate native parent must be clickable")
-        UI.Click(native, WorldMapFrame, "Immediate native backing breadcrumb")
-    end,
-    function()
-        assertTrue(WorldMapFrame:IsShown())
-        assertEquals("world", provider.displayMode,
-            "Clicking the immediate native parent must leave dungeon artwork")
-        assertEquals(84, WorldMapFrame:GetMapID(),
-            "Immediate native parent must retain the backing map ID")
-        AssertNativeSurfaceRestored()
-        assertEquals(routeSelection, provider.selection,
-            "Native browsing must retain the same dungeon selection object")
-        assertEquals(expectedReturnFloor, provider.selection.floor,
-            "Leaving through the native parent must preserve the selected floor")
-    end,
-    function()
-        UI.Click(FindDungeonNavButton(), WorldMapFrame,
-            "Native dungeon return breadcrumb after immediate parent")
-    end,
-    function()
-        AssertNativeDungeon()
-        assertEquals(84, WorldMapFrame:GetMapID())
-        assertEquals(expectedReturnFloor, provider.selection.floor,
-            "Native breadcrumb return must preserve the selected dungeon floor")
-        assertEquals(routeSelection, provider.selection,
-            "Breadcrumb return must reuse the retained dungeon selection")
-    end,
-    function()
-        -- This is the native Blizzard ScrollContainer mouse path.  The
-        -- simulator has no right-button CLI event, so only cursor placement
-        -- is synthetic; OnMouseDown/OnMouseUp and canvas handler dispatch are
-        -- the real native scripts.
+        -- Native right-click is dispatched through ScrollContainer's real
+        -- handlers; only cursor placement is synthetic in this simulator.
         DispatchCanvasClick("RightButton")
     end,
     function()
         assertTrue(WorldMapFrame:IsShown(),
             "Right-click navigation must keep Blizzard's WorldMapFrame open")
-        assertEquals("world", provider.displayMode, "Right-click must leave dungeon artwork")
-        assertEquals(84, WorldMapFrame:GetMapID(),
-            "Right-click must reveal the logical backing map without skipping it")
+        assertEquals("world", provider.displayMode,
+            "Right-click must leave dungeon artwork")
+        assertEquals(nativeWorldMapID, WorldMapFrame:GetMapID(),
+            "Right-click must follow native World-home navigation")
         AssertNativeSurfaceRestored()
-        local native = FindNativeNavButton(84)
-        assertEquals("Stormwind City", native:GetText(),
-            "The native backing breadcrumb must remain the current map")
+        staleReturnItem = FindDungeonReturnMenuItem()
+        staleReturnCallback = CaptureDungeonReturnCallback()
+        assertEquals(routeSelection, provider.selection,
+            "Native browsing must retain the same dungeon selection object")
     end,
     function()
-        local dungeonButton = FindDungeonNavButton()
-        assertTrue(dungeonButton:IsVisible() and dungeonButton:IsEnabled(),
-            "The rendered dungeon breadcrumb must provide a return route")
-        UI.Click(dungeonButton, WorldMapFrame, "Native dungeon return breadcrumb")
+        UI.Click(staleReturnItem, UIParent,
+            "Rendered World-menu dungeon return entry")
     end,
     function()
         AssertNativeDungeon()
         assertEquals(84, WorldMapFrame:GetMapID(),
-            "Returning through the native breadcrumb must restore the original backing map")
+            "World-menu return must restore the original backing map")
         assertEquals(expectedReturnFloor, provider.selection.floor,
-            "Native breadcrumb return must preserve the selected dungeon floor")
+            "World-menu return must preserve the selected dungeon floor")
+        assertEquals(routeSelection, provider.selection,
+            "World-menu return must reuse the retained dungeon selection")
+        staleReturnCallback()
+        assertEquals("dungeon", provider.displayMode,
+            "A stale World-menu callback must not clear an active dungeon selection")
     end,
     function()
+        -- The native World home button must perform the same handoff as
+        -- right-click, including the same topmost native map destination.
+        local nav = assert(WorldMapFrame.NavBar)
+        UI.Click(nav.homeButton, WorldMapFrame, "Native World home from dungeon art")
+    end,
+    function()
+        assertEquals("world", provider.displayMode)
+        assertEquals(nativeWorldMapID, WorldMapFrame:GetMapID(),
+            "Native World-home click must reach the topmost native map")
+        AssertNativeSurfaceRestored()
+        staleReturnItem = FindDungeonReturnMenuItem()
+        staleReturnCallback = CaptureDungeonReturnCallback()
+    end,
+    function()
+        -- Browsing another native map must never append the dungeon leaf.
+        WorldMapFrame:SetMapID(13)
+        assertEquals(13, WorldMapFrame:GetMapID())
+        AssertNoDungeonNavEntry()
+        WorldMapFrame:RefreshAllDataProviders()
+        WorldMapFrame.NavBar:Refresh()
+        AssertNoDungeonNavEntry()
+        AssertNativeHomeListUnchanged()
+        staleReturnItem = FindDungeonReturnMenuItem()
+    end,
+    function()
+        UI.Click(staleReturnItem, UIParent,
+            "Rendered World-menu dungeon return after native browsing")
+    end,
+    function()
+        AssertNativeDungeon()
+        assertEquals(84, WorldMapFrame:GetMapID(),
+            "Native World-menu return must restore the original backing map")
+        assertEquals(expectedReturnFloor, provider.selection.floor,
+            "Native World-menu return after browsing must preserve the floor")
+        assertEquals(routeSelection, provider.selection,
+            "Native browsing must not replace the retained dungeon selection")
+    end,
+}, function()
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("native dungeon return preserves the existing World-home menu list", {
+    function()
+        -- The native World home normally has no list function in this fixture.
+        -- Install one real shared-return list for this bounded flow so the
+        -- addon must copy it instead of appending into the native table.
+        BeginDungeonWithSharedHomeList()
+    end,
+    function()
+        AssertNativeDungeon()
         DispatchCanvasClick("RightButton")
     end,
     function()
-        assertTrue(WorldMapFrame:IsShown())
-        assertEquals("world", provider.displayMode)
-        assertEquals(84, WorldMapFrame:GetMapID(),
-            "A second right-click must still reveal the same logical backing map")
         AssertNativeSurfaceRestored()
+        AssertNativeHomeListUnchanged()
+        local nav = assert(WorldMapFrame.NavBar)
+        local home = assert(nav.homeButton)
+        local entries = assert(home.listFunc(home))
+        assertEquals(2, #entries,
+            "Dungeon return setup must append one entry to the copied native menu")
+        assertEquals("Native home fixture", entries[1].text)
+        staleReturnItem = FindDungeonReturnMenuItem()
     end,
     function()
-        -- Browsing another native map while outside the dungeon must not
-        -- destroy the route back to the original backing map.
-        WorldMapFrame:SetMapID(13)
-        assertEquals(13, WorldMapFrame:GetMapID())
-        assertEquals("world", provider.displayMode)
-        local native = FindNativeNavButton(13)
-        assertTrue(native:IsVisible(), "Native browsing must render the current-map breadcrumb")
-        assertEquals("Eastern Kingdoms", native:GetText(),
-            "Native browsing must keep the correct current-map breadcrumb")
-        assertTrue(FindDungeonNavButton():IsEnabled(),
-            "The dungeon return leaf must remain enabled while browsing native maps")
-    end,
-    function()
-        UI.Click(FindDungeonNavButton(), WorldMapFrame,
-            "Dungeon return after browsing another native map")
+        UI.Click(staleReturnItem, UIParent,
+            "Rendered return entry after preserving the native menu list")
     end,
     function()
         AssertNativeDungeon()
-        assertEquals(84, WorldMapFrame:GetMapID(),
-            "Dungeon return must restore the original backing map after native browsing")
-        assertEquals(expectedReturnFloor, provider.selection.floor,
-            "Dungeon return after native browsing must preserve the selected floor")
-        assertEquals(routeSelection, provider.selection,
-            "Arbitrary native browsing must not replace the retained selection")
+        assertEquals(84, WorldMapFrame:GetMapID())
     end,
 }, function()
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("native dungeon return cleanup restores World-home state on close", {
+    function()
+        BeginDungeonOnMap(84)
+    end,
+    function()
+        AssertNativeDungeon()
+        DispatchCanvasClick("RightButton")
+    end,
+    function()
+        AssertNativeSurfaceRestored()
+        staleReturnItem = FindDungeonReturnMenuItem()
+        staleReturnCallback = CaptureDungeonReturnCallback()
+        local close = assert(WorldMapFrame.BorderFrame.CloseButton,
+            "Missing native world-map close button")
+        UI.Click(close, UIParent, "Close native map with dungeon return route")
+    end,
+    function()
+        assertFalse(WorldMapFrame:IsShown())
+        assertEquals("idle", provider.displayMode)
+        assertNil(provider.selection, "Closing the native map must clear the dungeon return selection")
+        AssertNoDungeonNavEntry()
+        AssertHomeBaselineRestored()
+
+        -- A previously rendered menu callback must not resurrect a closed route.
+        staleReturnCallback()
+        assertEquals("idle", provider.displayMode,
+            "A stale World-menu callback must not reactivate after close")
+        ToggleWorldMap()
+        assertTrue(WorldMapFrame:IsShown())
+        AssertNativeDungeon()
+    end,
+}, function()
+    staleReturnItem = nil
+    staleReturnCallback = nil
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("native dungeon return cleanup restores World-home state when disabled", {
+    function()
+        BeginDungeonOnMap(84)
+    end,
+    function()
+        AssertNativeDungeon()
+        DispatchCanvasClick("RightButton")
+    end,
+    function()
+        AssertNativeSurfaceRestored()
+        staleReturnItem = FindDungeonReturnMenuItem()
+        staleReturnCallback = CaptureDungeonReturnCallback()
+        local setting = assert(Settings.GetSetting("PyresinQoL_DungeonMapsEnabled"))
+        settingOriginal = setting:GetValue()
+        setting:SetValue(false)
+    end,
+    function()
+        assertEquals("idle", provider.displayMode)
+        assertNil(provider.selection)
+        AssertNoDungeonNavEntry()
+        AssertHomeBaselineRestored()
+        staleReturnCallback()
+        assertEquals("idle", provider.displayMode,
+            "A stale World-menu callback must not reactivate after disable")
+    end,
+}, function()
+    local setting = Settings.GetSetting("PyresinQoL_DungeonMapsEnabled")
+    if setting and settingOriginal ~= nil then setting:SetValue(settingOriginal) end
+    settingOriginal = nil
+    staleReturnItem = nil
+    staleReturnCallback = nil
+    if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
+end)
+
+UI.Flow("native dungeon return cleanup restores World-home state after instance invalidation", {
+    function()
+        BeginDungeonOnMap(84)
+    end,
+    function()
+        AssertNativeDungeon()
+        DispatchCanvasClick("RightButton")
+    end,
+    function()
+        AssertNativeSurfaceRestored()
+        staleReturnItem = FindDungeonReturnMenuItem()
+        staleReturnCallback = CaptureDungeonReturnCallback()
+        -- Keep the same native party fixture but change the instance ID to an
+        -- unsupported value. This exercises the real selection-validity path.
+        InstallDungeonInstance("Unknown instance", 999)
+        A_Admin.SetSubZone("Unknown shared area")
+        A_Admin.FireEvent("ZONE_CHANGED_NEW_AREA")
+    end,
+    function()
+        assertEquals("idle", provider.displayMode)
+        assertNil(provider.selection)
+        AssertNoDungeonNavEntry()
+        AssertHomeBaselineRestored()
+        staleReturnCallback()
+        assertEquals("idle", provider.displayMode,
+            "A stale World-menu callback must not reactivate after instance invalidation")
+    end,
+}, function()
+    staleReturnItem = nil
+    staleReturnCallback = nil
     if restoreDungeon then restoreDungeon(); restoreDungeon = nil end
 end)
 
