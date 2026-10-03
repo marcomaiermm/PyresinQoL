@@ -1,5 +1,34 @@
 # Development
 
+## Local installation with GNU Stow
+
+Keep the Git checkout outside WoW and link its runtime files into the game with
+GNU Stow. Create a Git-ignored `.stowrc` in the repository root:
+
+```text
+--dir=..
+--target="/path/to/World of Warcraft/_classic_beta_/Interface/AddOns/PyresinQoL"
+--ignore='^(\..*|docs|tests|tools|dist|README\.md)$'
+```
+
+Set `--target` to your local addon directory and create it before running Stow.
+Run these commands from the repository root:
+
+```sh
+stow --simulate --verbose --restow PyresinQoL
+stow --restow PyresinQoL
+```
+
+Back up and move aside an existing regular installation first; Stow refuses
+conflicting files. Do not use `--adopt`, which would move installed files into
+the source checkout. Hidden files and development directories are ignored;
+Stow's default ignore list also excludes README and LICENSE files. Changes in
+linked Lua files are immediately available after `/reload`; restow when adding
+or removing top-level files. Restart WoW for newly installed addons or changed
+textures. Exclude this development installation from addon-manager updates:
+writes through its symlinks would modify the source checkout. To remove the
+links, run `stow --delete PyresinQoL`. Releases remain normal ZIPs.
+
 ## Checks and packaging
 
 Use LuaJIT, Bash 4.3+, Git, curl, zip and unzip. Ubuntu setup:
