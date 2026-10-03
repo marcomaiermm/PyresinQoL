@@ -29,6 +29,7 @@ local function RegisterConditionDialog()
         end,
         EditBoxOnEscapePressed = function(input) input:GetParent():Hide() end,
         OnAccept = function(dialog, data)
+            if InCombatLockdown() then return true end
             local value, errorKey = actionBars.ValidateCondition(dialog:GetEditBox():GetText())
             if not value then
                 UIErrorsFrame:AddMessage(L[errorKey] or L.actionBarConditionInvalid, 1, 0.2, 0.2)
@@ -41,7 +42,7 @@ end
 
 ns.RegisterModuleSettings("actionBars", function(module, context)
     local Register, AddControl = context.controls.Register, context.controls.AddControl
-    local main, visibility = context.pages.main, context.pages.visibility
+    local main = context.pages.main
     local function Section(page, label)
         table.insert(page.initializers, CreateSettingsListSectionHeaderInitializer(label))
     end
@@ -65,7 +66,6 @@ ns.RegisterModuleSettings("actionBars", function(module, context)
     local function FontSize(value)
         return value == 0 and L.actionBarNative or ("%.0f px"):format(value)
     end
-    local function Opacity(value) return ("%.0f%%"):format(value * 100) end
 
     Section(main, L.actionBarColors)
     Checkbox(main, "actionBarColorIcons", L.actionBarColorIcons, false)
@@ -84,29 +84,24 @@ ns.RegisterModuleSettings("actionBars", function(module, context)
     Checkbox(main, "actionBarCompactHotkeys", L.actionBarCompactHotkeys, false)
 
     RegisterConditionDialog()
+    actionBars.settings = {}
     for _, bar in ipairs(actionBars.bars) do
         local prefix = bar.prefix
-        Section(visibility, L[bar.label])
-        Checkbox(visibility, prefix .. "Enabled", L.actionBarEnabled, false)
-        Checkbox(visibility, prefix .. "HideCombat", L.actionBarHideCombat, false)
-        Checkbox(visibility, prefix .. "HideOutOfCombat", L.actionBarHideOutOfCombat, false)
-        Checkbox(visibility, prefix .. "HideStealth", L.actionBarHideStealth, false)
-        Checkbox(visibility, prefix .. "HideNotStealth", L.actionBarHideNotStealth, false)
-        Checkbox(visibility, prefix .. "HideForm", L.actionBarHideForm, false)
-        Checkbox(visibility, prefix .. "HideNoForm", L.actionBarHideNoForm, false)
-        Slider(visibility, prefix .. "AlphaNormal", L.actionBarAlphaNormal, 1, 0, 1, 0.01, Opacity)
-        Slider(visibility, prefix .. "AlphaCombat", L.actionBarAlphaCombat, 1, 0, 1, 0.01, Opacity)
-        Checkbox(visibility, prefix .. "Mouseover", L.actionBarMouseover, false, L.actionBarMouseoverHelp)
-
-        local condition = Register(visibility, prefix .. "CustomCondition", prefix .. "CustomCondition",
-            Settings.VarType.String, L.actionBarCustomCondition, "", module.UpdateActionBars)
-        local button = CreateSettingsButtonInitializer(L.actionBarEditCondition, L.actionBarEditCondition,
-            function() StaticPopup_Show("PYRESINQOL_ACTIONBAR_CONDITION", nil, nil, {
-                key = prefix .. "CustomCondition", setting = condition,
-            }) end, L.actionBarCustomConditionHelp, false)
-        button:AddModifyPredicate(function()
-            return module.active and PyresinQoLDB.modules[module.id]
-        end)
-        table.insert(visibility.initializers, button)
+        -- Keep settings registration for defaults and profile refresh; controls live in Edit Mode.
+        for key, default in pairs(actionBars.defaults) do
+            if key:sub(1, #prefix) == prefix then
+                local valueType = type(default) == "boolean" and Settings.VarType.Boolean
+                    or type(default) == "number" and Settings.VarType.Number or Settings.VarType.String
+                actionBars.settings[key] = Register(main, key, key, valueType,
+                    L["actionBar" .. key:sub(#prefix + 1)], default, module.UpdateActionBars)
+            end
+        end
     end
+
+    Section(main, L.actionBarVisibility)
+    local editMode = CreateSettingsButtonInitializer(L.actionBarVisibility, L.actionBarEditMode,
+        function() if module.ConfigureActionBars then module.ConfigureActionBars() end end,
+        L.actionBarEditModeHelp, false)
+    editMode:AddModifyPredicate(function() return module.active and PyresinQoLDB.modules[module.id] end)
+    table.insert(main.initializers, editMode)
 end)

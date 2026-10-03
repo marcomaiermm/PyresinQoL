@@ -491,7 +491,9 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not events.registered.ADDON_LOADED)
-assert(canvas and #navigation == 15 and #sections == 0)
+assert(canvas and #navigation == 14 and #sections == 0)
+assert(#ns.GetModule("actionBars").pages == 1,
+    "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
 assert(profileButton == navigation[#navigation] and profileButton.points[1][1] == "BOTTOMLEFT")
 assert(#profileDropdowns == 3 and profileDropdowns[1].parent == profilePanel
@@ -915,6 +917,7 @@ ns.SyncLayoutProfile()
 settings.showFPS:SetValue(not originalFPS)
 settings.targetClassColor:SetValue(true)
 settings.castBarCustomization:SetValue(true)
+settings.actionBarBar2AlphaNormal:SetValue(.37)
 ns.CastBar.Set("customColor", { r = .2, g = .4, b = .6 })
 local beforePerformance, beforeTooltips = performanceUpdates, tooltipUpdates
 layoutInfo.activeLayout = 4
@@ -923,10 +926,14 @@ assert(PyresinQoLDB == root and PyresinQoLDB.modules == moduleTable)
 assert(settings.showFPS:GetValue() == originalFPS and performanceUpdates > beforePerformance)
 assert(tooltipUpdates > beforeTooltips and PyresinQoLDB.profileStore.active == originalProfile)
 assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == 1)
+assert(settings.actionBarBar2AlphaNormal:GetValue() == 1,
+    "Moving per-bar controls to Edit Mode preserves default values during profile switches")
 layoutInfo.activeLayout = 5
 ns.SyncLayoutProfile()
 assert(settings.showFPS:GetValue() == not originalFPS and settings.targetClassColor:GetValue())
 assert(ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == .2)
+assert(settings.actionBarBar2AlphaNormal:GetValue() == .37,
+    "Edit Mode action-bar settings still belong to the active addon profile")
 settings.PyresinQoL_Module_performance:SetValue(false)
 layoutInfo.activeLayout = 4
 ns.SyncLayoutProfile()

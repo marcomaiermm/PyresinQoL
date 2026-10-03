@@ -12,7 +12,7 @@ local files = {
     performance = { "Modules/Performance/Performance.lua" }, experience = { "Modules/Experience/Experience.lua" },
     quests = { "Modules/Quests/Quests.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
-    actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua" },
+    actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
 }
 -- Loading files or initializing a disabled module must not touch game APIs.
 function CreateFrame() error("A disabled module created a frame") end

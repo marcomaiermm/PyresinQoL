@@ -328,14 +328,26 @@ spacing after repeated opens.
 ### Native action bars
 
 Action-bar customization is opt-in and decorates Blizzard's existing action-bar
-buttons. In `/pqol → Action Bars`, **Buttons** can color native icons or hotkeys for
+buttons. In `/pqol → Action Bars`, the global controls can color native icons or hotkeys for
 out-of-range, missing-resource and unusable states, choose ARGB colors, set hotkey,
 macro-name and count font sizes, and use compact binding text. A size of **0** keeps
 the native font size.
-**Visibility** configures each of the eight standard bars independently: enable the
-feature, hide for combat, stealth or form state, set normal and combat opacity, show
-on mouseover, or enter a validated custom macro condition with `show`/`hide` results.
+In Edit Mode, selecting any of the eight standard bars opens a separate
+**PyresinQoL - Visibility** section below its native settings. Enable the feature,
+hide for combat, stealth or form state, set normal and combat opacity, show on
+mouseover, or enter a validated custom macro condition with `show`/`hide` results.
 Defaults leave the native appearance and visibility unchanged.
+
+`Modules/ActionBars/EditMode.lua` owns the extra controls and follows the cast-bar
+dialog extension: a post-hook attaches a separate section without adding native
+setting IDs or acquiring native setting frames. A single section follows the selected
+bar and hides for other systems, including when the cast-bar section takes over.
+It also installs when Blizzard's Edit Mode addon loads later. Controls keep their
+existing saved keys and registered settings, so defaults and automatic profile
+refresh still work. Edits save immediately; Blizzard's Revert Changes button manages
+only its native settings. The macro dialog captures the bar it was opened for.
+`tests/actionbars-editmode.lua` covers selection, per-bar isolation, delayed loading,
+combat guards and coexistence with the real cast-bar extension using frame stubs.
 
 Visibility and opacity use secure state drivers on addon-owned handler frames that
 reference Blizzard's existing bars. Visibility uses the custom `barvisibility` state:

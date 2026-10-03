@@ -17,12 +17,7 @@ ns.modules = {
         },
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
-    { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription,
-        pages = {
-            { id = "main", name = L.actionBarButtons },
-            { id = "visibility", name = L.actionBarVisibility },
-        },
-    },
+    { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
 }
 
 ns.settingsGroups = {
