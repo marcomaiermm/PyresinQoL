@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Prevent player aura layout errors when native anchor counts become restricted during combat or resurrection.
 - Prevent player aura timers from overlapping the next icon row when row spacing is zero.
 - Recover from malformed saved profile data while preserving valid settings and profiles.
 - Prevent stale cast-bar color and dropdown controls from undoing a reset or changing a newly selected profile.
