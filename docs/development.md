@@ -106,7 +106,7 @@ New simulator tests belong in `tests/ui/`; neither test suite ships in the addon
 CI saves build and test output as the `forever-ui-log` artifact, including failures.
 The independent **UI preview** workflow renders each matrix size and saves the
 images and render log as `forever-ui-preview`. It runs for PRs, pushes to `main`
-and release tags with its own 30-minute job budget. CI and the reusable release
+and release tags with its own job budget. CI and the reusable release
 checks have no dependency on it, so render failures or timeouts do not affect
 required assertions or publishing. Do not require **Forever UI preview (optional)**
 in branch protection. No screenshot comparison gates releases.
@@ -138,7 +138,7 @@ replaces the shared convenience tags while they run.
 CI caches each final simulator image and its immutable ID, keyed by runner OS,
 architecture, Docker target, Dockerfile and simulator patches. Addon code and test
 changes are mounted into the restored image and do not trigger Rust compilation.
-A cache miss builds once per target and saves the image before the assertions,
+Outside PR checks, a cache miss builds once per target and saves the image before the assertions,
 so failed addon tests can also reuse the build. The GUI target compiles directly
 instead of first building a headless binary. Required tests and optional rendering
 keep their independent workflows and time budgets. Only the final images are
@@ -147,6 +147,23 @@ Both runners accept `WOW_UI_IMAGE=sha256:...` to use a loaded immutable image;
 mutable tags are rejected. Normal local commands continue to build using Docker's
 layer cache. Changing the Dockerfile or either simulator patch invalidates CI's
 image cache.
+
+All PR jobs have a **three-minute timeout**. PR checks restore existing simulator
+images and never compile Rust; a missing image fails promptly with preparation
+instructions. `main` and release checks can build on cache misses. The independent
+**UI simulator images** workflow refreshes the default-branch caches daily so
+normal feature branches can reuse them. It has a separate 30-minute build budget.
+For a Dockerfile, patch or simulator revision change, prepare its images before
+rerunning the PR checks:
+
+```sh
+gh workflow run ui-images.yml --ref main -f source-ref=feat/my-feature
+```
+
+The workflow runs on `main` and checks out the requested source, making its exact
+image keys available to PRs through GitHub's default-branch cache. The UI matrix
+uses ten fresh test processes plus two error-guard probes; rendering uses ten
+processes, rather than running an additional preflight for every size.
 
 The simulated UI canvas defaults to **1920×1080**. Select another size with
 `WOW_UI_RESOLUTION=3440x1440 bash tools/ui.sh preview`.

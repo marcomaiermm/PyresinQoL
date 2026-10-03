@@ -4,6 +4,9 @@ inputs:
   target:
     description: Docker target (headless or dev)
     required: true
+  build-on-miss:
+    description: Allow a cold build (disabled in feature PR checks)
+    default: 'true'
 outputs:
   image:
     description: Immutable Docker image ID
@@ -15,7 +18,7 @@ runs:
       id: cache
       continue-on-error: true
       env:
-        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 2
+        SEGMENT_DOWNLOAD_TIMEOUT_MINS: 1
       with:
         path: ${{ runner.temp }}/forever-ui-image-${{ inputs.target }}
         key: forever-ui-v1-${{ runner.os }}-${{ runner.arch }}-${{ inputs.target }}-${{ hashFiles('tests/ui/Dockerfile', 'tests/ui/*.patch') }}
@@ -25,12 +28,17 @@ runs:
       env:
         TARGET: ${{ inputs.target }}
         CACHE_HIT: ${{ steps.cache.outputs.cache-hit }}
+        BUILD_ON_MISS: ${{ inputs.build-on-miss }}
       run: |
         case "$TARGET" in headless|dev) ;; *) exit 1 ;; esac
         cache_dir="$RUNNER_TEMP/forever-ui-image-$TARGET"
         if [[ "$CACHE_HIT" == true ]]; then
           docker image load --input "$cache_dir/image.tar" 2>&1 | tee "$RUNNER_TEMP/forever-ui-build.log"
         else
+          if [[ "$BUILD_ON_MISS" != true ]]; then
+            echo "::error::No cached Forever $TARGET image. Run UI simulator images on main with source-ref set to this branch, then rerun CI." | tee "$RUNNER_TEMP/forever-ui-build.log"
+            exit 1
+          fi
           mkdir -p "$cache_dir"
           rm -f "$cache_dir/image-id" "$cache_dir/image.tar"
           docker build --target "$TARGET" --iidfile "$cache_dir/image-id" -f tests/ui/Dockerfile tests/ui 2>&1 | tee "$RUNNER_TEMP/forever-ui-build.log"

@@ -13,7 +13,7 @@ jobs:
   render:
     name: Forever UI preview (optional)
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: ${{ github.event_name == 'pull_request' && 3 || 30 }}
     continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -24,6 +24,7 @@ jobs:
         uses: ./.github/actions/ui-image
         with:
           target: dev
+          build-on-miss: ${{ github.event_name != 'pull_request' }}
       - name: Render resolution screenshots for inspection
         continue-on-error: true
         shell: bash
