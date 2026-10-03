@@ -18,7 +18,7 @@ bash tests/run-ui.sh --locale-scale     # Addon German labels with UIParent scal
 ```
 
 `run.sh` accepts one selector: `all`, `unit`, `integration`, `core`, `actionbars`,
-`castbar`, `editmode`, `unitframes`, `experience`, `quests` or `tooltips`. Unknown
+`castbar`, `dungeonmaps`, `editmode`, `unitframes`, `experience`, `quests` or `tooltips`. Unknown
 selectors fail with exit code 2. Any failed Lua scenario makes the run fail, but
 remaining selected scenarios still run and the final summary lists every failure.
 Discovery failure aborts before any scenario runs, even if another layer was readable.
@@ -48,6 +48,7 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 | Core / settings | TOC loading, deferred module activation, malformed SavedVariables recovery, migration, navigation, defaults, callbacks, profile snapshots, layout bindings and composed active-cast/drag/editor transitions | Settings: English, German, disabled options, all modules disabled. Profiles: English and German. Native pending-reload markers/control locking, profile lifecycle, cancellation and linked-profile synchronization through specialization events |
 | Action bars | Grammar and saved values; public/secret color precedence; paging invalidation; native restoration; secure visibility; controller/combat guards; per-bar Edit Mode state | Edit Mode: English, German, late Blizzard loading. Native bar selection, visibility rules and macro editing in `ui/actionbars.lua` |
 | Cast bar | Configuration, textures, models, layout and Edit Mode controls in five isolated files | `tests/castbar.lua` remains a compatibility launcher, including the optional native source argument. Native customization, stale-editor/reset, preview and live cast/interrupt/channel/restart flows in `ui/castbar.lua` and `ui/castbar-runtime.lua`; native protection and full transition combinations remain local/manual |
+| Dungeon maps | Instance/subzone floor matching, exact 18-instance catalog and 50 map views, plus deliberate Sunken Temple/UBRS gaps without unverified coordinate projection | Native `M` binding and `WorldMapFrame` embedding, initial MapCanvas fit, floor controls, breadcrumb/right-click round trips, transitions, gap handling, pin/coordinate/area-label suppression and restoration in `ui/dungeonmaps.lua`; no mocked coordinates are treated as live-client calibration |
 | Edit Mode / performance | Physical-pixel movement, snapping, placement, idle work, FPS/latency polling, visibility and restoration | Real addon module combinations: both enabled, editor only, performance only, neither. Native FPS/MS visibility and display height in `ui/performance.lua`; movement stays local |
 | Unit frames | Health text/class colors, druid mana, player auras, target debuffs/threat, nameplate threat/combo points, threat meter | Native player class-color restoration, visible target text opacity, seeded player-aura layout and target-threat Always/Off dropdown in `ui/unitframes.lua`, `ui/auras.lua` and `ui/threat.lua`; druid mana, target debuffs, nameplates and threat-meter behavior currently stay local/manual |
 | Experience | Formats, tooltip ownership, quest preview boundaries, resize, coalescing and invalidation | English and German; both native bars' text/visibility checkbox and percent-format dropdown in `ui/experience.lua`; quest reward/overflow cases stay local because the pinned simulator cannot seed meaningful quest rewards |
@@ -57,7 +58,7 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 
 The restructuring retains all 24 original leaf Lua suites and their 11 additional
 language/startup variants, then adds two pure suites and two profile recovery/
-composition suites: **39 isolated Lua processes**.
+composition suites: **40 isolated Lua processes**.
 Cast-bar's old top-level launcher delegates to its five leaf suites and is not
 counted a second time. Scenario counts refer to processes, not individual asserts.
 The UI runner discovers `ui/*.lua`; its scenario count is reported separately for
@@ -120,18 +121,23 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
 
 ## Current verification
 
-- All 39 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
+- All 40 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
 - Package integrity, source consistency and the 0.1.6 manifest audit pass.
-- The native matrix passes **48 scenarios × 10 resolutions = 480**, with zero failures.
-- Same-process forward/reverse repetition passes **20/20** with both state checks
-  clean; German addon labels at scale 1.25 pass **5/5**.
-- Startup/exec sentinels are rejected. The separate callback/cleanup contract
-  detects exactly four intentional failures and verifies recovery after each.
+- The native Dungeon Maps matrix passes **58/58** at each of 1280×720,
+  1920×1080 and 3440×1440: **174/174**. The pinned simulator resolves dirty
+  layouts before async OnUpdate callbacks, so the initial MapCanvas viewport is
+  checked without a corrective test-side zoom.
+- The matrix includes Sunken Temple and Upper/unknown Blackrock Spire fallback
+  rejection plus native breadcrumb, right-click, saved-floor, original-backing,
+  tooltip ownership and backing-map interaction isolation coverage.
+- The unaffected auxiliary same-process lane passed **20/20** with both state
+  checks clean; German addon labels at scale 1.25 passed **5/5**.
+- The preceding startup/exec sentinels were rejected. The separate callback/cleanup
+  contract detected exactly four intentional failures and verified recovery.
 
-The complete cached default UI command took **156.257 seconds** locally. CI allows
-five minutes for the PR UI job, including image preparation and runner variation;
-other PR budgets remain unchanged. Counts describe the scenarios above, not full
-native-client parity; see the [error map](../docs/test-error-map.md) for boundaries.
+CI allows five minutes for the PR UI job, including image preparation and runner
+variation; other PR budgets remain unchanged. Counts describe the scenarios above,
+not full native-client parity; see the [error map](../docs/test-error-map.md) for boundaries.
 
 ## Adding or diagnosing a regression
 

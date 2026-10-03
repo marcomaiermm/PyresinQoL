@@ -12,6 +12,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview and quest levels.
+- **Dungeon maps:** 50 illustrated map views across 18 original Vanilla dungeon complexes, embedded in Blizzard's world map with native zoom, pan and floor controls. Sunken Temple and original Upper Blackrock Spire are documented gaps; new WoW Forever dungeons are outside this module's scope. Player positions stay hidden until a matching WoW Forever coordinate source is verified.
 - **Edit Mode:** precise positioning and snapping.
 - **Addon profiles:** QoL settings automatically follow your Blizzard Edit Mode layout; manage profiles in `/pqol`.
 - **Player cast bar:** native textures, four border styles, integrated or external icons, and a complete preview directly in Edit Mode.
@@ -30,6 +31,24 @@ Upgrading from the old addon name? See [settings migration](docs/development.md#
 
 Open **`/pqol`**, select the modules you want, and use **Reload UI** to apply
 module changes. Individual settings and positions are preserved.
+
+Inside an original Vanilla party dungeon, press **M** to open its illustrated map.
+It opens inside Blizzard's standard world-map frame; use the floor selector for
+another level. Its name appears in Blizzard's breadcrumb: right-click the map to
+return to the backing world map, then click the dungeon breadcrumb to go back
+without closing **M**. When Forever
+already supplies a usable native dungeon map, the addon leaves it untouched. The
+illustrated fallback does not guess coordinates: it reports that the player
+position is unavailable until that art has a verified Forever calibration. New
+WoW Forever dungeons, including newly added locations, are not included.
+The addon does not include verified Blizzard-drawn artwork matching original
+Sunken Temple or Upper Blackrock Spire, so those areas deliberately show
+Blizzard's ordinary world map instead of an Atlas overview or an incorrect Lower
+Blackrock Spire floor. Lower
+Blackrock Spire appears only when its English subzone identifies a retained map;
+unknown or localized unmatched shared subzones remain on the native map. Scarlet
+Monastery and Dire Maul wings share their complex entry. Raids are outside this
+module's scope.
 
 QoL settings automatically switch with your Blizzard Edit Mode layout. The first
 layout keeps your existing settings; new layouts start with a copy of the current

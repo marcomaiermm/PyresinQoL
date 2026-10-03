@@ -15,6 +15,8 @@ function UnitName() return "Test character" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Modules.lua"))("PyresinQoL", ns)
 ns.GetModule("performance").UpdatePerformanceLayout = function() performanceUpdates = performanceUpdates + 1 end
+local dungeonMapUpdates = 0
+ns.GetModule("dungeonMaps").UpdateDungeonMaps = function() dungeonMapUpdates = dungeonMapUpdates + 1 end
 local experienceUpdates = 0
 ns.GetModule("experience").UpdateExperience = function() experienceUpdates = experienceUpdates + 1 end
 local questUpdates = 0
@@ -212,7 +214,10 @@ Settings = {
     end,
     CreateCheckboxInitializer = function(setting, options, tooltip)
         assert(setting and tooltip ~= "")
-        return Initializer(setting.name, "Checkbox")
+        local initializer = Initializer(setting.name, "Checkbox")
+        initializer.data.options = options
+        initializer.data.tooltip = tooltip
+        return initializer
     end,
     CreateControlTextContainer = function()
         local container = { data = {} }
@@ -431,6 +436,7 @@ assert(loadfile("Modules/ActionBars/Visibility.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/GameMenu/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Performance/Settings.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/DungeonMaps/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Experience/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Quests/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
@@ -491,7 +497,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not events.registered.ADDON_LOADED)
-assert(canvas and #navigation == 14 and #sections == 0)
+assert(canvas and #navigation == 15 and #sections == 0)
 assert(#ns.GetModule("actionBars").pages == 1,
     "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
@@ -541,7 +547,7 @@ assert(navigation[4].shown and navigation[7].shown)
 groupButtons[1].scripts.OnClick()
 assert(navigation[1].shown and navigation[2].shown and navigation[3].shown)
 canvas.scripts.OnShow()
-assert(settingsList.Header.Title.value == ns.L.modules and #settingsList.rendered == 8)
+assert(settingsList.Header.Title.value == ns.L.modules and #settingsList.rendered == 9)
 assert(navigation[1].selected.shown and not reloadButton.enabled)
 navigation[2].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.gameMenu and #settingsList.rendered == 1)
@@ -569,9 +575,18 @@ assert(PyresinQoLDB.performanceLayout == "column" and PyresinQoLDB.performanceOr
 assert(PyresinQoLDB.performanceRowPadding == 14 and PyresinQoLDB.performanceColumnPadding == 5)
 assert(PyresinQoLDB.performanceColor == "FFFFFFFF")
 navigation[5].scripts.OnClick()
+assert(settingsList.Header.Title.value == ns.L.dungeonMaps and #settingsList.rendered == 1)
+assert(settingsList.initializers[1].data.options == nil
+    and settingsList.initializers[1].data.tooltip == ns.L.dungeonMapsEnabledHelp)
+assert(PyresinQoLDB.dungeonMapsEnabled)
+settings.dungeonMapsEnabled:SetValue(false)
+assert(not PyresinQoLDB.dungeonMapsEnabled and dungeonMapUpdates == 1)
+settingsList.Header.DefaultsButton.scripts.OnClick()
+assert(PyresinQoLDB.dungeonMapsEnabled and dungeonMapUpdates == 2)
+navigation[6].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.experience and #settingsList.rendered == 4)
 assert(PyresinQoLDB.xpTextFormat == "both" and PyresinQoLDB.xpAlwaysShow and PyresinQoLDB.xpTooltip and PyresinQoLDB.xpQuestRewards)
-navigation[6].scripts.OnClick()
+navigation[7].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.quests and #settingsList.rendered == 1)
 assert(settings.questLevels.name == ns.L.questLevels and PyresinQoLDB.questLevels)
 settings.questLevels:SetValue(false)
@@ -593,7 +608,7 @@ settings.playerManaPosition:SetValue("RIGHT")
 settings.targetHPPosition:SetValue("BOTTOMRIGHT")
 settings.targetManaPosition:SetValue("LEFT")
 assert(playerUpdates == 6)
-navigation[7].scripts.OnClick()
+navigation[8].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.playerFrame)
 assert(settings.castBarCustomization and not ns.CastBar.IsEnabled())
 settings.castBarCustomization:SetValue(true)
@@ -620,7 +635,7 @@ settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("width") == 0)
 assert(PyresinQoLDB.druidMana and druidManaUpdates == 2)
 assert(playerUpdates == 9 and not PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor)
-navigation[8].scripts.OnClick()
+navigation[9].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.targetFrame and #settingsList.rendered == 14)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(playerUpdates == 12 and not PyresinQoLDB.targetClassColor)
@@ -629,7 +644,7 @@ assert(debuffUpdates == 11 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targe
 assert(PyresinQoLDB.targetAuraLargeOwn and PyresinQoLDB.targetAuraSize == 17 and PyresinQoLDB.targetAuraOwnSize == 21)
 assert(PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")
-navigation[9].scripts.OnClick()
+navigation[10].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.nameplates and #settingsList.rendered == 3)
 assert(PyresinQoLDB.nameplateComboPoints and nativeComboCheckbox:ShouldShow())
 nativeComboCheckbox.setting:SetValue(false)
@@ -643,7 +658,7 @@ assert(nameplateUpdates == 2 and PyresinQoLDB.nameplateThreatPosition == "LEFT")
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(nameplateUpdates == 4 and PyresinQoLDB.nameplateThreat and PyresinQoLDB.nameplateThreatPosition == "RIGHT")
 assert(comboUpdates == 2 and PyresinQoLDB.nameplateComboPoints)
-navigation[10].scripts.OnClick()
+navigation[11].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.statusText and #settingsList.rendered == 5)
 assert(settingsList.rendered[1].Title.value == ns.L.hideStatusText)
 for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
@@ -658,7 +673,7 @@ for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
     assert(PyresinQoLDB[unit .. "HideStatusText"] == false)
 end
 assert(statusTextUpdates == 8)
-navigation[11].scripts.OnClick()
+navigation[12].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.auras and #settingsList.rendered == 36)
 assert(not PyresinQoLDB.buffLayout and not PyresinQoLDB.debuffLayout)
 settings.buffLayout:SetValue(true)
@@ -667,7 +682,7 @@ settings.debuffGapX:SetValue(12)
 assert(auraUpdates == 3 and PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "first")
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(auraUpdates == 37 and not PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "mixed" and PyresinQoLDB.debuffGapX == 5)
-navigation[12].scripts.OnClick()
+navigation[13].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.tooltips and #settingsList.rendered == 36)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
 settings.tooltipHealth:SetValue(false)
@@ -711,7 +726,7 @@ assert(tooltipUpdates == 43, "All tooltip controls apply live")
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(tooltipUpdates == 73)
 for key, value in pairs(defaults) do assert(PyresinQoLDB[key] == value, key) end
-navigation[5].scripts.OnClick()
+navigation[6].scripts.OnClick()
 settings.xpTextFormat:SetValue("percent")
 settings.xpAlwaysShow:SetValue(false)
 settings.xpTooltip:SetValue(false)

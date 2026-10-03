@@ -176,6 +176,9 @@ in branch protection. No screenshot comparison gates releases.
 CI does not mount a game install, so Blizzard art is incomplete in its screenshots.
 This headless build checks UI behavior, not screenshot appearance or native-client
 taint/combat guarantees. Visual release checks still require the game client.
+For the Dungeon Maps visual inspection, missing native tiles were placed only in
+the simulator asset cache from the public Wago CASC archive for Forever
+1.60.1.70205. They are not downloaded or required by the addon at runtime.
 
 ### Develop the UI outside WoW
 
@@ -211,11 +214,10 @@ mutable tags are rejected. Normal local commands continue to build using Docker'
 layer cache. Changing the Dockerfile or either simulator patch invalidates CI's
 image cache.
 
-The PR UI job has a **five-minute timeout**; other PR jobs retain their
-**three-minute timeout**. The cached full UI run measured 156.257 seconds locally,
-so its budget also allows image preparation and runner variation. PR checks restore existing simulator
-images and never compile Rust; a missing image fails promptly with preparation
-instructions. `main` and release checks can build on cache misses. The independent
+The PR UI job has a **five-minute timeout** to allow image preparation and runner
+variation; other PR jobs retain their **three-minute timeout**. PR checks restore
+existing simulator images and never compile Rust; a missing image fails promptly
+with preparation instructions. `main` and release checks can build on cache misses. The independent
 **UI simulator images** workflow refreshes the default-branch caches daily so
 normal feature branches can reuse them. It has a separate 30-minute build budget.
 For a Dockerfile, patch or simulator revision change, prepare its images before
@@ -337,6 +339,8 @@ do not enable branch protection.
 - Install the ZIP into a clean addon folder; confirm AddOns icon and `/pqol` open.
 - Check an existing installation with saved settings and positions, then `/reload`.
 - Enable/disable modules and reload; disabled features stay inactive.
+- Enter a one-floor and a multi-floor Vanilla dungeon. Check **M**, Escape, the
+  native close/maximize/floor/world-map controls and localized unavailable status.
 - Exercise affected features outside and during combat, including target changes,
   threat/nameplates, debuffs and druid forms when relevant; watch for Lua/taint errors.
 - Check layout and logo placement; record client build and results in the PR.
@@ -356,6 +360,74 @@ keep fixtures in `tests/support/`. Keep `PyresinQoLDB`, existing saved keys, fra
 and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
+
+### Dungeon maps
+
+`Modules/DungeonMaps/Data.lua` owns 50 map views across 18 original Vanilla
+dungeon complexes and their texture references. `Logic.lua` contains frame-free instance, floor and
+selection logic. `DungeonMaps.lua` installs an addon provider on `WorldMapFrame` only
+while the module is active; `Settings.lua` owns its live, profile-scoped toggle.
+The provider keeps one `{ dungeon, floor, backingMapID }` selection while moving
+between its `dungeon` and `world` display modes; close, disable and invalid-instance
+transitions clear it. A client-supplied dungeon map remains in `world` mode without
+an addon selection.
+The provider's art is a child of the native MapCanvas, so Blizzard's panel size,
+maximize/minimize controls, close action, mouse-wheel zoom and drag pan continue
+to work. It does not replace `ToggleWorldMap`, `WorldMapFrame` or any `C_Map` API.
+Outside supported party instances the Blizzard path is unchanged.
+
+The illustrated fallback keeps the native frame open and covers its current map
+art. Its native-style floor selector lives on the existing map chrome. The
+provider extends Blizzard's `WorldMapNavBar` with a dungeon leaf rather than
+inventing a map ID: right-click returns to the backing world map, and the enabled
+dungeon leaf returns to the saved floor without closing the frame. Native
+breadcrumb buttons can also leave the fallback, and ordinary map navigation
+continues until the player chooses the dungeon leaf. Closing the map, leaving the
+instance or disabling the module clears that route.
+
+While fallback art is visible, the provider uses MapCanvas pin suppression and
+hides the native coordinate and area-label providers because they otherwise
+describe the unrelated backing outdoor map. A high-priority native canvas click
+handler consumes outdoor left-click targets and turns right-click into the map
+handoff; drag and mouse-wheel behavior remain with Blizzard's ScrollContainer.
+The fallback closes any map-owned tooltip when it activates. Hidden providers and
+normal click settings are restored when the fallback closes.
+
+Before enabling the fallback, the provider checks the player's actual best map,
+the native map type and its returned art layers. When the current
+`WorldMapFrame` already holds a usable dungeon map, it leaves that map and its
+native unit-pin provider untouched.
+
+The catalog's legacy UiMap references identify source art from generic Classic
+tables. They are not evidence that WoW Forever exposes the same map or coordinate
+domain. The runtime therefore does not pass them to `C_Map`, does not derive a
+position from `UnitPosition`, and does not draw a player marker. If a future
+Forever build exposes a verified native dungeon UiMap, prefer Blizzard's native
+map and unit-pin data provider for that floor; custom projection requires separate,
+source-backed calibration. Do not infer coordinates from minimap pixels.
+
+The addon has no verified Blizzard-drawn artwork matching original Sunken Temple
+or Upper Blackrock Spire, so those layouts deliberately remain gaps. Lower Blackrock Spire shares physical
+instance 229 with Upper Blackrock Spire, so its fallback activates only for an
+exact retained English subzone. Recognizable UBRS, shared, unknown and localized
+unmatched subzones remain on Blizzard's native map; this avoids showing LBRS art
+for the wrong wing. New WoW Forever dungeons are outside the catalog.
+
+The Forever 1.60.1.70205 [`UiMap`](https://wago.tools/db2/UiMap/csv?build=1.60.1.70205&locale=enUS),
+[`UiMapXMapArt`](https://wago.tools/db2/UiMapXMapArt/csv?build=1.60.1.70205&locale=enUS)
+and [`UiMapAssignment`](https://wago.tools/db2/UiMapAssignment/csv?build=1.60.1.70205&locale=enUS)
+exports contain no Dungeon map records or assignments for Vanilla dungeon
+instances, and the generic Classic dungeon UiMap IDs are absent. Physical
+dungeon records in [`Map`](https://wago.tools/db2/Map/csv?build=1.60.1.70205&locale=enUS)
+are not normalized WorldMap projections. Blizzard's Lua `HybridMinimap` uses the
+same `C_Map.GetPlayerMapPosition` path, and the public Minimap API exposes no
+independent player world position. The exact DB2 tables prove the missing map
+domain; they do not measure the live client's coordinate API return values.
+
+PyresinQoL extends places where WoW Forever's standard UI has no implementation
+through Blizzard's existing controls and surfaces. Features that belong to an
+existing Blizzard surface should integrate there instead of substituting an
+independent addon panel.
 
 ### Game-menu shortcut
 
