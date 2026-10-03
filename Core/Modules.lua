@@ -5,6 +5,7 @@ ns.modules = {
     { id = "gameMenu", group = "general", name = L.gameMenu, description = L.gameMenuDescription },
     { id = "editMode", group = "general", name = L.editMode, description = L.editModeDescription },
     { id = "performance", group = "misc", name = L.performance, description = L.performanceDescription },
+    { id = "dungeonMaps", group = "misc", name = L.dungeonMaps, description = L.dungeonMapsDescription },
     { id = "experience", group = "misc", name = L.experience, description = L.experienceDescription },
     { id = "quests", group = "misc", name = L.quests, description = L.questsDescription },
     { id = "unitFrames", group = "unitFrames", name = L.unitFrames, description = L.unitFramesDescription,

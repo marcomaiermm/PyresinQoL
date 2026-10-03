@@ -15,6 +15,9 @@ Settings/Window.lua
 Core/Bootstrap.lua
 Modules/GameMenu/GameMenu.lua
 Modules/Performance/Performance.lua
+Modules/DungeonMaps/Data.lua
+Modules/DungeonMaps/Logic.lua
+Modules/DungeonMaps/DungeonMaps.lua
 Modules/EditMode/PixelPerfect.lua
 Modules/Experience/Experience.lua
 Modules/Quests/Quests.lua
@@ -41,6 +44,7 @@ Modules/Tooltips/Tooltip.lua
 Modules/GameMenu/Settings.lua
 Modules/EditMode/Settings.lua
 Modules/Performance/Settings.lua
+Modules/DungeonMaps/Settings.lua
 Modules/Experience/Settings.lua
 Modules/Quests/Settings.lua
 Modules/UnitFrames/Settings.lua

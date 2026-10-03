@@ -13,6 +13,7 @@ local pages = {
     { "Status Text", "petHideStatusText", "petHideStatusText", false },
     { "Buffs & Debuffs", "buffLayout", "buffLayout", false },
     { "Tooltips", "TooltipAnchorCombat", "tooltipAnchorCombat", false },
+    { "Dungeon Maps", "DungeonMapsEnabled", "dungeonMapsEnabled", true },
 }
 
 local UI = PyresinQoLUITest

@@ -10,6 +10,15 @@ index d218d7c..8cf08e1 100644
      }
  }
 
+@@ -284,6 +285,7 @@ fn run_async_test(env: &WowLuaEnv, idx: i64) -> Result<(), String> {
+         if done {
+             break;
+         }
++        env.state().borrow_mut().ensure_layout_rects();
+         fire_one_on_update_tick(env);
+         process_pending_timers(env);
+         flush_console(env);
+
 diff --git a/src/bin/wow_sim/gui_commands.rs b/src/bin/wow_sim/gui_commands.rs
 index 38c5046..a09cda0 100644
 --- a/src/bin/wow_sim/gui_commands.rs
@@ -155,3 +164,109 @@ diff --git a/src/lua_api/globals/create_frame/template_chain.rs b/src/lua_api/gl
          ("OnDragStart", scripts.on_drag_start.last()),
          ("OnDragStop", scripts.on_drag_stop.last()),
          ("OnReceiveDrag", scripts.on_receive_drag.last()),
+
+diff --git a/src/lua_api/globals/template/direct.rs b/src/lua_api/globals/template/direct.rs
+--- a/src/lua_api/globals/template/direct.rs
++++ b/src/lua_api/globals/template/direct.rs
+@@ -366,6 +366,14 @@
+ ) {
+     if let Some(anchors) = frame.anchors() {
+         let mut s = state.borrow_mut();
++        // A direct <Anchors> block replaces anchors already applied from
++        // inherited templates. Without clearing first, a derived frame that
++        // replaces BOTTOMRIGHT with BOTTOMLEFT/RIGHT keeps both constraints.
++        s.widgets.remove_all_anchor_dependents_for(frame_id);
++        if let Some(existing) = s.widgets.get_mut_visual(frame_id) {
++            existing.clear_all_points();
++        }
++        s.widgets.mark_rect_dirty(frame_id);
+         for anchor in &anchors.anchors {
+             set_single_anchor(&mut s, frame_id, anchor, parent_name);
+         }
+
+diff --git a/src/lua_api/globals/template/direct_tests.rs b/src/lua_api/globals/template/direct_tests.rs
+--- a/src/lua_api/globals/template/direct_tests.rs
++++ b/src/lua_api/globals/template/direct_tests.rs
+@@ -66,3 +66,82 @@
+         "explicit hidden=\"false\" must override an inherited hidden=true template"
+     );
+ }
++
++#[test]
++fn direct_xml_anchors_replace_inherited_anchor_set() {
++    fn direct_anchor(point: &str) -> AnchorXml {
++        AnchorXml {
++            point: Some(point.to_string()),
++            relative_to: Some("$parent".to_string()),
++            relative_key: None,
++            relative_point: Some(point.to_string()),
++            x: None,
++            y: None,
++            offset: None,
++        }
++    }
++
++    let state = Rc::new(RefCell::new(crate::lua_api::SimState::default()));
++    let (parent_id, child_id) = {
++        let mut state = state.borrow_mut();
++        let parent = crate::widget::Frame::new(
++            crate::widget::WidgetType::Frame,
++            Some("AnchorParent".to_string()),
++            None,
++        );
++        let parent_id = state.widgets.register(parent);
++        let child = crate::widget::Frame::new(
++            crate::widget::WidgetType::Frame,
++            Some("AnchorChild".to_string()),
++            Some(parent_id),
++        );
++        let child_id = state.widgets.register(child);
++        state.widgets.add_child(parent_id, child_id);
++        let child = state.widgets.get_mut_visual(child_id).unwrap();
++        child.set_point(
++            AnchorPoint::TopLeft,
++            Some(parent_id as usize),
++            AnchorPoint::TopLeft,
++            0.0,
++            0.0,
++        );
++        child.set_point(
++            AnchorPoint::BottomRight,
++            Some(parent_id as usize),
++            AnchorPoint::BottomRight,
++            0.0,
++            0.0,
++        );
++        (parent_id, child_id)
++    };
++
++    let direct = crate::xml::AnchorsXml {
++        anchors: vec![
++            direct_anchor("TOPLEFT"),
++            direct_anchor("BOTTOMLEFT"),
++            direct_anchor("RIGHT"),
++        ],
++    };
++    apply_xml_anchors(
++        &state,
++        child_id,
++        &FrameXml {
++            children: vec![crate::xml::FrameChildElement::Anchors(direct)],
++            ..FrameXml::default()
++        },
++        "",
++        "AnchorParent",
++    );
++
++    let state = state.borrow();
++    let child = state.widgets.get(child_id).unwrap();
++    assert_eq!(child.anchors.len(), 3);
++    assert!(child
++        .anchors
++        .iter()
++        .all(|anchor| anchor.point != AnchorPoint::BottomRight));
++    assert!(child
++        .anchors
++        .iter()
++        .all(|anchor| anchor.relative_to_id == Some(parent_id as usize)));
++}
