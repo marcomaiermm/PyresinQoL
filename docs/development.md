@@ -67,6 +67,15 @@ The same patch makes `run-tests` reject recorded startup errors and failed
 `--exec-lua` probes, allowing one fresh simulator per test resolution.
 It also makes `screenshot` reject startup, probe and post-probe update errors
 before rendering, so the screenshot matrix needs one process per size too.
+The patch also restores the original `loadstring_untainted` compiler after the
+simulator's environment cleanup, before Forever loads `RestrictedExecution.lua`.
+It leaves state-attribute dispatch to the native handler when one is installed,
+preventing a second execution through the simulator's raw-frame fallback. The XML
+loader also needs the scroll-range and scroll-offset scripts from native scroll
+templates. These fixes let tests exercise Blizzard's snippets and scroll controls.
+The UI fixture supplies the omitted
+`LOSS_OF_CONTROL_ACTIVE_INDEX = 1` from the pinned Forever API documentation,
+which the native Edit Mode exit path needs. Neither workaround changes addon code.
 The runner also uses a passing fixture to verify that both startup and probe
 errors produce nonzero exits before starting the regular matrix.
 
@@ -100,7 +109,23 @@ UI ticks and checks its own Lua errors before closing the window. Every resettab
 page checks a visible checkbox's setting binding, changes its value, then clicks
 Defaults and verifies both the saved value and the rendered checkbox. Profiles
 checks its visible selector and creation button; performance checks the live
-display's visibility. The nested test mount
+display's visibility. Action Bars checks the settings launcher, the separate Edit
+Mode section for all eight bars, checkbox and opacity-stepper changes, per-bar
+saved values, reopening, scrolling to the macro dialog, invalid macro input, and
+switching between action bars, cast bar and player frame. It checks that native
+settings, addon controls and native buttons stay inside the dialog without
+overlapping. A rule configured through the UI must keep the bar visible for the
+Edit Mode preview, hide it afterward, and restore it when customization is disabled.
+The shared `00-helpers.lua` loads first and captures errors across actual UI ticks;
+the controls, callbacks and state-driver implementation come from Blizzard's UI.
+Scroll destinations use measured content and viewport heights: the pinned
+simulator's range query does not subtract an anchor-derived viewport height.
+Rectangle comparisons include the renderer's scroll translation, which its
+`GetRect` omits. These flows run out of combat: the simulator does not model
+inherited frame protection sufficiently for native restricted execution in combat.
+Combat and controller transitions remain covered by the Lua suite and require
+the in-game checks below.
+The nested test mount
 keeps the existing mocked LuaJIT tests out of the simulator's test discovery.
 New simulator tests belong in `tests/ui/`; neither test suite ships in the addon.
 CI saves build and test output as the `forever-ui-log` artifact, including failures.
@@ -289,6 +314,95 @@ are discovered automatically. Keep `PyresinQoLDB`, existing saved keys, frame na
 and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
+
+### Game-menu shortcut
+
+The cooldown shortcut appears inside the game menu immediately below Options.
+It is an addon-owned button under `UIParent`, anchored to the native Options button.
+It must not be a child of `GameMenuFrame`, enter its automatic layout traversal,
+acquire buttons from its pool or call its layout methods. Native
+layout traversal of addon children can taint subsequent controller binding changes
+and block `SetPreferredGamepadInteractTarget()` when Options closes the menu.
+
+A secure post-hook on the completed native layout reserves one visual row by
+adjusting frame anchors and menu height. Original anchors and height are kept in
+addon-owned state and restored before each setting update. A fresh native layout
+discards the previous snapshot. Native button callbacks and layout indices remain
+unchanged; repeated updates cannot accumulate extra spacing. The shortcut inherits
+the menu's effective scale and uses a label that fits the native button width.
+Its `FULLSCREEN_DIALOG` strata keeps it clickable above the menu's `DIALOG` frame.
+Matching the menu's strata with a higher frame level still let `GameMenuFrame`
+receive the mouse focus in-game; moving the shortcut to the higher strata restored
+clicks. Frame-engine stubs cannot reproduce this input ordering.
+
+The shortcut hides with the menu and while controller UI mode is active, then
+returns with the saved setting when mouse/keyboard mode resumes. Its click handler
+also checks controller mode and combat before opening the cooldown settings.
+
+`tests/menu.lua` checks the ownership boundary, menu lifecycle, native callbacks,
+combat, scale, repeated layout passes and controller transitions. The optional Elune check
+`elune tools/check-gamepad-menu-taint.lua /path/to/Interface/AddOns` loads native
+layout, menu and gamepad binding/action-bar code with frame-engine stubs. It
+reproduced the blocked call with the former child button and passes after isolation;
+it does not replace an in-game check. Pass `transition` as the second argument to
+also exercise mouse/keyboard layout followed by controller mode. After `/reload`,
+open Options from Escape in both input modes. Check the shortcut's row inside the
+menu, its hover highlight and click, its return after controller mode, and unchanged
+spacing after repeated opens.
+
+### Native action bars
+
+Action-bar customization is opt-in and decorates Blizzard's existing action-bar
+buttons. In `/pqol → Action Bars`, the global controls can color native icons or hotkeys for
+out-of-range, missing-resource and unusable states, choose ARGB colors, set hotkey,
+macro-name and count font sizes, and use compact binding text. A size of **0** keeps
+the native font size.
+In Edit Mode, selecting any of the eight standard bars opens a separate
+**PyresinQoL - Visibility** section below its native settings. Enable the feature,
+hide for combat, stealth or form state, set normal and combat opacity, show on
+mouseover, or enter a validated custom macro condition with `show`/`hide` results.
+Defaults leave the native appearance and visibility unchanged.
+
+`Modules/ActionBars/EditMode.lua` owns the extra controls and follows the cast-bar
+dialog extension: a post-hook attaches a separate section without adding native
+setting IDs or acquiring native setting frames. A single section follows the selected
+bar and hides for other systems, including when the cast-bar section takes over.
+It also installs when Blizzard's Edit Mode addon loads later. Controls keep their
+existing saved keys and registered settings, so defaults and automatic profile
+refresh still work. Edits save immediately; Blizzard's Revert Changes button manages
+only its native settings. The macro dialog captures the bar it was opened for.
+`tests/actionbars-editmode.lua` covers selection, per-bar isolation, delayed loading,
+combat guards and coexistence with the real cast-bar extension using frame stubs.
+
+Visibility and opacity use secure state drivers on addon-owned handler frames that
+reference Blizzard's existing bars. Visibility uses the custom `barvisibility` state:
+the reserved `visibility` state shows or hides the registered handler directly and
+never invokes its state snippet. Native visibility drivers remain in place, and
+the handler only restores a bar it hid itself; action execution remains client-owned.
+Protected setting changes made during combat are deferred until combat ends. When
+WoW's controller UI mode is active, action-bar visibility rules are suspended and the
+saved configuration is restored when the mode ends. Connecting a controller alone
+does not activate this mode. LuaJIT tests can check configuration and mocked callbacks,
+but only the live client can
+verify visual output, protected ownership, taint and combat behavior.
+
+Run `luajit tests/actionbars.lua` and `sh tests/run.sh`. To run the visibility
+scenarios through the client's native state driver, pass its source directory:
+`luajit tests/actionbars.lua /path/to/Interface/AddOns`. Macro results and frame-engine
+methods are still stubbed. In game, check every bar's
+combat, stealth, form, custom-condition, opacity and mouseover transitions, then
+enter and leave controller UI mode and confirm the native bars resume their saved
+rules.
+
+Action-bar dialog registration adds only its own entry to `StaticPopupDialogs`.
+Never reassign that Blizzard global, even to the same table: doing so taints its
+reference, and later native popup/ESC registration can carry that taint into
+`SpellStopCasting()`. `tests/menu.lua` rejects global writes from the action-bar
+settings builder. The optional native dispatch regression runs with
+[Elune](https://github.com/Meorawr/elune):
+`elune tools/check-escape-taint.lua /path/to/Interface/AddOns` (use the built Lua
+executable as `elune`). It loads the native ESC, Game and HelpFrame code and checks
+secure execution after addon registration; it does not replace an in-client test.
 
 ### Native player cast bar
 

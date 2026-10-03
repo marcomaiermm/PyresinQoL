@@ -1,5 +1,5 @@
 -- Run from the addon directory: lua tests/menu.lua [disabled|de|modules-disabled]
-local combat, events, opened, hidden, sound
+local combat, events, opened, hidden, sound, controller
 local addonContext = false
 local category = {}
 local settings, performanceUpdates = {}, 0
@@ -39,12 +39,15 @@ local auraUpdates = 0
 ns.GetModule("unitFrames").UpdatePlayerAuras = function() auraUpdates = auraUpdates + 1 end
 local tooltipUpdates = 0
 ns.GetModule("tooltips").UpdateTooltips = function() tooltipUpdates = tooltipUpdates + 1 end
+local actionBarUpdates = 0
+ns.GetModule("actionBars").UpdateActionBars = function() actionBarUpdates = actionBarUpdates + 1 end
 PyresinQoLDB = arg[1] == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
 DEFAULTS, CLOSE = "Defaults", "Close"
 StaticPopupDialogs = {}
 EventRegistry = { RegisterCallback = function() end, TriggerEvent = function() end }
 UISpecialFrames, SlashCmdList = {}, {}
-UIParent = { GetWidth = function() return 1280 end, GetHeight = function() return 800 end }
+UIParent = { GetWidth = function() return 1280 end, GetHeight = function() return 800 end,
+    GetEffectiveScale = function() return 0.8 end }
 SettingsPanel = { shown = true, IsShown = function(self) return self.shown end }
 function SetCVar() error("Settings must leave Blizzard's status-text CVars alone") end
 local settingsRegistrant
@@ -240,7 +243,7 @@ Settings = {
     end,
     CreateSliderOptions = function(minimum, maximum, step)
         assert((minimum == 0 and maximum == 40 and step == 1)
-            or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and maximum == 16))
+            or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and (maximum == 16 or maximum == 24)))
             or (minimum == -2500 and maximum == 2500 and step == 1)
             or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
@@ -257,8 +260,13 @@ Settings = {
 GAMEMENU_OPTIONS = "Options"
 SOUNDKIT = { IG_MAINMENU_OPTION = 1 }
 function InCombatLockdown() return combat end
+InputUtil = { IsGamepadUIEnabled = function() return controller end }
 function PlaySound(value) sound = value end
-function HideUIPanel(frame) hidden = frame; frame.shown = false end
+function HideUIPanel(frame)
+    hidden = frame
+    frame.shown = false
+    if frame.scripts and frame.scripts.OnHide then frame.scripts.OnHide() end
+end
 CooldownViewerSettings = {
     ShowUIPanel = function(_, fromEditMode)
         assert(hidden == GameMenuFrame and fromEditMode == false)
@@ -277,13 +285,18 @@ function GameTooltip_AddErrorLine(tooltip, text) tooltip.error = text end
 local addonButton, addonButtonCount = nil, 0
 function CreateFrame(kind, name, parent, template)
     if template == "GameMenuFrameButtonTemplate" then
-        assert(parent == GameMenuFrame and template == "GameMenuFrameButtonTemplate")
+        assert(parent == UIParent, "The shortcut must stay outside Blizzard's layout and controller navigation")
         addonButtonCount = addonButtonCount + 1
         addonButton = { scripts = {} }
         function addonButton:SetScript(event, callback) self.scripts[event] = callback end
         function addonButton:SetText(text) self.text = text end
         function addonButton:SetMotionScriptsWhileDisabled(value) assert(value) end
         function addonButton:SetSize(width, height) self.width, self.height = width, height end
+        function addonButton:ClearAllPoints() self.point = nil end
+        function addonButton:SetPoint(...) self.point = { ... } end
+        function addonButton:SetFrameStrata(value) self.strata = value end
+        function addonButton:SetFrameLevel(value) self.level = value end
+        function addonButton:SetScale(value) self.scale = value end
         function addonButton:SetEnabled(value) self.enabled = value end
         function addonButton:Show() self.shown = true end
         function addonButton:Hide() self.shown = false end
@@ -339,10 +352,16 @@ function hooksecurefunc(object, name, callback)
         return result
     end
 end
-GameMenuFrame = { shown = true, buttons = {}, builds = 0 }
+GameMenuFrame = { shown = true, buttons = {}, builds = 0, scripts = {}, height = 174 }
 function GameMenuFrame:IsShown() return self.shown end
+function GameMenuFrame:GetFrameStrata() return "DIALOG" end
+function GameMenuFrame:GetFrameLevel() return 5 end
+function GameMenuFrame:GetEffectiveScale() return 1 end
+function GameMenuFrame:GetHeight() return self.height end
+function GameMenuFrame:SetHeight(value) self.height = value end
+function GameMenuFrame:HookScript(event, callback) self.scripts[event] = callback end
 function GameMenuFrame:Reset() self.buttons = {} end
-function GameMenuFrame:MarkDirty() self.dirty = true end
+function GameMenuFrame:MarkDirty() error("Addon settings must not dirty Blizzard's menu layout") end
 function GameMenuFrame:AddButton(text, callback, disabled)
     assert(not addonContext, "Addon code must not acquire Blizzard menu buttons from its shared pool")
     local button = { text = text, scripts = { OnClick = callback }, enabled = not disabled }
@@ -350,6 +369,9 @@ function GameMenuFrame:AddButton(text, callback, disabled)
     function button:SetEnabled(enabled) self.enabled = enabled end
     function button:GetText() return self.text end
     function button:GetSize() return 200, 36 end
+    function button:GetPoint() return unpack(self.point) end
+    function button:ClearAllPoints() self.point = nil end
+    function button:SetPoint(...) self.point = { ... } end
     button.layoutIndex = #self.buttons + 1
     self.buttons[#self.buttons + 1] = button
     return button
@@ -362,13 +384,26 @@ function GameMenuFrame:InitButtons()
     GameMenuFrame:AddButton("Shop", function() end)
     assert(options == GameMenuFrame.buttons[1], "Hook must preserve the Options return value")
 end
+function GameMenuFrame:Layout()
+    assert(not addonContext, "Only Blizzard may run its native layout")
+    self.height = 174
+    for index, button in ipairs(self.buttons) do
+        button:ClearAllPoints()
+        button:SetPoint("TOPLEFT", self, "TOPLEFT", 28, -48 - (index - 1) * 56)
+    end
+end
 local function BuildMenu()
     GameMenuFrame:InitButtons()
+    GameMenuFrame:Layout()
     assert(#GameMenuFrame.buttons == 2, "Native button list must remain untouched")
     assert(addonButtonCount == 1 and addonButton.shown and addonButton.text == ns.L.cooldownMenu)
     assert(addonButton.width == 200 and addonButton.height == 36)
-    assert(addonButton.layoutIndex > GameMenuFrame.buttons[1].layoutIndex
-        and addonButton.layoutIndex < GameMenuFrame.buttons[2].layoutIndex, "Shortcut must appear immediately after Options")
+    assert(addonButton.layoutIndex == nil, "Shortcut must not participate in native layout")
+    assert(addonButton.point[1] == "TOPLEFT" and addonButton.point[2] == GameMenuFrame.buttons[1]
+        and addonButton.point[3] == "BOTTOMLEFT", "Shortcut must be a row below Options inside the menu")
+    assert(GameMenuFrame.height == 210 and GameMenuFrame.buttons[2].point[5] == -140,
+        "The menu and following buttons must make room for exactly one shortcut row")
+    assert(addonButton.scale == 1.25, "The separate button must match the native menu scale")
     return addonButton
 end
 
@@ -390,6 +425,9 @@ assert(loadfile("Modules/CastBar/Textures.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/CastBar/Presentation.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/CastBar/Native.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/CastBar/EditMode.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/ActionBars/Config.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/ActionBars/ActionBars.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/ActionBars/Visibility.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/GameMenu/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Performance/Settings.lua"))("PyresinQoL", ns)
@@ -397,6 +435,15 @@ assert(loadfile("Modules/Experience/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Quests/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
+-- Addon settings may add popup definitions, but reassigning a Blizzard global
+-- taints later native users of that registry, including Escape handlers.
+local actionBarSettings = assert(loadfile("Modules/ActionBars/Settings.lua"))
+setfenv(actionBarSettings, setmetatable({}, {
+    __index = _G,
+    __newindex = function(_, key)
+        error("Action bar settings must not overwrite the native global " .. key)
+    end,
+}))("PyresinQoL", ns)
 assert(loadfile("Settings/Window.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Bootstrap.lua"))("PyresinQoL", ns)
 events.callback(events, "ADDON_LOADED", "OtherAddon")
@@ -444,7 +491,9 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not events.registered.ADDON_LOADED)
-assert(canvas and #navigation == 13 and #sections == 0)
+assert(canvas and #navigation == 14 and #sections == 0)
+assert(#ns.GetModule("actionBars").pages == 1,
+    "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
 assert(profileButton == navigation[#navigation] and profileButton.points[1][1] == "BOTTOMLEFT")
 assert(#profileDropdowns == 3 and profileDropdowns[1].parent == profilePanel
@@ -484,7 +533,7 @@ SlashCmdList.PQOL()
 assert(canvas.shown and canvas.scale < 1, "The complete window must fit shorter screens")
 canvas.ClosePanelButton.scripts.OnClick()
 assert(not canvas.shown)
-assert(#groupButtons == 3)
+assert(#groupButtons == 4)
 groupButtons[1].scripts.OnClick()
 assert(not navigation[1].shown and not navigation[2].shown and not navigation[3].shown)
 assert(profileButton.shown and profileButton.points[1][1] == "BOTTOMLEFT", "Profiles stays outside collapsed groups")
@@ -492,7 +541,7 @@ assert(navigation[4].shown and navigation[7].shown)
 groupButtons[1].scripts.OnClick()
 assert(navigation[1].shown and navigation[2].shown and navigation[3].shown)
 canvas.scripts.OnShow()
-assert(settingsList.Header.Title.value == ns.L.modules and #settingsList.rendered == 7)
+assert(settingsList.Header.Title.value == ns.L.modules and #settingsList.rendered == 8)
 assert(navigation[1].selected.shown and not reloadButton.enabled)
 navigation[2].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.gameMenu and #settingsList.rendered == 1)
@@ -687,6 +736,14 @@ assert(combatEvents.registered.PLAYER_REGEN_DISABLED and combatEvents.registered
 combatEvents.callback() -- Combat events before the menu first opens.
 local button = BuildMenu()
 assert(button.enabled)
+for _ = 1, 3 do
+    settings.cooldownShortcut:SetValue(true)
+    assert(GameMenuFrame.height == 210 and GameMenuFrame.buttons[2].point[5] == -140,
+        "Repeated updates must not accumulate height or offsets")
+end
+GameMenuFrame:Layout()
+assert(GameMenuFrame.height == 210 and GameMenuFrame.buttons[2].point[5] == -140,
+    "A fresh native layout must reserve exactly one row again")
 button.scripts.OnEnter(button)
 assert(not GameTooltip.shown)
 combat = true
@@ -704,12 +761,15 @@ combatEvents.callback()
 assert(button.enabled and not GameTooltip.shown)
 button.scripts.OnClick()
 assert(opened and hidden == GameMenuFrame and sound == SOUNDKIT.IG_MAINMENU_OPTION)
+assert(not addonButton.shown, "Closing the menu must also hide its separate shortcut")
 GameMenuFrame.shown = true
 local nativeButtons, builds = GameMenuFrame.buttons, GameMenuFrame.builds
 local optionsCallback, shopCallback = nativeButtons[1].scripts.OnClick, nativeButtons[2].scripts.OnClick
 settings.cooldownShortcut:SetValue(false)
 assert(#GameMenuFrame.buttons == 2 and GameMenuFrame.buttons[2].text == "Shop")
 assert(not addonButton.shown)
+assert(GameMenuFrame.height == 174 and GameMenuFrame.buttons[2].point[5] == -104,
+    "Disabling the shortcut must restore native height and spacing")
 opened, hidden = false, nil
 button.scripts.OnClick()
 assert(not opened and not hidden, "A stale shortcut must not open after disabling")
@@ -719,6 +779,28 @@ assert(addonButton.shown and addonButtonCount == 1)
 assert(GameMenuFrame.buttons == nativeButtons and GameMenuFrame.builds == builds)
 assert(nativeButtons[1].scripts.OnClick == optionsCallback and nativeButtons[2].scripts.OnClick == shopCallback)
 assert(nativeButtons[1].layoutIndex == 1 and nativeButtons[2].layoutIndex == 2)
+assert(combatEvents.registered.INPUT_DEVICE_INTERFACE_TRANSITION)
+controller = true
+combatEvents.callback(combatEvents, "INPUT_DEVICE_INTERFACE_TRANSITION")
+assert(not addonButton.shown, "Controller menus must not expose an insecure window shortcut")
+assert(GameMenuFrame.height == 174 and GameMenuFrame.buttons[2].point[5] == -104,
+    "Controller mode must restore the native menu layout")
+opened, hidden = false, nil
+button.scripts.OnClick()
+assert(not opened and not hidden, "Controller mode must also guard a stale shortcut click")
+settings.cooldownShortcut:SetValue(true)
+GameMenuFrame:InitButtons()
+GameMenuFrame:Layout()
+assert(not addonButton.shown, "Rebuilding the menu or settings must preserve controller suspension")
+controller = false
+combatEvents.callback(combatEvents, "INPUT_DEVICE_INTERFACE_TRANSITION")
+assert(addonButton.shown and addonButtonCount == 1, "Leaving controller mode restores the saved shortcut")
+GameMenuFrame.shown = false
+GameMenuFrame.scripts.OnHide()
+settings.cooldownShortcut:SetValue(true)
+combatEvents.callback()
+assert(not addonButton.shown, "Settings and combat events must not expose a shortcut for a closed menu")
+GameMenuFrame.shown = true
 for _ = 1, 10 do assert(BuildMenu() == addonButton) end
 settings.cooldownShortcut:SetValue(false)
 GameMenuFrame:InitButtons()
@@ -809,7 +891,7 @@ detailButton.scripts.OnClick()
 assert(settingsList.Header.Title.value == "Test details"
     and settingsList.initializers == featureContext.pages.details.initializers)
 assert(featureContext.pages.main.module == extraModule and featureContext.pages.details.module == extraModule)
-groupButtons[4].scripts.OnClick()
+groupButtons[5].scripts.OnClick()
 assert(not detailButton.shown and not NavigationButton("Test main").shown)
 assert(NavigationButton(ns.L.performance).shown, "Group collapse must preserve unrelated pages")
 print("PASS: metadata-defined groups, subpages and settings-builder contexts")
@@ -835,6 +917,7 @@ ns.SyncLayoutProfile()
 settings.showFPS:SetValue(not originalFPS)
 settings.targetClassColor:SetValue(true)
 settings.castBarCustomization:SetValue(true)
+settings.actionBarBar2AlphaNormal:SetValue(.37)
 ns.CastBar.Set("customColor", { r = .2, g = .4, b = .6 })
 local beforePerformance, beforeTooltips = performanceUpdates, tooltipUpdates
 layoutInfo.activeLayout = 4
@@ -843,10 +926,14 @@ assert(PyresinQoLDB == root and PyresinQoLDB.modules == moduleTable)
 assert(settings.showFPS:GetValue() == originalFPS and performanceUpdates > beforePerformance)
 assert(tooltipUpdates > beforeTooltips and PyresinQoLDB.profileStore.active == originalProfile)
 assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == 1)
+assert(settings.actionBarBar2AlphaNormal:GetValue() == 1,
+    "Moving per-bar controls to Edit Mode preserves default values during profile switches")
 layoutInfo.activeLayout = 5
 ns.SyncLayoutProfile()
 assert(settings.showFPS:GetValue() == not originalFPS and settings.targetClassColor:GetValue())
 assert(ns.CastBar.IsEnabled() and ns.CastBar.Get("customColor").r == .2)
+assert(settings.actionBarBar2AlphaNormal:GetValue() == .37,
+    "Edit Mode action-bar settings still belong to the active addon profile")
 settings.PyresinQoL_Module_performance:SetValue(false)
 layoutInfo.activeLayout = 4
 ns.SyncLayoutProfile()

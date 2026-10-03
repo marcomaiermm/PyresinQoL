@@ -12,6 +12,7 @@ local files = {
     performance = { "Modules/Performance/Performance.lua" }, experience = { "Modules/Experience/Experience.lua" },
     quests = { "Modules/Quests/Quests.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
+    actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
 }
 -- Loading files or initializing a disabled module must not touch game APIs.
 function CreateFrame() error("A disabled module created a frame") end
@@ -86,7 +87,15 @@ for line in io.lines("PyresinQoL.toc") do
 end
 assert(title == "PyresinQoL" and savedVariables == "PyresinQoLDB")
 assert(_G[savedVariables] == PyresinQoLDB, "The runtime database must match the saved variable in the TOC")
-local order = { "gameMenu", "editMode", "performance", "experience", "quests", "unitFrames", "tooltips" }
+assert(ns.ActionBars.ValidateCondition("[combat] hide; [] show") == "[combat] hide; [] show")
+assert(ns.ActionBars.ValidateCondition("[combat] [stealth] hide; show") == "[combat][stealth] hide; show")
+assert(not ns.ActionBars.ValidateCondition("[combat] hide; [stealth] maybe"))
+local savedDatabase = PyresinQoLDB
+PyresinQoLDB = { actionBarMainCustomCondition = "[combat] hide; [stealth] maybe" }
+assert(ns.ActionBars.Get("actionBarMainCustomCondition") == "")
+assert(PyresinQoLDB.actionBarMainCustomCondition ~= "")
+PyresinQoLDB = savedDatabase
+local order = { "gameMenu", "editMode", "performance", "experience", "quests", "unitFrames", "tooltips", "actionBars" }
 assert(#ns.modules == #order)
 for index, id in ipairs(order) do
     local module = ns.GetModule(id)
@@ -117,7 +126,7 @@ registry.RegisterModule("unitFrames", function(module)
 end)
 PyresinQoLDB = {}
 registry.InitializeModules()
-assert(table.concat(calls, ",") == "gameMenu,editMode,performance,experience,quests,unitFrames,targetDebuffs,tooltips")
+assert(table.concat(calls, ",") == "gameMenu,editMode,performance,experience,quests,unitFrames,targetDebuffs,tooltips,actionBars")
 
 -- Legacy migration preserves explicit values, unknown keys and saved positions.
 local position = { x = 10, y = -20 }

@@ -17,12 +17,14 @@ ns.modules = {
         },
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
+    { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
 }
 
 ns.settingsGroups = {
     { id = "general", name = L.general },
     { id = "unitFrames", name = L.unitFrames },
     { id = "misc", name = L.misc },
+    { id = "actionBars", name = L.actionBars },
 }
 for _, module in ipairs(ns.modules) do
     module.pages = module.pages or { { id = "main", name = module.name } }

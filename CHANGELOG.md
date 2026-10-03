@@ -3,11 +3,15 @@
 ## 0.1.6
 
 ### Added
+- Add opt-in **Action Bars** settings for native icon and hotkey state colors, font sizes and compact bindings. Each action bar's Edit Mode dialog has its own **PyresinQoL → Visibility** section for opacity, mouseover and macro-condition rules. Visibility rules pause automatically in controller UI mode and resume afterward.
 - Configure player buff/debuff grouping, sorting, growth, rows, spacing and timers in **Unit Frames → Buffs & Debuffs**. Customize target aura sizes, larger own auras, row widths and spacing, including debuff timers.
 - QoL settings and addon positions now follow Blizzard Edit Mode layouts automatically. New layouts copy current settings; existing settings are preserved. Manage profiles in the standalone **Profiles** tab at the bottom of `/pqol`. Multiple profiles can share a layout, with a separate choice per character. Profile actions never change Blizzard layouts or add Edit Mode controls. Automatic switches apply settings live; changed module choices offer a reload after leaving Edit Mode. Manual switches reload the UI.
 - Customize tooltip cursor or fixed-screen anchors, combat behavior and spell placement. Show spell/item/icon IDs, maximum item stack sizes and unit targets, and choose custom or quality/class/reaction-based border and background colors.
 
 ### Fixed
+- Reapply action-bar hide rules after leaving Edit Mode even when their macro condition has not changed.
+- Keep the cooldown shortcut visible and clickable inside the game menu below Options while isolating it from the native button pool and layout traversal. Suspend it in controller mode to prevent blocked controller interaction when opening Blizzard settings.
+- Keep the native popup registry untainted when registering action-bar settings, preventing blocked Escape actions such as `SpellStopCasting()`.
 - Player aura settings no longer invoke Blizzard's aura rendering from addon code, avoiding its restricted stack-count comparison. Correct custom spacing at non-default icon scales and preserve vertical private aura footprints.
 
 ## 0.1.5
