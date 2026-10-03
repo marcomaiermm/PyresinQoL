@@ -3,6 +3,14 @@ local L = ns.L
 local DEFAULT_PROFILE = "Default"
 local lastCatalog, catalogCharacter
 
+local function RepairModuleFlags(settings)
+    if type(settings.modules) ~= "table" then settings.modules = nil; return end
+    for _, module in ipairs(ns.modules) do
+        local value = settings.modules[module.id]
+        if value ~= nil and type(value) ~= "boolean" then settings.modules[module.id] = nil end
+    end
+end
+
 local function CharacterMappings()
     local character = UnitGUID("player")
     if not character then return end
@@ -46,7 +54,11 @@ local function Restore(settings)
     for key in pairs(PyresinQoLDB) do
         if key ~= "profileStore" then PyresinQoLDB[key] = nil end
     end
-    for key, value in pairs(CopyTable(settings)) do PyresinQoLDB[key] = value end
+    for key, value in pairs(settings) do
+        if key ~= "profileStore" then
+            PyresinQoLDB[key] = type(value) == "table" and CopyTable(value) or value
+        end
+    end
     -- Native settings retain both the root table and the module table.
     if modules then
         for key in pairs(modules) do modules[key] = nil end
@@ -68,15 +80,44 @@ local function CopyCurrentProfile(name)
 end
 
 function ns.InitializeProfiles()
-    PyresinQoLDB = PyresinQoLDB or {}
-    local store = PyresinQoLDB.profileStore or { active = DEFAULT_PROFILE, profiles = {} }
+    if type(PyresinQoLDB) ~= "table" then PyresinQoLDB = {} end
+    RepairModuleFlags(PyresinQoLDB)
+    local store = type(PyresinQoLDB.profileStore) == "table" and PyresinQoLDB.profileStore or {}
     PyresinQoLDB.profileStore = store
-    store.characterBindings = store.characterBindings or {}
-    store.profileLayouts = store.profileLayouts or {}
+    if type(store.profiles) ~= "table" then store.profiles = {} end
+    for name, profile in pairs(store.profiles) do
+        if type(name) ~= "string" or name == "" or type(profile) ~= "table" then
+            store.profiles[name] = nil
+        else
+            RepairModuleFlags(profile)
+        end
+    end
+    if type(store.active) ~= "string" or not store.profiles[store.active] then store.active = DEFAULT_PROFILE end
+    -- Live root settings remain authoritative; never load an unrelated snapshot
+    -- merely because the registry was damaged.
+    store.profiles[store.active] = store.profiles[store.active] or {}
+    local function RepairMappings(mappings, reverse)
+        for key, value in pairs(mappings) do
+            local profile = reverse and key or value
+            if type(key) ~= "string" or key == "" or type(value) ~= "string" or value == ""
+                or not store.profiles[profile] then mappings[key] = nil end
+        end
+    end
+    for _, field in ipairs({ "characterBindings", "profileLayouts" }) do
+        if type(store[field]) ~= "table" then store[field] = {} end
+        for character, mappings in pairs(store[field]) do
+            if type(character) ~= "string" or character == "" or type(mappings) ~= "table" then
+                store[field][character] = nil
+            else
+                RepairMappings(mappings, field == "profileLayouts")
+            end
+        end
+    end
+    if type(store.layoutBindings) == "table" then RepairMappings(store.layoutBindings)
+    else store.layoutBindings = nil end
     store.layoutCatalogs = nil -- Persisted catalogs may have missed delete/create events.
     lastCatalog, catalogCharacter = nil, nil
-    store.profiles[store.active] = store.profiles[store.active] or {}
-    if store.pending and store.profiles[store.pending] then
+    if type(store.pending) == "string" and store.profiles[store.pending] then
         -- Capture logout writes before applying the new profile at startup.
         store.profiles[store.active] = Snapshot()
         Restore(store.profiles[store.pending])
@@ -283,7 +324,8 @@ function ns.SyncLayoutProfile()
     end
     local performance = ns.GetModule("performance")
     if profile ~= store.active then
-        -- Picker callbacks belong to the outgoing profile.
+        -- Open editor callbacks belong to the outgoing profile.
+        if ns.CastBar and ns.CastBar.CloseEditors then ns.CastBar.CloseEditors() end
         if ColorPickerFrame and ColorPickerFrame:IsShown() then ColorPickerFrame:Hide() end
         if performance.StopPerformanceDragging then performance.StopPerformanceDragging() end
     end

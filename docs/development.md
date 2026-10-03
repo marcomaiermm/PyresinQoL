@@ -36,14 +36,27 @@ Use LuaJIT, Bash 4.3+, Python 3, Git, curl, zip and unzip. Ubuntu setup:
 ```sh
 sudo apt-get install luajit python3 curl git zip unzip
 sh tests/run.sh
+python3 tests/tooling/lua-runner.py
 python3 tests/ui-runner.py
 bash tests/package.sh
 bash tools/package.sh
 ```
 
-The Lua runner covers language variants and all Edit Mode / Performance activation
-combinations. Tests mock game APIs; they cannot certify visuals, taint or combat safety.
-Optional upstream check: `luajit tests/experience.lua en /path/to/forever-ui-source`.
+The Lua runner discovers `tests/unit/` and `tests/integration/`, prints each scenario
+and reports all failures before exiting. Pure validation/registry cases live in
+`unit/`; tests using mocked frames, hooks and events live in `integration/`, grouped
+by domain. Each file and language/startup variant runs in a fresh LuaJIT process.
+The runner checks discovery separately, so an unreadable/missing layer cannot
+silently produce a passing partial suite. The Python runner contract exercises this
+failure as well as selectors, empty selection and continued execution after failure.
+Use `sh tests/run.sh unit`, `sh tests/run.sh integration`, or a domain such as
+`sh tests/run.sh actionbars` for focused checks. The default runs every Lua scenario,
+including language variants and all Edit Mode / Performance activation combinations.
+`tests/tooling/` owns the shell/Python checks; the commands above remain compatible.
+See [test architecture and scenario ownership](../tests/README.md) and the
+[test error map](test-error-map.md) for coverage, retained regressions and limitations.
+Mocked game APIs cannot certify visuals, taint or combat safety.
+Optional upstream check: `luajit tests/integration/experience/experience.lua en /path/to/forever-ui-source`.
 
 The build downloads a pinned BigWigs Packager into ignored `.release/`, packages
 with `.pkgmeta`, and verifies `dist/PyresinQoL-X.Y.Z.zip` against the working tree.
@@ -105,17 +118,42 @@ and misplaced controls independently of screenshots.
 The addon is mounted read-only and runs without network access or saved variables.
 The patched `run-tests` rejects startup errors, then runs `tests/ui/*.lua` against
 the native Blizzard frames and controls in that same process. Each interaction flow waits for actual
-UI ticks and checks its own Lua errors before closing the window. Every resettable
+UI ticks and checks its own Lua errors before closing the window. Each flow
+retains its error handler for two more ticks after cleanup, then restores the
+previous handler before reporting completion. Every resettable
 page checks a visible checkbox's setting binding, changes its value, then clicks
 Defaults and verifies both the saved value and the rendered checkbox. Profiles
-checks its visible selector and creation button; performance checks the live
-display's visibility. Action Bars checks the settings launcher, the separate Edit
+uses native dialogs for validation, copy, rename, layout assignment, deletion and
+cancellation. Modules verifies pending-reload markers and locked controls;
+Performance clicks the FPS/latency checkboxes and checks captions, height and visibility.
+Cast Bar exercises appearance/layout/details controls, live dimensions, preview
+content and reset. Action Bars checks the settings launcher, the separate Edit
 Mode section for all eight bars, checkbox and opacity-stepper changes, per-bar
 saved values, reopening, scrolling to the macro dialog, invalid macro input, and
 switching between action bars, cast bar and player frame. It checks that native
 settings, addon controls and native buttons stay inside the dialog without
 overlapping. A rule configured through the UI must keep the bar visible for the
 Edit Mode preview, hide it afterward, and restore it when customization is disabled.
+Additional domain flows check native player class-color restoration, visible target
+text opacity, target-threat Always/Off selection, XP-bar visibility/format controls,
+wrapped timed buffs, reusable quest-row decoration, game-menu shortcut geometry,
+tooltip health content and a visible fixed anchor. Target flows seed native data
+and dispatch `PLAYER_TARGET_CHANGED`; the pinned admin setter omits the event.
+Quest rows use Blizzard's actual pooled-row template and `Setup` method.
+These are bounded scenarios: complete NPC dialogs, cooldown-viewer opening and
+visible tooltip health-bar rendering have reproduced simulator gaps documented
+in the [error map](test-error-map.md). Quest reward/overflow previews also stay local:
+the pinned simulator reports no turn-in-ready quests and zero quest XP. Mocked
+domain coverage remains in Lua, with native in-game checks for these boundaries.
+The standard command additionally runs dedicated error-injection, deterministic
+repeat/order and addon-German/scale-1.25 lanes once at 1280×720. Use
+`bash tests/run-ui.sh --contracts`, `--isolation` or `--locale-scale` to debug one
+lane, and `--matrix [sizes...]` for the ordinary matrix only. Intentional-error probes
+must produce exactly their four named failures, restore the error handler and leave
+following native flows usable. The isolation lane runs complete representative
+files forward and reversed in one simulator and compares saved/native state.
+The German fixture runs before addon localization; native Blizzard strings remain
+enUS, an explicit boundary of this lane rather than German-client certification.
 The shared `00-helpers.lua` loads first and captures errors across actual UI ticks;
 the controls, callbacks and state-driver implementation come from Blizzard's UI.
 Scroll destinations use measured content and viewport heights: the pinned
@@ -173,7 +211,9 @@ mutable tags are rejected. Normal local commands continue to build using Docker'
 layer cache. Changing the Dockerfile or either simulator patch invalidates CI's
 image cache.
 
-All PR jobs have a **three-minute timeout**. PR checks restore existing simulator
+The PR UI job has a **five-minute timeout**; other PR jobs retain their
+**three-minute timeout**. The cached full UI run measured 156.257 seconds locally,
+so its budget also allows image preparation and runner variation. PR checks restore existing simulator
 images and never compile Rust; a missing image fails promptly with preparation
 instructions. `main` and release checks can build on cache misses. The independent
 **UI simulator images** workflow refreshes the default-branch caches daily so
@@ -187,8 +227,9 @@ gh workflow run ui-images.yml --ref main -f source-ref=feat/my-feature
 
 The workflow runs on `main` and checks out the requested source, making its exact
 image keys available to PRs through GitHub's default-branch cache. The UI matrix
-uses ten fresh test processes plus two error-guard probes; rendering uses ten
-processes, rather than running an additional preflight for every size.
+uses ten fresh test processes, two startup/exec probes, one callback/cleanup
+rejection contract, one same-process isolation run and one locale/scale run.
+Rendering uses ten processes, rather than running an additional preflight for every size.
 
 The simulated UI canvas defaults to **1920×1080**. Select another size with
 `WOW_UI_RESOLUTION=3440x1440 bash tools/ui.sh preview`.
@@ -309,8 +350,9 @@ are created inside the enabled module's initializer. Settings use
 the module object; cross-module callbacks can be absent when a module is disabled.
 
 To add a feature, register its metadata, runtime and settings, add files to the TOC,
-and extend module expectations and relevant regression tests. New top-level Lua tests
-are discovered automatically. Keep `PyresinQoLDB`, existing saved keys, frame names
+and extend module expectations and relevant regression tests. New Lua tests under
+`tests/unit/<domain>/` and `tests/integration/<domain>/` are discovered automatically;
+keep fixtures in `tests/support/`. Keep `PyresinQoLDB`, existing saved keys, frame names
 and `/pqol` stable. General migrations belong in `Core/Database.lua`;
 native-settings migrations stay with their feature. Prefer events and bounded
 updates; preserve the existing quest cache and disabled-module behavior.
@@ -339,7 +381,7 @@ The shortcut hides with the menu and while controller UI mode is active, then
 returns with the saved setting when mouse/keyboard mode resumes. Its click handler
 also checks controller mode and combat before opening the cooldown settings.
 
-`tests/menu.lua` checks the ownership boundary, menu lifecycle, native callbacks,
+`tests/integration/core/settings.lua` checks the ownership boundary, menu lifecycle, native callbacks,
 combat, scale, repeated layout passes and controller transitions. The optional Elune check
 `elune tools/check-gamepad-menu-taint.lua /path/to/Interface/AddOns` loads native
 layout, menu and gamepad binding/action-bar code with frame-engine stubs. It
@@ -371,7 +413,7 @@ It also installs when Blizzard's Edit Mode addon loads later. Controls keep thei
 existing saved keys and registered settings, so defaults and automatic profile
 refresh still work. Edits save immediately; Blizzard's Revert Changes button manages
 only its native settings. The macro dialog captures the bar it was opened for.
-`tests/actionbars-editmode.lua` covers selection, per-bar isolation, delayed loading,
+`tests/integration/actionbars/editmode.lua` covers selection, per-bar isolation, delayed loading,
 combat guards and coexistence with the real cast-bar extension using frame stubs.
 
 Visibility and opacity use secure state drivers on addon-owned handler frames that
@@ -386,9 +428,9 @@ does not activate this mode. LuaJIT tests can check configuration and mocked cal
 but only the live client can
 verify visual output, protected ownership, taint and combat behavior.
 
-Run `luajit tests/actionbars.lua` and `sh tests/run.sh`. To run the visibility
+Run `luajit tests/integration/actionbars/behavior.lua` and `sh tests/run.sh`. To run the visibility
 scenarios through the client's native state driver, pass its source directory:
-`luajit tests/actionbars.lua /path/to/Interface/AddOns`. Macro results and frame-engine
+`luajit tests/integration/actionbars/behavior.lua /path/to/Interface/AddOns`. Macro results and frame-engine
 methods are still stubbed. In game, check every bar's
 combat, stealth, form, custom-condition, opacity and mouseover transitions, then
 enter and leave controller UI mode and confirm the native bars resume their saved
@@ -397,7 +439,7 @@ rules.
 Action-bar dialog registration adds only its own entry to `StaticPopupDialogs`.
 Never reassign that Blizzard global, even to the same table: doing so taints its
 reference, and later native popup/ESC registration can carry that taint into
-`SpellStopCasting()`. `tests/menu.lua` rejects global writes from the action-bar
+`SpellStopCasting()`. `tests/integration/core/settings.lua` rejects global writes from the action-bar
 settings builder. The optional native dispatch regression runs with
 [Elune](https://github.com/Meorawr/elune):
 `elune tools/check-escape-taint.lua /path/to/Interface/AddOns` (use the built Lua
@@ -640,6 +682,10 @@ coordinates because native button scale already applies; owner bounds scale once
 Settings callbacks apply presentation directly and never invoke native aura
 rendering, which compares restricted stack counts. Native grid post-hooks capture
 geometry so disabling restores it without calling Blizzard's data refresh.
+Outside timers reserve actual font line height, measured with a hidden addon-owned
+constant sample, plus the configured timer gap. They never read native timer text
+or its rendered height. This prevents adjacent wrapped rows from overlapping when
+a font's line height exceeds its configured size, even with zero row spacing.
 Disabling also restores icon art, duration fonts and mouse access.
 
 `TargetDebuffs.lua` applies target sizes, spacing and widths through the native
@@ -654,9 +700,9 @@ These methods were checked against Forever **1.60.1.69913**
 ([player aura source](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_BuffFrame/BuffFrame.lua),
 [target container](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_UnitFrame/Shared/TargetFrameAuraContainer.lua),
 [custom container](https://github.com/Gethe/wow-ui-source/blob/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e/Interface/AddOns/Blizzard_AuraContainer/Blizzard_CustomAuraContainer.lua)).
-Run `luajit tests/playerauras.lua`, `luajit tests/targetdebuffs.lua` and
+Run `luajit tests/integration/unitframes/playerauras.lua`, `luajit tests/integration/unitframes/targetdebuffs.lua` and
 `sh tests/run.sh`. To exercise native grid restoration, run
-`luajit tests/playerauras.lua /path/to/BuffFrame.lua` with the pinned source above.
+`luajit tests/integration/unitframes/playerauras.lua /path/to/BuffFrame.lua` with the pinned source above.
 Mock checks do not certify rendering, access restrictions or taint safety. In game,
 check both layouts, ownership/reverse sorting, row limits, private boss auras,
 weapon enchants, collapsed/consolidated buffs, UI scales, Edit Mode examples,
@@ -693,7 +739,7 @@ Health events are registered only for target/focus and refresh the affected disp
 Faction events refresh target/focus individually or both when the player changes
 faction; unrelated units are ignored. Layout changes do not query threat values.
 
-Run `luajit tests/targetthreat.lua` and `sh tests/run.sh`. In game, check all modes,
+Run `luajit tests/integration/unitframes/targetthreat.lua` and `sh tests/run.sh`. In game, check all modes,
 combat entry/exit, aggro takeover, target/focus changes, death, friendly units,
 small focus frames, mirrored aura layouts and Edit Mode. Offline checks do not
 certify layout or taint safety.
@@ -728,7 +774,7 @@ overlay through their container. Restricted threat values go only to display sin
 Run `sh tests/run.sh`. The threat test covers menu selection, same-type return,
 icon state, heading restoration, native-state preservation, restricted values,
 scrolling, Edit Mode, and new windows. Optional native row style check:
-`luajit tests/threatmeter.lua /path/to/Blizzard_DamageMeter/DamageMeterEntry.lua`.
+`luajit tests/integration/unitframes/threatmeter.lua /path/to/Blizzard_DamageMeter/DamageMeterEntry.lua`.
 Offline tests do not certify WoW's frame-layout/taint behavior. After `/reload`,
 select Damage Done, enter combat, attack an NPC until meter rows appear, then open
 the type dropdown. Check switching to Threat and back, repeat menu opening, and
@@ -763,7 +809,7 @@ nameplate options. The native preview uses three sample points.
 
 API and lifecycle were checked against Forever 1.60.1.69913
 ([UI source](https://github.com/Gethe/wow-ui-source/tree/70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e)).
-Run `luajit tests/nameplate-combopoints.lua`; in game, check two enemies, a finisher,
+Run `luajit tests/integration/unitframes/nameplate-combopoints.lua`; in game, check two enemies, a finisher,
 target switching, recycled plates, druid forms and combat restrictions.
 
 ### Native nameplate preview selector (withdrawn)
@@ -867,7 +913,7 @@ The **Profiles** page sits outside category groups at the bottom of the sidebar;
 there is no header dropdown. It has separate profile selection, layout assignment,
 create/rename and inactive-profile deletion controls. Page defaults are hidden.
 
-Run `luajit tests/profiles.lua` and `sh tests/run.sh`. In Forever, verify the `/pqol`
+Run `luajit tests/integration/core/profiles.lua` and `sh tests/run.sh`. In Forever, verify the `/pqol`
 Profiles tab, German labels, create/rename/delete, manual assignments and automatic
 layout switching with different module choices, cast-bar overrides and FPS/latency
 positions. Check presets, layout renames/deletions, character layouts on two

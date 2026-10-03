@@ -130,6 +130,7 @@ function castBar.SetEnabled(enabled)
 end
 
 function castBar.Reset()
+    if castBar.CloseEditors then castBar.CloseEditors() end
     if PyresinQoLDB then PyresinQoLDB.castBar = nil end
     if castBar.Apply then castBar.Apply() end
     if castBar.RefreshControls then castBar.RefreshControls() end

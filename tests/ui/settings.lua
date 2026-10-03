@@ -132,49 +132,34 @@ for _, page in ipairs(pages) do
     }, function() if setting then setting:SetValue(original) end end)
 end
 
-UIFlow("Profiles: renders the active profile selector and creation button", {
-    function(_, sidebar) PageButton(sidebar, "Profiles"):Click() end,
-    function(canvas, sidebar, list)
-        AssertSettingsLayout(canvas, sidebar, list)
-        assertEquals("Profiles", list.Header.Title:GetText())
-        assertFalse(list.Header.DefaultsButton:IsShown())
-        local active, create
-        for _, panel in ipairs({ list:GetChildren() }) do
-            for _, control in ipairs({ panel:GetChildren() }) do
-                if control:IsVisible() and control.GetText then
-                    if control.SetupMenu and control:GetText() == "Default" then active = control end
-                    if control:IsObjectType("Button") and control:GetText() == "Create" then create = control end
-                end
-            end
-        end
-        assertNotNil(active)
-        assertTrue(active:GetWidth() > 0)
-        assertNotNil(create)
-        assertTrue(create:IsEnabled())
-        AssertInside(active, list, "Profile selector")
-        AssertInside(create, list, "Create profile button")
-        assertNotNil(PyresinQoLDB.profileStore.profiles[PyresinQoLDB.profileStore.active])
+local moduleSetting, moduleOriginal, playerSetting
+UIFlow("Modules: pending reload marks pages and disables their controls until enabled again", {
+    function(_, sidebar, list)
+        moduleSetting = assert(Settings.GetSetting("PyresinQoL_Module_unitFrames"))
+        playerSetting = assert(Settings.GetSetting("PyresinQoL_playerClassColor"))
+        moduleOriginal = moduleSetting:GetValue()
+        PageButton(sidebar, "Modules"):Click()
+        list:ScrollToElementByName(moduleSetting:GetName())
     end,
-})
-
-local fps, latency, originalFPS, originalLatency
-UIFlow("performance settings update the live display after UI ticks", {
-    function(_, sidebar)
-        PageButton(sidebar, "FPS & Latency"):Click()
-        fps = assert(Settings.GetSetting("PyresinQoL_ShowFPS"))
-        latency = assert(Settings.GetSetting("PyresinQoL_ShowLatency"))
-        originalFPS, originalLatency = fps:GetValue(), latency:GetValue()
-        fps:SetValue(false)
+    function(_, sidebar, list)
+        UI.Click(UI.VisibleSetting(list, moduleSetting).Checkbox, list.ScrollBox, "Disable unit frames")
+        PageButton(sidebar, "Player Frame *"):Click()
+        list:ScrollToElementByName(playerSetting:GetName())
     end,
-    function() latency:SetValue(false) end,
-    function()
-        assertFalse(PyresinQoLPerformance:IsVisible())
-        fps:SetValue(true)
+    function(_, sidebar, list)
+        assertFalse(PyresinQoLDB.modules.unitFrames)
+        assertFalse(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())
+        assertFalse(list.Header.DefaultsButton:IsEnabled())
+        PageButton(sidebar, "Modules"):Click()
+        list:ScrollToElementByName(moduleSetting:GetName())
     end,
-    function()
-        assertTrue(PyresinQoLPerformance:IsVisible())
-        AssertInside(PyresinQoLPerformance, UIParent, "Performance display")
+    function(_, sidebar, list)
+        UI.Click(UI.VisibleSetting(list, moduleSetting).Checkbox, list.ScrollBox, "Enable unit frames")
+        PageButton(sidebar, "Player Frame"):Click()
+        list:ScrollToElementByName(playerSetting:GetName())
     end,
-}, function()
-    if fps then fps:SetValue(originalFPS); latency:SetValue(originalLatency) end
-end)
+    function(_, _, list)
+        assertTrue(PyresinQoLDB.modules.unitFrames)
+        assertTrue(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())
+    end,
+}, function() if moduleSetting then moduleSetting:SetValue(moduleOriginal) end end)
