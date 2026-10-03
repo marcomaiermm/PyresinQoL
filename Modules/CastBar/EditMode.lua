@@ -29,6 +29,19 @@ local function Install()
     scroll:SetScrollChild(content)
     local rows, tabs, section, selected = {}, {}, "style", "style"
     local changingSlider
+    local pickerSession
+    -- Reset/profile changes can replace nil settings with nil again; identity
+    -- alone would leave a previously opened default-config menu valid.
+    local editorGeneration = 0
+    function cast.CloseEditors()
+        editorGeneration = editorGeneration + 1
+        for _, entry in ipairs(rows) do
+            if entry.frame.Dropdown then entry.frame.Dropdown:CloseMenu() end
+        end
+        local picker = pickerSession
+        pickerSession = nil
+        if picker and ColorPickerFrame.swatchFunc == picker.swatchFunc then ColorPickerFrame:Hide() end
+    end
     local function ChoiceButton(parent, label)
         local button = CreateFrame("Button", nil, parent)
         local background = button:CreateTexture(nil, "BACKGROUND")
@@ -103,10 +116,16 @@ local function Install()
         end
         row.control = row.Dropdown
         row.Dropdown:SetupMenu(function(_, root)
+            local saved = PyresinQoLDB and PyresinQoLDB.castBar
+            local generation = editorGeneration
             if key == "texture" then root:SetScrollMode(420) end
             for _, option in ipairs(type(options) == "function" and options() or options) do
                 local radio = root:CreateRadio(option[2], function(value) return cast.Get(key) == value end,
-                    function(value) cast.Set(key, value) end, option[1])
+                    function(value)
+                        if generation == editorGeneration and PyresinQoLDB and PyresinQoLDB.castBar == saved then
+                            cast.Set(key, value)
+                        end
+                    end, option[1])
                 if key == "texture" then
                     radio:AddInitializer(function(button)
                         local preview = button:AttachTexture()
@@ -217,13 +236,25 @@ local function Install()
         end
         button:SetScript("OnClick", function()
             local previous = cast.Get(key)
+            local saved = PyresinQoLDB and PyresinQoLDB.castBar
+            local session = {}
+            pickerSession = session
+            local function Current()
+                return pickerSession == session and PyresinQoLDB and PyresinQoLDB.castBar == saved
+            end
+            session.swatchFunc = function()
+                if not Current() then return end
+                local r, g, b = ColorPickerFrame:GetColorRGB()
+                cast.Set(key, { r = r, g = g, b = b })
+            end
             ColorPickerFrame:SetupColorPickerAndShow({
                 r = previous.r, g = previous.g, b = previous.b, hasOpacity = false,
-                swatchFunc = function()
-                    local r, g, b = ColorPickerFrame:GetColorRGB()
-                    cast.Set(key, { r = r, g = g, b = b })
+                swatchFunc = session.swatchFunc,
+                cancelFunc = function()
+                    if not Current() then return end
+                    cast.Set(key, previous)
+                    pickerSession = nil
                 end,
-                cancelFunc = function() cast.Set(key, previous) end,
             })
         end)
     end
@@ -414,7 +445,7 @@ local function Install()
         content:SetHeight(math.max(1, y))
         local overhead = contentTop + footerHeight
         local available = UIParent:GetHeight() * .85 - dialog.Settings:GetHeight() - dialog.Buttons:GetHeight() - overhead - 80
-        panel:SetHeight(enabled and (math.min(y, math.max(150, math.min(320, available))) + overhead) or 40)
+        panel:SetHeight(enabled and (math.min(y, math.max(80, math.min(320, available))) + overhead) or 40)
         scroll:SetVerticalScroll(math.min(scroll:GetVerticalScroll(), math.max(0, y - scroll:GetHeight())))
         if panel:IsShown() then dialog:Layout() end
     end

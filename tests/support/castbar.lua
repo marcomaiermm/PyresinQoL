@@ -139,6 +139,7 @@ local function Region()
         end
         self.menuGenerator(self, root)
     end
+    function region:CloseMenu() self.menuOpen = false end
     function region:IsDraggingThumb() return self.dragging or false end
     function region:Init(value, ...)
         self.initCount = (self.initCount or 0) + 1

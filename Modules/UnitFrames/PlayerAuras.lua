@@ -9,6 +9,10 @@ end
 ns.RegisterModule("unitFrames", function(module)
     local records = {}
     local nativeLayouts = {}
+    -- Measure only addon-owned text: native aura duration strings can be restricted.
+    local timerMeasure = UIParent:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    timerMeasure:SetText("0")
+    timerMeasure:Hide()
 
     local function CaptureLayout(owner)
         local layout = { size = { owner:GetSize() }, regions = {} }
@@ -93,6 +97,7 @@ ns.RegisterModule("unitFrames", function(module)
             numbers = PyresinQoLDB[prefix .. "CooldownNumbers"] == true,
         }
         local entries, anchors = {}, {}
+        local timerHeight = config.fontSize
         local now = GetTime()
         for index, button in ipairs(owner.auraFrames or {}) do
             if button.isAuraAnchor then
@@ -106,6 +111,10 @@ ns.RegisterModule("unitFrames", function(module)
                     button:HookScript("OnUpdate", function() StyleTimer(button, record) end)
                 end
                 if record then
+                    if enabled then
+                        timerMeasure:SetFont(record.font, config.fontSize, record.flags)
+                        timerHeight = math.max(timerHeight, timerMeasure:GetStringHeight())
+                    end
                     if record.clipped then button:SetAlpha(1); button:EnableMouse(true) end
                     record.clipped = false
                     record.config = enabled and config or nil
@@ -160,8 +169,8 @@ ns.RegisterModule("unitFrames", function(module)
         config.up = up
         local point = (up and "BOTTOM" or "TOP") .. (right and "LEFT" or "RIGHT")
         local scale = container.iconScale or 1
-        local timerHeight = (config.timer == "below" or config.timer == "above" or config.timer == "native")
-            and config.fontSize + config.timerGap or 0
+        timerHeight = (config.timer == "below" or config.timer == "above" or config.timer == "native")
+            and timerHeight + config.timerGap or 0
         local consolidated = owner.ConsolidatedBuffs and owner.ConsolidatedBuffs:ShouldShow()
             and owner.ConsolidatedBuffs
         local nativeSlots = #anchors > 0 or consolidated

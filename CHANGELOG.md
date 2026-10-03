@@ -1,5 +1,14 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+### Fixed
+
+- Prevent player aura timers from overlapping the next icon row when row spacing is zero.
+- Recover from malformed saved profile data while preserving valid settings and profiles.
+- Prevent stale cast-bar color and dropdown controls from undoing a reset or changing a newly selected profile.
+- Keep cast-bar settings inside the screen at enlarged UI scales.
+
 ## 0.1.6
 
 ### Added
