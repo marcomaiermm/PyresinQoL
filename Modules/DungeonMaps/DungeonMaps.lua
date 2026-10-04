@@ -71,6 +71,58 @@ ns.RegisterModule("dungeonMaps", function(module)
         end
     end
 
+    local function CreateNavMenuArrow(parent)
+        local arrow = CreateFrame("DropdownButton", nil, parent)
+        arrow.smartNavigationIgnored = true
+        arrow:SetSize(27, 31)
+        arrow:SetPoint("RIGHT", parent, "TOPRIGHT", -2, -15)
+
+        local art = arrow:CreateTexture(nil, "OVERLAY")
+        art:SetTexture("Interface\\Buttons\\SquareButtonTextures")
+        art:SetSize(12, 12)
+        art:SetPoint("CENTER", 0, -1)
+        art:SetTexCoord(.453125, .640625, .203125, .015625)
+        arrow.Art = art
+
+        arrow:SetNormalTexture("Interface\\Buttons\\UI-SquareButton-Up")
+        local normal = arrow:GetNormalTexture()
+        normal:ClearAllPoints()
+        normal:SetSize(32, 32)
+        normal:SetPoint("CENTER")
+        normal:SetAlpha(0)
+        arrow.NormalTexture = normal
+
+        arrow:SetPushedTexture("Interface\\Buttons\\UI-SquareButton-Down")
+        local pushed = arrow:GetPushedTexture()
+        pushed:ClearAllPoints()
+        pushed:SetSize(32, 32)
+        pushed:SetPoint("CENTER")
+        pushed:SetAlpha(0)
+        arrow.PushedTexture = pushed
+
+        arrow:SetHighlightTexture("Interface\\Buttons\\UI-Common-MouseHilight", "ADD")
+        local highlight = arrow:GetHighlightTexture()
+        highlight:ClearAllPoints()
+        highlight:SetSize(32, 32)
+        highlight:SetPoint("CENTER")
+
+        arrow:SetScript("OnMouseDown", function(self)
+            self.Art:SetPoint("CENTER", -1, -2)
+        end)
+        arrow:SetScript("OnMouseUp", function(self)
+            self.Art:SetPoint("CENTER", 0, -1)
+        end)
+        arrow:SetScript("OnEnter", function(self)
+            self.NormalTexture:SetAlpha(1)
+            self.PushedTexture:SetAlpha(1)
+        end)
+        arrow:SetScript("OnLeave", function(self)
+            self.NormalTexture:SetAlpha(0)
+            self.PushedTexture:SetAlpha(0)
+        end)
+        return arrow
+    end
+
     local function CreateProvider(map)
         local canvas = map:GetCanvas()
         local container = map:GetCanvasContainer()
@@ -204,6 +256,9 @@ ns.RegisterModule("dungeonMaps", function(module)
             if not home or not saved then return end
             home.listFunc = saved.listFunc
             home:SetWidth(saved.width)
+            for _, textureState in pairs(saved.textures or {}) do
+                textureState.texture:SetTexCoord(unpack(textureState.coords))
+            end
             if saved.arrow then
                 saved.arrow:SetShown(saved.arrowShown)
                 if NavButtonTemplate_SetupDropdown and saved.listFunc then
@@ -225,9 +280,7 @@ ns.RegisterModule("dungeonMaps", function(module)
             if not arrow then
                 addonArrow = true
                 if not self.HomeMenuArrowButton then
-                    arrow = CreateFrame("DropdownButton", nil, home, "WowStyle1ArrowDropdownTemplate")
-                    arrow:SetPoint("RIGHT", home, "RIGHT", -4, 0)
-                    arrow:SetFrameLevel(home:GetFrameLevel() + 2)
+                    arrow = CreateNavMenuArrow(home)
                     arrow:Hide()
                     self.HomeMenuArrowButton = arrow
                 else
@@ -240,6 +293,20 @@ ns.RegisterModule("dungeonMaps", function(module)
                     arrow = arrow,
                     arrowShown = arrow:IsShown(),
                     width = home:GetWidth(),
+                    textures = {
+                        normal = {
+                            texture = home:GetNormalTexture(),
+                            coords = { home:GetNormalTexture():GetTexCoord() },
+                        },
+                        pushed = {
+                            texture = home:GetPushedTexture(),
+                            coords = { home:GetPushedTexture():GetTexCoord() },
+                        },
+                        highlight = {
+                            texture = home:GetHighlightTexture(),
+                            coords = { home:GetHighlightTexture():GetTexCoord() },
+                        },
+                    },
                 }
             end
             local nativeListFunc = self.HomeButtonState.listFunc
@@ -261,7 +328,22 @@ ns.RegisterModule("dungeonMaps", function(module)
                 return list
             end
             arrow:Show()
-            if not addonArrow then home:SetWidth(home.text:GetStringWidth() + 53) end
+            if addonArrow then
+                -- The bespoke World home ends in a chevron and has less body
+                -- space than NavButtonTemplate. Reserve the native arrow's
+                -- click/hover width before that tip and extend the atlas crop.
+                local width = math.min(128,
+                    math.max(self.HomeButtonState.width, home.text:GetStringWidth() + 65))
+                local cropWidth = width / 128 * .25
+                home:SetWidth(width)
+                home:GetNormalTexture():SetTexCoord(.703125 - cropWidth, .703125, .0078125, .2421875)
+                home:GetPushedTexture():SetTexCoord(.703125 - cropWidth, .703125, .2578125, .4921875)
+                home:GetHighlightTexture():SetTexCoord(.703125 - cropWidth, .713125, .5078125, .7421875)
+                arrow:ClearAllPoints()
+                arrow:SetPoint("RIGHT", home, "TOPRIGHT", -22, -15)
+            else
+                home:SetWidth(home.text:GetStringWidth() + 53)
+            end
             NavButtonTemplate_SetupDropdown(home, arrow)
             if NavBar_CheckLength then NavBar_CheckLength(nav) end
         end

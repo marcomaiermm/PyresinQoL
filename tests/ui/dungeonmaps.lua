@@ -4,7 +4,7 @@ local provider, originalInstanceInfo, restoreDungeon, dungeonFloor, expectedRetu
 local nativeWorldMapID, panBeforeX, panBeforeY
 local baselineHomeListFunc, baselineHomeWidth, baselineHomeArrowShown
 local staleReturnItem, staleReturnCallback, settingOriginal
-local baselineHomeEntries
+local baselineHomeEntries, baselineHomeTextureCoords
 local WorldHomeMenuArrow
 local resizeWasMinimized
 local SetNativeBackingMap
@@ -40,6 +40,11 @@ local function BeginInstance(name, instanceID, subzone, backingMapID, homeListFu
     if home and homeListFunc then home.listFunc = homeListFunc end
     baselineHomeListFunc = home and home.listFunc or nil
     baselineHomeWidth = home and home:GetWidth() or nil
+    baselineHomeTextureCoords = home and {
+        normal = { home:GetNormalTexture():GetTexCoord() },
+        pushed = { home:GetPushedTexture():GetTexCoord() },
+        highlight = { home:GetHighlightTexture():GetTexCoord() },
+    } or nil
     baselineHomeEntries = {}
     if home and baselineHomeListFunc then
         for _, entry in ipairs(baselineHomeListFunc(home) or {}) do
@@ -67,6 +72,7 @@ local function BeginInstance(name, instanceID, subzone, backingMapID, homeListFu
         baselineHomeWidth = nil
         baselineHomeArrowShown = nil
         baselineHomeEntries = nil
+        baselineHomeTextureCoords = nil
         staleReturnCallback = nil
     end
     if backingMapID then SetNativeBackingMap(backingMapID) end
@@ -85,6 +91,16 @@ local function AssertHomeBaselineRestored()
         "Clearing the dungeon route must restore the native World-home menu function")
     assertEquals(baselineHomeWidth, home:GetWidth(),
         "Clearing the dungeon route must restore the native World-home width")
+    for key, texture in pairs({
+        normal = home:GetNormalTexture(),
+        pushed = home:GetPushedTexture(),
+        highlight = home:GetHighlightTexture(),
+    }) do
+        local actual = { texture:GetTexCoord() }
+        for index = 1, 8 do
+            assertAlmostEquals(baselineHomeTextureCoords[key][index], actual[index])
+        end
+    end
     local currentArrow = WorldHomeMenuArrow(false)
     local currentArrowShown = currentArrow and currentArrow:IsShown() or false
     assertEquals(baselineHomeArrowShown, currentArrowShown,
@@ -183,6 +199,89 @@ WorldHomeMenuArrow = function(required)
             "World-home return dropdown must be attached to Blizzard's home button")
     end
     return arrow
+end
+
+local function AssertWorldHomeMenuArrowStyle()
+    local arrow = WorldHomeMenuArrow(true)
+    local nav = assert(WorldMapFrame.NavBar, "Missing native map navigation bar")
+    local nativeArrow
+    for _, buttons in ipairs({ nav.navList or {}, nav.freeButtons or {} }) do
+        for _, button in ipairs(buttons) do
+            if button ~= nav.homeButton and button.MenuArrowButton and button.MenuArrowButton.Art then
+                nativeArrow = button.MenuArrowButton
+                break
+            end
+        end
+        if nativeArrow then break end
+    end
+    nativeArrow = assert(nativeArrow, "Missing incumbent Blizzard breadcrumb menu arrow")
+
+    assertAlmostEquals(nativeArrow:GetWidth(), arrow:GetWidth())
+    assertAlmostEquals(nativeArrow:GetHeight(), arrow:GetHeight())
+    local point, relative, relativePoint = arrow:GetPoint(1)
+    assertEquals("RIGHT", point)
+    assertEquals(nav.homeButton, relative)
+    assertEquals("TOPRIGHT", relativePoint)
+
+    assertNotNil(arrow.Art, "World-home dropdown must use Blizzard's plain triangle art")
+    local function AssertTextureMatches(actual, expected, actualParent, expectedParent)
+        assertEquals(expected:GetTexture(), actual:GetTexture())
+        assertAlmostEquals(expected:GetWidth(), actual:GetWidth())
+        assertAlmostEquals(expected:GetHeight(), actual:GetHeight())
+        assertEquals(expected:GetNumPoints(), actual:GetNumPoints())
+        local actualPoint, actualRelative, actualRelativePoint, actualX, actualY = actual:GetPoint(1)
+        local expectedPoint, expectedRelative, expectedRelativePoint, expectedX, expectedY = expected:GetPoint(1)
+        assertEquals(expectedPoint, actualPoint)
+        assertEquals(actualParent, actualRelative)
+        assertEquals(expectedParent, expectedRelative)
+        assertEquals(expectedRelativePoint, actualRelativePoint)
+        assertAlmostEquals(expectedX, actualX)
+        assertAlmostEquals(expectedY, actualY)
+        local actualCoords, expectedCoords = { actual:GetTexCoord() }, { expected:GetTexCoord() }
+        for index = 1, 8 do assertAlmostEquals(expectedCoords[index], actualCoords[index]) end
+    end
+    AssertTextureMatches(arrow.Art, nativeArrow.Art, arrow, nativeArrow)
+
+    local normal = assert(arrow:GetNormalTexture(), "World-home dropdown needs native hover art")
+    local pushed = assert(arrow:GetPushedTexture(), "World-home dropdown needs native pushed art")
+    local highlight = assert(arrow:GetHighlightTexture(), "World-home dropdown needs native highlight art")
+    AssertTextureMatches(normal, nativeArrow:GetNormalTexture(), arrow, nativeArrow)
+    AssertTextureMatches(pushed, nativeArrow:GetPushedTexture(), arrow, nativeArrow)
+    AssertTextureMatches(highlight, nativeArrow:GetHighlightTexture(), arrow, nativeArrow)
+    assertAlmostEquals(0, normal:GetAlpha())
+    assertAlmostEquals(0, pushed:GetAlpha())
+
+    local home = nav.homeButton
+    local textInkRight = home.text:GetLeft() + home.text:GetStringWidth()
+    assertTrue(home.text:GetWidth() >= home.text:GetStringWidth(),
+        "Dungeon return menu must not truncate the native World label")
+    assertTrue(arrow:GetLeft() >= textInkRight + 6,
+        "World-home dropdown click bounds must start after the World label")
+    local nextLeft = home:GetRight() + (home.xoffset or 0)
+    for _, button in ipairs(nav.navList or {}) do
+        local left = button ~= home and button:IsShown() and button:GetLeft()
+        if left and left > home:GetLeft() then nextLeft = math.min(nextLeft, left) end
+    end
+    for _, region in ipairs({ arrow, arrow.Art, normal, pushed, highlight }) do
+        assertTrue(region:GetRight() <= nextLeft - 4,
+            "World-home dropdown must stay inside the home body before the next breadcrumb")
+    end
+
+    assert(arrow:GetScript("OnEnter"), "World-home dropdown needs native hover behavior")(arrow)
+    assertAlmostEquals(1, normal:GetAlpha())
+    assertAlmostEquals(1, pushed:GetAlpha())
+    assert(arrow:GetScript("OnLeave"), "World-home dropdown needs native leave behavior")(arrow)
+    assertAlmostEquals(0, normal:GetAlpha())
+    assertAlmostEquals(0, pushed:GetAlpha())
+
+    assert(arrow:GetScript("OnMouseDown"), "World-home dropdown needs native pressed behavior")(arrow)
+    local _, _, _, pressedX, pressedY = arrow.Art:GetPoint(1)
+    assertAlmostEquals(-1, pressedX)
+    assertAlmostEquals(-2, pressedY)
+    assert(arrow:GetScript("OnMouseUp"), "World-home dropdown needs native release behavior")(arrow)
+    local _, _, _, releasedX, releasedY = arrow.Art:GetPoint(1)
+    assertAlmostEquals(0, releasedX)
+    assertAlmostEquals(-1, releasedY)
 end
 
 local function AssertNoDungeonNavEntry()
@@ -349,6 +448,7 @@ local function AssertNativeSurfaceRestored()
     local homeArrow = WorldHomeMenuArrow(true)
     assertTrue(homeArrow:IsShown(),
         "Native World home must expose the dungeon return menu outside dungeon art")
+    AssertWorldHomeMenuArrowStyle()
     local native = FindNativeNavButtonIfPresent(WorldMapFrame:GetMapID())
     if native then
         assertFalse(native:IsEnabled(),
