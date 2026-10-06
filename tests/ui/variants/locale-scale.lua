@@ -69,6 +69,28 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
     PyresinQoLDB.castBarCustomization = originalRawEnabled
 end)
 
+for _, entry in ipairs({
+    { "Spielmenü", "CooldownShortcut", "Erweiterte Cooldown-Einstellungen im Spielmenü" },
+    { "Buffs & Debuffs", "buffOwnRow", "Eigene und fremde Auren in getrennten Zeilen" },
+    { "Buffs & Debuffs", "debuffOwnRow", "Eigene und fremde Auren in getrennten Zeilen" },
+}) do
+    UI.Flow("German label renders completely: " .. entry[2], {
+        function(_, sidebar, list)
+            local setting = Settings.GetSetting("PyresinQoL_" .. entry[2])
+            UI.PageButton(sidebar, entry[1]):Click()
+            list.ScrollBox:ScrollToElementDataByPredicate(function(initializer)
+                return initializer:GetSetting() == setting
+            end, ScrollBoxConstants.AlignNearest)
+        end,
+        function(_, _, list)
+            local row = UI.VisibleSetting(list, Settings.GetSetting("PyresinQoL_" .. entry[2]))
+            assertEquals(entry[3], row.Text:GetText())
+            assert(not row.Text:IsTruncated(), "Incomplete translated label: " .. entry[3])
+            UI.AssertInside(row.Text, row, "Complete German label")
+        end,
+    })
+end
+
 UI.Flow("German settings search finds localized labels and help at enlarged scale", {
     function(canvas, sidebar, list)
         UI.PageButton(sidebar, "Spielerrahmen"):Click()

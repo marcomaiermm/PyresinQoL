@@ -88,6 +88,11 @@ supplies `GetLocale() == "deDE"` before addon localization loads, then the runne
 sets `UIParent` scale to 1.25 before opening settings. Blizzard's strings have
 already loaded in enUS; this verifies German **addon** labels and scaled native
 controls, not a fully German client. The fixture records and asserts that distinction.
+The cooldown shortcut and both separate-own-aura settings additionally require
+`IsTruncated() == false`; rectangle bounds alone cannot prove text completeness.
+Aura rows are selected by their setting identity, not their repeated label. The
+shared FontString contract checks fitting wrapping and real width, height and
+line-limit failures against the corrected simulator APIs (TEST-008).
 
 Native target flows seed data with `A_Admin.SetTarget` and explicitly dispatch
 `PLAYER_TARGET_CHANGED`: the pinned admin implementation does not send that event.
@@ -124,7 +129,11 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
 
 ## Current verification
 
-- All 41 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
+- Settings-label completeness: **70/70** at all ten resolutions, same-process
+  **21/21** and German addon/scale **11/11** pass. Both reported translations are
+  complete with native anchors and 44px row budgets. Native-client clipping remains
+  unverified; the simulator API repairs are recorded as TEST-008 in the error map.
+- All 45 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
 - The quest-sparkle change passes the full native UI matrix: **67/67** at all ten
   resolutions, including checkbox/CVar values, post-close restart dialog, opt-in Defaults and a
   layout-linked profile switch. The error-injection contracts detect all four

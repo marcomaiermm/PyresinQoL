@@ -11,7 +11,7 @@ function ns.InitializeSettings()
     -- Use Blizzard's native settings window frame.
     local canvas = CreateFrame("Frame", "PyresinQoLSettingsFrame", UIParent, "SettingsFrameTemplate")
     canvas:Hide()
-    canvas:SetSize(960, 720)
+    canvas:SetSize(920, 724)
     canvas:SetPoint("CENTER")
     canvas:SetFrameStrata("DIALOG")
     canvas:SetToplevel(true)
@@ -36,7 +36,7 @@ function ns.InitializeSettings()
     canvas:SetScript("OnHide", function() canvas:StopMovingOrSizing() end)
     function ns.OpenSettings()
         if SettingsPanel:IsShown() then HideUIPanel(SettingsPanel) end
-        canvas:SetScale(math.min(1, (UIParent:GetWidth() - 32) / 960, (UIParent:GetHeight() - 32) / 720))
+        canvas:SetScale(math.min(1, (UIParent:GetWidth() - 32) / 920, (UIParent:GetHeight() - 32) / 724))
         canvas:Show()
         canvas:Raise()
     end
@@ -61,37 +61,22 @@ function ns.InitializeSettings()
 
     local search = CreateFrame("EditBox", nil, canvas, "SearchBoxTemplate")
     search:SetSize(350, 22)
-    search:SetPoint("TOPRIGHT", -34, -38)
+    search:SetPoint("TOPRIGHT", -18, -34)
     search:SetMaxBytes(64)
     canvas.SearchBox = search
 
-    local inner = canvas:CreateTexture(nil, "ARTWORK")
-    inner:SetAtlas("Options_InnerFrame")
+    local inner = canvas:CreateTexture(nil, "OVERLAY")
+    inner:SetAtlas("Options_InnerFrame", true)
     inner:SetPoint("TOPLEFT", 17, -64)
-    inner:SetPoint("BOTTOMRIGHT", -17, 42)
     local sidebar = CreateFrame("Frame", nil, canvas)
-    sidebar:SetPoint("TOPLEFT", 22, -78)
-    sidebar:SetPoint("BOTTOMLEFT", 22, 48)
-    sidebar:SetWidth(202)
-    local border = sidebar:CreateTexture(nil, "ARTWORK")
-    border:SetPoint("TOPRIGHT", 6, 12)
-    border:SetPoint("BOTTOMRIGHT", 6, -6)
-    border:SetWidth(1)
-    border:SetColorTexture(0.45, 0.45, 0.45, 0.6)
+    sidebar:SetPoint("TOPLEFT", 18, -76)
+    sidebar:SetPoint("BOTTOMLEFT", 18, 46)
+    sidebar:SetWidth(199)
 
     local list = CreateFrame("Frame", nil, canvas, "SettingsListTemplate")
-    list:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 24, 0)
-    list:SetPoint("BOTTOMRIGHT", canvas, "BOTTOMRIGHT", -28, 48)
-    list.Header:SetHeight(66)
+    list:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 16, 0)
+    list:SetPoint("BOTTOMRIGHT", canvas, "BOTTOMRIGHT", -22, 47)
     list.Header.Title:SetPoint("RIGHT", list.Header.DefaultsButton, "LEFT", -12, 0)
-    for _, region in ipairs({ list.Header:GetRegions() }) do
-        if region:IsObjectType("Texture") then
-            region:ClearAllPoints()
-            region:SetPoint("TOPLEFT", 0, -58)
-            region:SetPoint("TOPRIGHT", 0, -58)
-            region:SetHeight(8)
-        end
-    end
     local pages = {
         { name = L.modules, description = L.overviewDescription, initializers = {}, settings = {} },
     }
@@ -118,8 +103,8 @@ function ns.InitializeSettings()
     local profilePage = { name = L.profiles, description = L.profileHelp, initializers = {}, settings = {} }
     pages[#pages + 1] = profilePage
     local profiles = ns.CreateProfilesPage(list)
-    profiles:SetPoint("TOPLEFT", 8, -78)
-    profiles:SetPoint("BOTTOMRIGHT", -8, 8)
+    profiles:SetPoint("TOPLEFT", 10, -64)
+    profiles:SetPoint("BOTTOMRIGHT", -20, 8)
     profiles:Hide()
     local footer = canvas:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     footer:SetPoint("BOTTOMLEFT", 24, 22)
@@ -148,8 +133,11 @@ function ns.InitializeSettings()
         for _, page in ipairs(pages) do
             local enabled = not page.module or PyresinQoLDB.modules[page.module.id]
             local pending = page.module and enabled ~= page.module.active
+            local selected = not searching and page == currentPage
             page.button.text:SetText(page.name .. (pending and " *" or ""))
-            page.button.text:SetTextColor(enabled and 1 or 0.5, enabled and 0.82 or 0.5, enabled and 0 or 0.5)
+            if not enabled then page.button.text:SetTextColor(0.5, 0.5, 0.5)
+            elseif selected then page.button.text:SetTextColor(1, 1, 1)
+            else page.button.text:SetTextColor(1, 0.82, 0) end
         end
         local pending = ns.ModulesNeedReload()
         local module = not searching and currentPage.module
@@ -222,13 +210,16 @@ function ns.InitializeSettings()
         end
         page.searchHeader = header
         local button = CreateFrame("Button", nil, sidebar)
-        button:SetHeight(24)
-        button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        button:SetHeight(20)
+        local highlight = button:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAtlas("Options_List_Hover", true)
+        highlight:SetPoint("CENTER")
+        button:SetHighlightTexture(highlight)
         button.selected = button:CreateTexture(nil, "BACKGROUND")
-        button.selected:SetAllPoints()
-        button.selected:SetAtlas("Options_List_Active")
+        button.selected:SetAtlas("Options_List_Active", true)
+        button.selected:SetPoint("CENTER")
         button.text = button:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        button.text:SetPoint("LEFT", page == profilePage and 16 or 34, 0)
+        button.text:SetPoint("LEFT", page == profilePage and 16 or 36, 1)
         button.text:SetPoint("RIGHT", -8, 0)
         button.text:SetJustifyH("LEFT")
         button.text:SetText(page.name)
@@ -255,31 +246,26 @@ function ns.InitializeSettings()
             group.button:ClearAllPoints()
             group.button:SetPoint("TOPLEFT", 0, -y)
             group.button:SetPoint("TOPRIGHT", 0, -y)
-            group.button.arrow:SetRotation(group.collapsed and 0 or -math.pi / 2)
+            group.button.arrow:SetAtlas(group.collapsed and "common-button-dropdown-closed" or "common-button-dropdown-open")
             y = y + 32
             for _, page in ipairs(group.pages) do
                 page.button:SetShown(not group.collapsed)
                 page.button:ClearAllPoints()
                 page.button:SetPoint("TOPLEFT", 0, -y)
                 page.button:SetPoint("TOPRIGHT", 0, -y)
-                if not group.collapsed then y = y + 26 end
+                if not group.collapsed then y = y + 22 end
             end
-            y = y + 8
+            y = y + 20
         end
     end
     for _, group in ipairs(groups) do
-        local button = CreateFrame("Button", nil, sidebar, "BackdropTemplate")
-        button:SetHeight(30)
-        local background = button:CreateTexture(nil, "BACKGROUND")
-        background:SetAllPoints()
-        background:SetAtlas("Options_CategoryHeader_1")
-        local label = button:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
-        label:SetPoint("LEFT", 16, 0)
-        label:SetText(group.name)
-        button.arrow = button:CreateTexture(nil, "ARTWORK")
+        local button = CreateFrame("Button", nil, sidebar, "SettingsCategoryListHeaderTemplate")
+        -- The atlas includes the fading background below the 30px header.
+        button.Background:SetAtlas("Options_CategoryHeader_1", true)
+        button.Label:SetText(group.name)
+        button.arrow = button:CreateTexture(nil, "OVERLAY")
         button.arrow:SetSize(16, 16)
-        button.arrow:SetPoint("RIGHT", -4, 0)
-        button.arrow:SetTexture("Interface\\Buttons\\UI-SpellbookIcon-NextPage-Up")
+        button.arrow:SetPoint("RIGHT", -6, 0)
         button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
         button:SetScript("OnClick", function()
             group.collapsed = not group.collapsed
