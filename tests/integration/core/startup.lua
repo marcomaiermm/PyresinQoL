@@ -12,7 +12,7 @@ local files = {
     performance = { "Modules/Performance/Performance.lua" },
     dungeonMaps = { "Modules/DungeonMaps/Data.lua", "Modules/DungeonMaps/Logic.lua", "Modules/DungeonMaps/DungeonMaps.lua" },
     experience = { "Modules/Experience/Experience.lua" },
-    quests = { "Modules/Quests/Quests.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
+    quests = { "Modules/Quests/Quests.lua", "Modules/Quests/Sparkles.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
     actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
 }
@@ -45,7 +45,7 @@ for id, paths in pairs(files) do
 end
 assert(not ns.ModulesNeedReload())
 PyresinQoLDB.modules.quests = false
-assert(ns.ModulesNeedReload() and started.quests == 1, "A toggle must not reinitialize running modules")
+assert(ns.ModulesNeedReload() and started.quests == 2, "A toggle must not reinitialize running modules")
 
 -- Boot the actual TOC with everything disabled; only the core event frame may exist.
 ns = {}

@@ -19,6 +19,7 @@ are documented in [tests/README.md](../tests/README.md).
 | DUNGEON-002 | Native map handoff | Open a dungeon map, click **World Map**, then press **M** | Expected the native map to close; observed the post-hook reopening the custom dungeon map because it did not distinguish whether the native toggle opened or closed `WorldMapFrame` | The post-hook unconditionally attempted to show the dungeon map while its frame was hidden, and the button used a toggle plus bypass state | The superseded separate-window flow reproduced and fixed the toggle defect before DUNGEON-003 replaced that architecture | Superseded by the native `WorldMapFrame` provider in DUNGEON-003 |
 | DUNGEON-003 | Blizzard map integration | Press **M** in a supported dungeon | Expected the missing dungeon art to extend Blizzard's existing world-map surface; observed a separate addon window, while its projected marker and the hidden native map used coordinate domains that were not verified for WoW Forever | The first implementation treated generic Classic UiMap references as Forever calibration and intercepted the native-map toggle | Native UI coverage asserts `WorldMapFrame` remains the visible map, the art frame belongs to its MapCanvas, native zoom/pan/close and initial fit work, misleading pins and coordinates are suppressed, and native state is restored on handoff | Fixed by installing a supplemental provider on `WorldMapFrame`; no player position is drawn until a Forever-specific map domain is verified |
 | DUNGEON-004 | Dungeon/world navigation and hover isolation | Right-click an illustrated dungeon map, return through the World menu, and hover/click the art | Expected Blizzard-style navigation between dungeon and world map; observed a custom **World Map** button as the only exit, no native route back, outdoor ancestry in the dungeon breadcrumb, and outdoor area labels/click targets leaking through the drawn floor | The fallback initially hid `WorldMapNavBar`, then inherited the unrelated backing map's hierarchy when the bar was added, while neither version isolated every backing-map interaction | Native UI coverage exercises repeated right-click/World-menu round trips, native map links, close/reopen and instance exit while checking the dungeon bar is only `World > Dungeon` and backing labels, highlight pins and clicks stay inactive only during fallback | Fixed by using a dungeon-only native breadcrumb, the native home dropdown for the retained return route, MapCanvas click handling and native provider restoration on exit |
+| QUEST-001 | Incomplete sparkle reset | Enable sparkles, reject one outline write while switching off, then call the registered setting's `NotifyUpdate()` again | Expected visible error and retry; the reset stayed partial and a repeated Notify skipped it | `pcall` results were discarded, and the saved off state was mistaken for a completed reset | `tests/integration/quests/sparkles.lua` reproduces the failed off transition through the real settings callback, checks context-rich errors, retry after throws/false returns/unchanged read-back, combat deferral, error-handler exceptions, re-enabling and untouched already-disabled profiles | Fixed with a runtime-only pending reset cleared only on successful completion or re-enabling |
 
 ## Test infrastructure and coverage work
 
@@ -50,6 +51,8 @@ are documented in [tests/README.md](../tests/README.md).
 | SIM-006 | XP quest reward preview | Try to seed a completed quest with a nonzero XP reward | Expected a visible reward/overflow preview; pinned APIs always report not ready and zero reward | Simulator `quest_surface/register.rs:33` implements `ReadyForTurnIn` with `return_false`; line 111 implements `GetQuestLogRewardXP` with `return_zero` | `tests/integration/experience/experience.lua` retains reward, overflow, hidden/header and cache cases; `tests/ui/experience.lua` tests real text/visibility/format controls without claiming reward-preview coverage | Pinned API gap; native reward preview requires client |
 | SIM-007 | Native layout rebuild | Dispatch `EDIT_MODE_LAYOUTS_UPDATED` after a native layout change | Expected full native rebuild; pinned simulator reports “Error updating layout info” | Pinned `workarounds_editmode.rs:1–25` documents the native rebuild failure | Native `tests/ui/profile-transitions.lua` changes actual layout state and synchronizes linked profiles through the real specialization event; local composed tests retain full Edit Mode event ordering, drag, active cast and editor cases | Full native layout rebuild remains a client check |
 | SIM-008 | Aura insertion / expiry | Remove a middle buff and then add another; or wait for an aura expiry sweep | Expected a fresh unique aura ID and automatic expiration; pinned insertion uses `buffs.len()+1`, which can collide with a surviving ID, and has no expiry sweep | Simulator admin aura storage behavior | Native aura flow checks middle removal/compaction and reuse after emptying the pool; local `tests/integration/unitframes/playerauras.lua` covers unique-ID insertion after middle removal | Native insertion collision and automatic expiry remain simulator gaps |
+| SIM-009 | Quest loot sparkles | Read `outlineModeShowLootEffectWhenDisabled` before UI fixtures | Expected a registered Forever loot-effect CVar; the pinned simulator returns nil, while the four outline CVars exist | Missing simulator CVar registration | `tests/ui/00-helpers.lua` seeds the missing CVar with `0` and refreshes the registered setting. Local integration tests retain unavailable-CVar skipping, write-failure recovery and delayed normal/raid preset cases | Narrow fixture workaround; world sparkles and restart behavior require the client |
+| SIM-010 | German popup text | Open the sparkle restart dialog with addon deDE at scale 1.25 | The localized popup definition contains correct UTF-8, but rendered text changes `vollständig` to mojibake | Pinned simulator's native popup text-formatting path; checkbox labels remain correct | The locale UI flow checks the UTF-8 source translation plus rendered ASCII restart instructions, `/reload` and dialog/text geometry | Native-client German glyph rendering still requires manual verification |
 
 The local sandbox may deny the Unix socket used by `tests/ui-runner.py`. That is
 an execution-environment restriction; running the unchanged mocked-Docker check
@@ -57,7 +60,9 @@ with local socket permission verifies the tool contract. It is not an addon fail
 
 ## Current verification
 
-- Lua: **40/40** isolated scenarios, including all locale/startup variants.
+- Lua: **41/41** isolated scenarios, including all locale/startup variants and
+  quest-sparkle opt-in defaults, preset timing, unavailable CVars, visible write
+  errors, incomplete-reset retries and untouched already-disabled profiles.
 - Runner contracts: **9/9**; UI command contracts: **22/22**.
 - Package contents, source consistency, rejection checks and the 0.1.6 manifest audit pass.
 - Prior native UI baseline: **48 scenarios × 10 resolutions = 480 passed, zero failed**.
@@ -73,8 +78,10 @@ with local socket permission verifies the tool contract. It is not an addon fail
   home/right-click round trips, saved-floor and original-backing restoration,
   hover/click isolation, scoped tooltip cleanup, and the verified client-native
   Ragefire Chasm and four-floor Scholomance texture families.
-- The unaffected auxiliary lanes pass same-process forward/reverse
-  flows **20/20** and German addon labels at scale 1.25 **5/5**.
+- The current quest-sparkle change passes **67/67** UI scenarios at each of all
+  ten resolutions, with the missing loot-effect CVar seeded as documented in SIM-009.
+- The auxiliary lanes pass same-process forward/reverse flows **20/20** and
+  German addon labels at scale 1.25 **6/6**.
 - The auxiliary run also rejected startup-error and exec-probe sentinels;
   its separate callback/cleanup contract required exactly **four intentional
   failures** and successful recovery.

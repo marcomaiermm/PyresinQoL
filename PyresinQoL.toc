@@ -21,6 +21,7 @@ Modules/DungeonMaps/DungeonMaps.lua
 Modules/EditMode/PixelPerfect.lua
 Modules/Experience/Experience.lua
 Modules/Quests/Quests.lua
+Modules/Quests/Sparkles.lua
 Modules/ActionBars/Config.lua
 Modules/ActionBars/ActionBars.lua
 Modules/ActionBars/Visibility.lua
