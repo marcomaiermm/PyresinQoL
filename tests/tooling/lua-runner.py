@@ -38,6 +38,13 @@ def main():
         check("discovers both layers", [], 0, both)
         check("unit selector", ["unit"], 0, [both[1]])
         check("domain selector includes both layers", ["core"], 0, both)
+        for name in ("settings.lua", "settings-search.lua"):
+            scenario = root / "tests/integration/core" / name
+            scenario.touch()
+            path = str(scenario.relative_to(root))
+            variants = [path, *(f"{path} {mode}" for mode in ("de", "disabled", "modules-disabled"))]
+            check(f"{name} runs every settings variant", ["core"], 0, [both[0], *variants, both[1]])
+            scenario.unlink()
         check("invalid selector", ["unknown"], 2, [])
         check("extra selector", ["unit", "core"], 2, [])
         check("empty selected domain", ["castbar"], 1, [])

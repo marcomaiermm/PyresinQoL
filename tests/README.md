@@ -34,7 +34,7 @@ LuaJIT process for every file and every variant to isolate globals, hooks and fr
 | `integration/<domain>/` | Addon behavior through frame, event and native API doubles | Rendering data, settings callbacks, state transitions, restricted-value sinks, module coexistence |
 | `ui/` | Actual Blizzard controls and FrameXML in the pinned WoW simulator | Open windows, click controls, seed world state, advance UI ticks, inspect displayed results and errors |
 | `tooling/` | Development and release tool contracts | Immutable Docker images, cleanup, failures, package manifests and archive integrity |
-| `support/` | Explicit domain fixtures | Cast-bar native transition/frame doubles shared by cast-bar and Edit Mode checks |
+| `support/` | Explicit domain fixtures | Cast-bar native transition/frame doubles; settings window, controls and callback state shared by navigation and search scenarios |
 
 Single-module tests that simulate frame methods are integration tests. Their strict
 restricted-value and ownership doubles remain useful alongside simulator flows:
@@ -56,9 +56,12 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 | Tooltips | Restricted HP, ranks/factions, metadata, target changes, anchors, live refresh limits | English and German; native tooltip health text/configured height and visible fixed-screen anchor in `ui/tooltips.lua`; visible status-bar rendering is a simulator gap, metadata/target cases stay local |
 | Tooling | Image immutability, cached builds, rejected tags/images, failure propagation and temporary resource cleanup; archive/source consistency | Python UI-command checks and Bash package checks remain separate from simulator assertions |
 
-The restructuring retains all 24 original leaf Lua suites and their 11 additional
-language/startup variants, then adds two pure suites and two profile recovery/
-composition suites: **41 isolated Lua processes**.
+The Lua runner executes **45 isolated Lua processes**. Settings navigation and
+search are separate scenarios (`integration/core/settings.lua` and
+`integration/core/settings-search.lua`) sharing `support/settings.lua`. Both run
+in English, German, with disabled options, and with all modules disabled. Search
+coverage includes profile refreshes and exactly one list rebuild per navigation;
+the native UI suite also counts Blizzard's `OnSettingsUpdated` callbacks.
 Cast-bar's old top-level launcher delegates to its five leaf suites and is not
 counted a second time. Scenario counts refer to processes, not individual asserts.
 The UI runner discovers `ui/*.lua`; its scenario count is reported separately for

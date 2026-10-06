@@ -25,6 +25,7 @@ local function AssertSettingsLayout(canvas, sidebar, list)
     AssertInside(canvas.ClosePanelButton, UIParent, "Close button")
     AssertInside(sidebar, canvas, "Navigation")
     AssertInside(list, canvas, "Settings list")
+    AssertInside(canvas.SearchBox, canvas, "Settings search")
     -- Blizzard's list template intentionally extends its ScrollBox past the list.
     if list.ScrollBox:IsVisible() then AssertInside(list.ScrollBox, canvas, "Scroll viewport") end
     AssertInside(list.Header.Title, list.Header, "Page title")
@@ -55,6 +56,15 @@ local function VisibleCheckbox(list, setting)
         end
     end
     error("No rendered checkbox bound to " .. setting:GetVariable())
+end
+
+local function AssertOneRefresh(list, action)
+    local count, owner = 0, {}
+    list:RegisterCallback(list.Event.OnSettingsUpdated, function() count = count + 1 end, owner)
+    local ok, message = pcall(action)
+    list:UnregisterCallback(list.Event.OnSettingsUpdated, owner)
+    assert(ok, message)
+    assertEquals(1, count)
 end
 
 test("uses the requested physical UI resolution", function()
@@ -133,24 +143,114 @@ for _, page in ipairs(pages) do
     }, function() if setting then setting:SetValue(original) end end)
 end
 
-local moduleSetting, moduleOriginal, playerSetting
-UIFlow("Modules: pending reload marks pages and disables their controls until enabled again", {
+local searchSetting, searchOriginal
+UIFlow("Search: native search box finds global controls and edits their original settings", {
+    function(canvas, sidebar, list)
+        searchSetting = assert(Settings.GetSetting("PyresinQoL_ShowFPS"))
+        searchOriginal = searchSetting:GetValue()
+        AssertOneRefresh(list, function() PageButton(sidebar, "Tooltips"):Click() end)
+        assertFalse(canvas.SearchBox:HasFocus())
+        canvas.SearchBox:SetText("  fPs  ")
+        list:ScrollToElementByName(searchSetting:GetName())
+    end,
+    function(canvas, sidebar, list)
+        AssertSettingsLayout(canvas, sidebar, list)
+        assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
+        assertFalse(list.Header.DefaultsButton:IsShown())
+        assertFalse(PageButton(sidebar, "Tooltips").selected:IsShown())
+        assertTrue(canvas.SearchBox.clearButton:IsShown())
+        UI.Click(VisibleCheckbox(list, searchSetting), list.ScrollBox, "Search result checkbox")
+    end,
+    function(canvas, _, list)
+        assertEquals(not searchOriginal, PyresinQoLDB.showFPS)
+        assertEquals("  fPs  ", canvas.SearchBox:GetText())
+        assertEquals(not searchOriginal, VisibleCheckbox(list, searchSetting):GetChecked())
+        UI.Click(canvas.SearchBox.clearButton, canvas, "Clear settings search")
+    end,
+    function(canvas, sidebar, list)
+        assertEquals("", canvas.SearchBox:GetText())
+        assertEquals("Tooltips", list.Header.Title:GetText())
+        assertTrue(PageButton(sidebar, "Tooltips").selected:IsShown())
+        assertTrue(list.Header.DefaultsButton:IsShown())
+    end,
+}, function() if searchSetting then searchSetting:SetValue(searchOriginal) end end)
+
+UIFlow("Search: cross-page matches, literal punctuation, result links and close/reopen", {
+    function(canvas, sidebar)
+        PageButton(sidebar, "Tooltips"):Click()
+        canvas.SearchBox:SetText("class color")
+    end,
+    function(canvas, _, list)
+        local player, target = false, false
+        for _, initializer in list.ScrollBox:GetDataProvider():Enumerate() do
+            if initializer:GetSetting() == Settings.GetSetting("PyresinQoL_playerClassColor") then player = true end
+            if initializer:GetSetting() == Settings.GetSetting("PyresinQoL_targetClassColor") then target = true end
+        end
+        assertTrue(player and target)
+        canvas.SearchBox:SetText("[]%.")
+    end,
+    function(canvas, _, list)
+        assertEquals(1, list.ScrollBox:GetDataProvider():GetSize())
+        local message = assert(UI.Find(list.ScrollBox, function(f)
+            return f.Title and f.Title:GetText() == SETTINGS_SEARCH_NOTHING_FOUND
+        end))
+        AssertInside(message, list.ScrollBox, "Empty search result")
+        canvas.SearchBox:SetText("druid")
+    end,
+    function(_, _, list)
+        local header = assert(UI.Find(list.ScrollBox, function(f)
+            return f.Title and f.Title:GetText() == "Unit Frames > Player Frame"
+        end))
+        AssertOneRefresh(list, function() UI.Click(header, list.ScrollBox, "Search result page link") end)
+    end,
+    function(canvas, sidebar, list)
+        assertEquals("", canvas.SearchBox:GetText())
+        assertEquals("Player Frame", list.Header.Title:GetText())
+        assertTrue(PageButton(sidebar, "Player Frame").selected:IsShown())
+        assertTrue(list.Header.DefaultsButton:IsShown())
+        AssertOneRefresh(list, function() PageButton(sidebar, "Player Frame"):Click() end)
+        canvas.SearchBox:SetText("nameplates")
+        assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
+        canvas:Hide()
+    end,
+    function(canvas)
+        assertEquals("", canvas.SearchBox:GetText())
+        SlashCmdList.PQOL()
+    end,
     function(_, sidebar, list)
+        assertEquals("Player Frame", list.Header.Title:GetText())
+        assertTrue(PageButton(sidebar, "Player Frame").selected:IsShown())
+    end,
+})
+
+local moduleSetting, moduleOriginal, playerSetting
+UIFlow("Modules: pending reload locks page and search controls until enabled again", {
+    function(canvas, sidebar, list)
         moduleSetting = assert(Settings.GetSetting("PyresinQoL_Module_unitFrames"))
         playerSetting = assert(Settings.GetSetting("PyresinQoL_playerClassColor"))
         moduleOriginal = moduleSetting:GetValue()
         PageButton(sidebar, "Modules"):Click()
+        canvas.SearchBox:SetText("unit frames")
         list:ScrollToElementByName(moduleSetting:GetName())
     end,
-    function(_, sidebar, list)
+    function(canvas, sidebar, list)
         UI.Click(UI.VisibleSetting(list, moduleSetting).Checkbox, list.ScrollBox, "Disable unit frames")
-        PageButton(sidebar, "Player Frame *"):Click()
+        assertEquals("unit frames", canvas.SearchBox:GetText())
+        assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
+        AssertOneRefresh(list, function() PageButton(sidebar, "Player Frame *"):Click() end)
         list:ScrollToElementByName(playerSetting:GetName())
     end,
-    function(_, sidebar, list)
+    function(canvas, _, list)
         assertFalse(PyresinQoLDB.modules.unitFrames)
         assertFalse(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())
         assertFalse(list.Header.DefaultsButton:IsEnabled())
+        canvas.SearchBox:SetText("class color")
+        list:ScrollToElementByName(playerSetting:GetName())
+    end,
+    function(_, sidebar, list)
+        assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
+        assertFalse(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())
+        assertFalse(list.Header.DefaultsButton:IsShown())
         PageButton(sidebar, "Modules"):Click()
         list:ScrollToElementByName(moduleSetting:GetName())
     end,

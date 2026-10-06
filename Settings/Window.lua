@@ -59,6 +59,12 @@ function ns.InitializeSettings()
     open:SetText(L.openSettings)
     open:SetScript("OnClick", ns.OpenSettings)
 
+    local search = CreateFrame("EditBox", nil, canvas, "SearchBoxTemplate")
+    search:SetSize(350, 22)
+    search:SetPoint("TOPRIGHT", -34, -38)
+    search:SetMaxBytes(64)
+    canvas.SearchBox = search
+
     local inner = canvas:CreateTexture(nil, "ARTWORK")
     inner:SetAtlas("Options_InnerFrame")
     inner:SetPoint("TOPLEFT", 17, -64)
@@ -96,13 +102,14 @@ function ns.InitializeSettings()
         groupsByID[definition.id] = group
     end
     groups[1].pages[1] = pages[1]
+    pages[1].group = groups[1]
     for _, module in ipairs(ns.modules) do
         local featurePages = {}
         modulePages[module.id] = featurePages
         local group = assert(groupsByID[module.group], "Unknown settings group: " .. module.group)
         for _, definition in ipairs(module.pages) do
             local page = { name = definition.name, description = module.description,
-                module = module, initializers = {}, settings = {} }
+                module = module, group = group, initializers = {}, settings = {} }
             pages[#pages + 1] = page
             group.pages[#group.pages + 1] = page
             featurePages[definition.id] = page
@@ -132,7 +139,12 @@ function ns.InitializeSettings()
         if ns.ModulesNeedReload() and not InCombatLockdown() then ReloadUI() end
     end)
     local currentPage = pages[1]
+    local LayoutNavigation
+    local function GetSearchText()
+        return search:GetText():match("^%s*(.-)%s*$"):upper()
+    end
     local function UpdateModuleState()
+        local searching = GetSearchText() ~= ""
         for _, page in ipairs(pages) do
             local enabled = not page.module or PyresinQoLDB.modules[page.module.id]
             local pending = page.module and enabled ~= page.module.active
@@ -140,25 +152,75 @@ function ns.InitializeSettings()
             page.button.text:SetTextColor(enabled and 1 or 0.5, enabled and 0.82 or 0.5, enabled and 0 or 0.5)
         end
         local pending = ns.ModulesNeedReload()
-        local module = currentPage.module
+        local module = not searching and currentPage.module
         local enabled = not module or (module.active and PyresinQoLDB.modules[module.id])
         footer:SetText(pending and (InCombatLockdown() and L.combat or L.reloadHint)
             or not enabled and L.disabledHint or L.savedHint)
         footer:SetTextColor(pending and 1 or 0.7, pending and 0.82 or 0.7, pending and 0.3 or 0.7)
         reload:SetShown(pending)
         reload:SetEnabled(pending and not InCombatLockdown())
-        list.Header.DefaultsButton:SetEnabled(enabled)
-        list.Header.DefaultsButton:SetShown(currentPage ~= profilePage)
+        list.Header.DefaultsButton:SetEnabled(enabled and not searching)
+        list.Header.DefaultsButton:SetShown(not searching and currentPage ~= profilePage)
     end
-    local function DisplayPage(page)
-        currentPage = page
-        list.Header.Title:SetText(page.name)
-        list:Display(page.initializers)
-        profiles:SetShown(page == profilePage)
-        for _, entry in ipairs(pages) do entry.button.selected:SetShown(entry == page) end
+    local function CollectSearchResults(text)
+        local words = { text }
+        for word in text:gmatch("([^,%s]+)") do words[#words + 1] = word end
+        local initializers = {}
+        for _, page in ipairs(pages) do
+            local matches = {}
+            local pageMatch = page.searchHeader:MatchesSearchTags(words)
+            local section, shownSection
+            for _, initializer in ipairs(page.initializers) do
+                if initializer:IsTemplate("SettingsListSectionHeaderTemplate") then
+                    section = initializer
+                elseif initializer:ShouldShow() and (pageMatch or initializer:MatchesSearchTags(words)) then
+                    if section and section ~= shownSection then
+                        matches[#matches + 1] = section
+                        shownSection = section
+                    end
+                    matches[#matches + 1] = initializer
+                end
+            end
+            if pageMatch or #matches > 0 then
+                initializers[#initializers + 1] = page.searchHeader
+                for _, initializer in ipairs(matches) do initializers[#initializers + 1] = initializer end
+            end
+        end
+        if #initializers == 0 then
+            initializers[1] = CreateSettingsListSectionHeaderInitializer(SETTINGS_SEARCH_NOTHING_FOUND)
+        end
+        return initializers
+    end
+    local function RefreshView()
+        local text = GetSearchText()
+        local searching = text ~= ""
+        local initializers = currentPage.initializers
+        if searching then initializers = CollectSearchResults(text) end
+        list.Header.Title:SetText(searching and SETTINGS_SEARCH_RESULTS or currentPage.name)
+        list:Display(initializers)
+        profiles:SetShown(not searching and currentPage == profilePage)
+        for _, page in ipairs(pages) do page.button.selected:SetShown(not searching and page == currentPage) end
         UpdateModuleState()
     end
+    local function SelectPage(page)
+        currentPage = page
+        search:ClearFocus()
+        if page.group and page.group.collapsed then
+            page.group.collapsed = false
+            LayoutNavigation()
+        end
+        -- Clearing a nonempty query refreshes synchronously through OnTextChanged.
+        if search:GetText() == "" then RefreshView()
+        else search:SetText("") end
+    end
     for _, page in ipairs(pages) do
+        local header = Settings.CreateElementInitializer("SettingsListSearchCategoryTemplate", {})
+        header:AddSearchTags(page.name, page.group and page.group.name, page.module and page.module.name)
+        function header:InitFrame(frame)
+            frame.Title:SetText(page.group and (page.group.name .. " > " .. page.name) or page.name)
+            frame:SetScript("OnClick", function() SelectPage(page) end)
+        end
+        page.searchHeader = header
         local button = CreateFrame("Button", nil, sidebar)
         button:SetHeight(24)
         button:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
@@ -170,7 +232,7 @@ function ns.InitializeSettings()
         button.text:SetPoint("RIGHT", -8, 0)
         button.text:SetJustifyH("LEFT")
         button.text:SetText(page.name)
-        button:SetScript("OnClick", function() DisplayPage(page) end)
+        button:SetScript("OnClick", function() SelectPage(page) end)
         button:SetScript("OnEnter", function()
             GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
             GameTooltip:SetText(page.name)
@@ -187,7 +249,7 @@ function ns.InitializeSettings()
     end
     profilePage.button:SetPoint("BOTTOMLEFT", 0, 0)
     profilePage.button:SetPoint("BOTTOMRIGHT", 0, 0)
-    local function LayoutNavigation()
+    LayoutNavigation = function()
         local y = 0
         for _, group in ipairs(groups) do
             group.button:ClearAllPoints()
@@ -237,7 +299,7 @@ function ns.InitializeSettings()
     for _, module in ipairs(ns.modules) do
         local setting = Settings.RegisterAddOnSetting(category, "PyresinQoL_Module_" .. module.id,
             module.id, PyresinQoLDB.modules, Settings.VarType.Boolean, module.name, true)
-        setting:SetValueChangedCallback(function() DisplayPage(currentPage) end)
+        setting:SetValueChangedCallback(RefreshView)
         table.insert(overview.settings, { setting = setting, default = true })
         AddControl(overview, Settings.CreateCheckboxInitializer(setting, nil, module.description .. "\n\n" .. L.moduleHelp))
     end
@@ -256,15 +318,21 @@ function ns.InitializeSettings()
     list.Header.DefaultsButton:SetText(DEFAULTS)
     list.Header.DefaultsButton:SetScript("OnClick", function()
         ResetPage(currentPage)
-        DisplayPage(currentPage)
+        RefreshView()
     end)
     canvas.OnDefault = function()
         for _, page in ipairs(pages) do ResetPage(page) end
-        DisplayPage(currentPage)
+        RefreshView()
     end
     launcher.OnDefault = canvas.OnDefault
-    canvas.OnRefresh = function() DisplayPage(currentPage) end
-    canvas:SetScript("OnShow", canvas.OnRefresh)
+    canvas.OnRefresh = RefreshView
+    canvas:SetScript("OnShow", RefreshView)
+    search:HookScript("OnTextChanged", RefreshView)
+    search:HookScript("OnEscapePressed", function() search:SetText("") end)
+    canvas:HookScript("OnHide", function()
+        search:ClearFocus()
+        search:SetText("")
+    end)
 
     function ns.RefreshProfileSettings()
         for _, page in ipairs(pages) do
@@ -275,7 +343,7 @@ function ns.InitializeSettings()
                 end
             end
         end
-        DisplayPage(currentPage)
+        RefreshView()
     end
     EventRegistry:RegisterCallback("EditMode.Exit", ns.MaybePromptProfileReload, ns)
 end

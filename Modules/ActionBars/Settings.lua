@@ -101,7 +101,8 @@ ns.RegisterModuleSettings("actionBars", function(module, context)
     Section(main, L.actionBarVisibility)
     local editMode = CreateSettingsButtonInitializer(L.actionBarVisibility, L.actionBarEditMode,
         function() if module.ConfigureActionBars then module.ConfigureActionBars() end end,
-        L.actionBarEditModeHelp, false)
+        L.actionBarEditModeHelp, true)
+    editMode:AddSearchTags(L.actionBarEditModeHelp)
     editMode:AddModifyPredicate(function() return module.active and PyresinQoLDB.modules[module.id] end)
     table.insert(main.initializers, editMode)
 end)

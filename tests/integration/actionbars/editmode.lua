@@ -39,7 +39,9 @@ ACCEPT, CANCEL = "Accept", "Cancel"
 
 local function Initializer(kind, label)
     return { kind = kind, label = label, InitFrame = function() end,
-        AddModifyPredicate = function(self, fn) self.predicate = fn end }
+        AddModifyPredicate = function(self, fn) self.predicate = fn end,
+        GetName = function(self) return self.label end, GetTooltip = function() end,
+        AddSearchTags = function() end }
 end
 local registered = {}
 Settings = {

@@ -43,7 +43,7 @@ for file in $files; do
     case "$selector" in all|"$layer"|"$domain") ;; *) continue ;; esac
     run "$file"
     case "$file" in
-        tests/integration/core/settings.lua) for variant in de disabled modules-disabled; do run "$file" "$variant"; done ;;
+        tests/integration/core/settings.lua|tests/integration/core/settings-search.lua) for variant in de disabled modules-disabled; do run "$file" "$variant"; done ;;
         tests/integration/core/profiles.lua|tests/integration/experience/experience.lua|tests/integration/tooltips/tooltip.lua) run "$file" de ;;
         tests/integration/actionbars/editmode.lua) run "$file" de; run "$file" late ;;
         tests/integration/editmode/integration.lua) for mode in editMode performance neither; do run "$file" "$mode"; done ;;

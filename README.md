@@ -31,6 +31,9 @@ Upgrading from the old addon name? See [settings migration](docs/development.md#
 
 Open **`/pqol`**, select the modules you want, and use **Reload UI** to apply
 module changes. Individual settings and positions are preserved.
+Use the search box to find options across all pages by name or help text. Edit
+matching controls directly, or click a result's heading to open its page; clear
+the search (or press Escape while typing) to return to the previously selected page.
 
 Inside an original Vanilla party dungeon, press **M** to open its illustrated map.
 It opens inside Blizzard's standard world-map frame; use the floor selector for
