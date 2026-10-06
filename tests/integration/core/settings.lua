@@ -52,7 +52,7 @@ assert(h.profilePanel.shown, "Reopening preserves the Profiles tab")
 h.navigation[1].scripts.OnClick()
 assert(not h.profilePanel.shown and h.settingsList.Header.DefaultsButton.shown)
 assert(h.navigation[2].text.value == ns.L.gameMenu and h.navigation[3].text.value == ns.L.editMode and h.navigation[4].text.value == ns.L.performance)
-assert(not h.canvas.shown and h.canvas.width == 960 and h.canvas.height == 720)
+assert(not h.canvas.shown and h.canvas.width == 920 and h.canvas.height == 724)
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and h.canvas.clamped and h.canvas.movable)
 assert(SLASH_PQOL1 == "/pqol" and SLASH_PYRESINQOL1 == nil and SLASH_PYRESINQOL2 == nil)
 assert(h.canvas.NineSlice.Text.value == "PyresinQoL")
@@ -80,6 +80,10 @@ assert(h.canvas.shown and h.canvas.scale < 1, "The complete window must fit shor
 h.canvas.ClosePanelButton.scripts.OnClick()
 assert(not h.canvas.shown)
 assert(#h.groupButtons == 4)
+for _, group in ipairs(h.groupButtons) do
+    assert(group.height == 30 and group.Background.useAtlasSize
+        and group.Background.points[1][1] == "TOPLEFT", "Category art must retain its native fading background")
+end
 h.groupButtons[1].scripts.OnClick()
 assert(not h.navigation[1].shown and not h.navigation[2].shown and not h.navigation[3].shown)
 assert(profileButton.shown and profileButton.points[1][1] == "BOTTOMLEFT", "Profiles stays outside collapsed groups")
@@ -89,6 +93,9 @@ assert(h.navigation[1].shown and h.navigation[2].shown and h.navigation[3].shown
 h.canvas.scripts.OnShow()
 assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 9)
 assert(h.navigation[1].selected.shown and not h.reloadButton.enabled)
+assert(h.navigation[1].text.color[2] == 1 and h.navigation[1].text.color[3] == 1,
+    "The selected page uses Blizzard's white label")
+assert(h.navigation[1].selected.useAtlasSize and h.navigation[1].height == 20)
 h.navigation[2].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.gameMenu and #h.settingsList.rendered == 1)
 assert(h.navigation[2].selected.shown and not h.navigation[3].selected.shown)
@@ -104,7 +111,10 @@ assert(h.settingsList.Header.Title.value == ns.L.performance and #h.settingsList
 for index = 1, 7 do
     local row = h.settingsList.rendered[index]
     assert(row.Text.wordWrap and row.Text.maxLines == 2 and #row.Text.points == 2)
-    assert(h.settingsList.initializers[index]:GetExtent() == 44)
+    assert(h.settingsList.initializers[index]:GetExtent() == 44 and row.Text.height == 44,
+        "Rows reserve enough space for two translated lines")
+    assert(row.Text.points[1][2] == 37 and row.Text.points[2][3] == "CENTER",
+        "Labels retain Blizzard's inset and center-based control column")
 end
 h.canvas.OnRefresh()
 assert(h.settingsList.Header.Title.value == ns.L.performance, "Reopening preserves the internal page")

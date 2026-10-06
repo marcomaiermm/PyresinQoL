@@ -86,6 +86,15 @@ It leaves state-attribute dispatch to the native handler when one is installed,
 preventing a second execution through the simulator's raw-frame fallback. The XML
 loader also needs the scroll-range and scroll-offset scripts from native scroll
 templates. These fixes let tests exercise Blizzard's snippets and scroll controls.
+FontString completeness checks also need the patch: `IsTruncated()` must use
+resolved anchor bounds, accept fitting wrapped text and count actual layout lines.
+The shared MessageFrame methods must route FontString `GetMaxLines`/`SetMaxLines`
+to font limits instead of chat-history limits. The helper contract checks both
+complete wrapping and genuine clipping; the German lane checks the cooldown
+shortcut and both separate-own-aura settings. Settings retain native columns but
+reserve 44px per row for two translated lines. A passing simulator result does
+not certify native-client font rendering; see SETTINGS-001 and TEST-008 in the
+[error map](test-error-map.md).
 The UI fixture supplies the omitted
 `LOSS_OF_CONTROL_ACTIVE_INDEX = 1` from the pinned Forever API documentation,
 which the native Edit Mode exit path needs. Neither workaround changes addon code.

@@ -8,6 +8,9 @@
 - Add opt-in **Quests → Show quest item sparkles**, included in addon profiles, to keep quest objects sparkling after graphics changes. This can also highlight quest givers and disables normal and raid outlines. Switching off restores High outlines once; a dialog after closing `/pqol` reminds you that removing sparkles requires a full game restart, not `/reload`. Re-enabling before closing cancels the reminder. CVar updates are coalesced, unchanged values are not rewritten, and combat changes wait until combat ends
 - Search all `/pqol` settings pages by localized option names and help text using Blizzard's native search field. Results keep their page/section context, can be edited directly, and link back to the original page; disabled modules remain locked
 
+### Changed
+- Reworked settings and profile page layouts to fit the custom window and keep translated controls readable
+
 ### Fixed
 - Avoid duplicate settings-list rebuilds when selecting a page from search results or the sidebar.
 - Report failed sparkle CVar writes and allow incomplete off transitions to be retried without resetting graphics for already-disabled profiles.

@@ -270,3 +270,168 @@ diff --git a/src/lua_api/globals/template/direct_tests.rs b/src/lua_api/globals/
 +        .iter()
 +        .all(|anchor| anchor.relative_to_id == Some(parent_id as usize)));
 +}
+
+diff --git a/src/lua_api/frame/methods/text_attribute_event/text.rs b/src/lua_api/frame/methods/text_attribute_event/text.rs
+index c77066223..11e451ca7 100644
+--- a/src/lua_api/frame/methods/text_attribute_event/text.rs
++++ b/src/lua_api/frame/methods/text_attribute_event/text.rs
+@@ -820,23 +820,27 @@ pub(super) fn get_num_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let line_count = if !props.has_text {
+         0
+     } else {
+-        let (text, font, font_size) = frame_text_measurement(state, id);
+-        if let Some(font_system) = state
+-            .app_data::<crate::lua_api::env::WowLuaAppData>()
+-            .and_then(|app| app.font_system.as_ref())
+-        {
+-            font_system
+-                .borrow_mut()
+-                .measure_text_layout(&text, font.as_deref(), font_size, props.wrap_width, 0.0)
+-                .1
+-        } else {
+-            approximate_text_layout(&text, font_size, props.wrap_width, 0.0).1
+-        }
++        measure_text_line_count(state, id, props.wrap_width)
+     };
+     state.push(Val::Num(line_count as f64));
+     Ok(1)
+ }
+
++fn measure_text_line_count(state: &LuaState, id: u64, wrap_width: Option<f32>) -> usize {
++    let (text, font, font_size) = frame_text_measurement(state, id);
++    if let Some(font_system) = state
++        .app_data::<crate::lua_api::env::WowLuaAppData>()
++        .and_then(|app| app.font_system.as_ref())
++    {
++        font_system
++            .borrow_mut()
++            .measure_text_layout(&text, font.as_deref(), font_size, wrap_width, 0.0)
++            .1
++    } else {
++        approximate_text_layout(&text, font_size, wrap_width, 0.0).1
++    }
++}
++
+ fn read_line_count_props(state: &LuaState, id: u64) -> LuaResult<Option<LineCountProps>> {
+     let sim = borrow_state(state)?;
+     let Some(frame) = sim.widgets.get(id) else {
+diff --git a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
+index e53832c76..465e70d17 100644
+--- a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
++++ b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
+@@ -1,7 +1,7 @@
+ use super::simple_html::{get_simple_html_font, is_simple_html_frame, set_simple_html_font};
+ use super::{
+-    frame_text_value, get_string_width, measure_text_height, measure_text_width,
+-    refresh_auto_text_height_after_width_change, set_text,
++    frame_text_value, get_string_width, measure_text_height, measure_text_line_count,
++    measure_text_width, refresh_auto_text_height_after_width_change, set_text,
+ };
+ use crate::lua_api::frame::methods::button_anchor_hierarchy::{
+     apply_font_object_snapshot, font_object_snapshot_changes_frame, read_font_object_fields,
+@@ -22,7 +22,6 @@ struct TruncationProps {
+     height: f64,
+     word_wrap: bool,
+     max_lines: u32,
+-    line_height: f64,
+ }
+
+ #[derive(Copy, Clone)]
+@@ -45,22 +44,31 @@ pub(crate) fn is_truncated(state: &mut LuaState) -> LuaResult<u32> {
+     Ok(1)
+ }
+
+-fn read_truncation_props(state: &LuaState, id: u64) -> TruncationProps {
+-    let sim = borrow_state(state).expect("sim state should exist");
++fn read_truncation_props(state: &mut LuaState, id: u64) -> TruncationProps {
++    let mut sim = borrow_state_mut(state).expect("sim state should exist");
++    sim.resolve_rect_if_dirty(id);
+     let frame = sim.widgets.get(id);
++    let (width, height) = frame
++        .map(|f| {
++            if let Some(rect) = f.layout_rect {
++                let scale = f.effective_scale.max(1e-6);
++                (rect.width / scale, rect.height / scale)
++            } else {
++                (f.width, f.height)
++            }
++        })
++        .unwrap_or((0.0, 0.0));
+     TruncationProps {
+-        width: frame.map(|f| f.width as f64).unwrap_or(0.0),
+-        height: frame.map(|f| f.height as f64).unwrap_or(0.0),
++        width: width as f64,
++        height: height as f64,
+         word_wrap: frame.map(|f| f.word_wrap).unwrap_or(false),
+         max_lines: frame.map(|f| f.max_lines).unwrap_or(0),
+-        line_height: frame
+-            .map(|f| f.font_size as f64 * f.text_scale.max(0.0))
+-            .unwrap_or(0.0),
+     }
+ }
+
+ fn check_truncated(state: &LuaState, id: u64, p: TruncationProps) -> bool {
+-    let width_overflow = p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
++    let width_overflow =
++        !p.word_wrap && p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
+     let vertical_overflow = check_vertical_overflow(state, id, &p);
+     width_overflow || vertical_overflow
+ }
+@@ -70,14 +78,9 @@ fn check_vertical_overflow(state: &LuaState, id: u64, p: &TruncationProps) -> bo
+         return false;
+     }
+     let wrapped_height = measure_text_height(state, id, Some(p.width as f32));
+-    let max_lines_height = (p.max_lines > 0).then_some(p.line_height * p.max_lines as f64);
+-    let available_height = match (p.height > 0.0, max_lines_height) {
+-        (true, Some(lh)) => p.height.min(lh),
+-        (true, None) => p.height,
+-        (false, Some(lh)) => lh,
+-        (false, None) => 0.0,
+-    };
+-    available_height > 0.0 && wrapped_height > available_height + 0.5
++    let too_many_lines = p.max_lines > 0
++        && measure_text_line_count(state, id, Some(p.width as f32)) > p.max_lines as usize;
++    too_many_lines || (p.height > 0.0 && wrapped_height > p.height + 0.5)
+ }
+
+ pub(crate) fn set_formatted_text(state: &mut LuaState) -> LuaResult<u32> {
+
+diff --git a/src/lua_api/frame/methods/widgets/message_frame/getters.rs b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
+index e95327402..d4cc52e76 100644
+--- a/src/lua_api/frame/methods/widgets/message_frame/getters.rs
++++ b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
+@@ -62,6 +62,12 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let id = frame_id_from_stack(state, 1)?;
+     let max = val_to_f64(stack_val(state, 2)) as i32;
+     let mut sim = borrow_state_mut(state)?;
++    if let Some(frame) = sim.widgets.get_mut_visual(id)
++        && frame.widget_type == crate::widget::WidgetType::FontString
++    {
++        frame.max_lines = max.max(0) as u32;
++        return Ok(0);
++    }
+     let data = sim.message_frames.entry(id).or_default();
+     data.max_lines = max.max(1) as usize;
+     while data.messages.len() > data.max_lines {
+@@ -77,11 +83,16 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+ pub(super) fn get_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let id = frame_id_from_stack(state, 1)?;
+     let sim = borrow_state(state)?;
+-    let v = sim
+-        .message_frames
+-        .get(&id)
+-        .map(|d| d.max_lines)
+-        .unwrap_or(120) as f64;
++    let v = match sim.widgets.get(id) {
++        Some(frame) if frame.widget_type == crate::widget::WidgetType::FontString => {
++            frame.max_lines as f64
++        }
++        _ => sim
++            .message_frames
++            .get(&id)
++            .map(|d| d.max_lines)
++            .unwrap_or(120) as f64,
++    };
+     drop(sim);
+     v.into_stack(state)
+ }

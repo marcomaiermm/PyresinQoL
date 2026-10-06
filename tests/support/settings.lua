@@ -95,7 +95,7 @@ local function Widget(kind)
         self.texture = path
         if path == "Interface\\AddOns\\PyresinQoL\\Media\\AddonIcon" then h.logos[#h.logos + 1] = self end
     end
-    function widget:SetAtlas() end
+    function widget:SetAtlas(atlas, useAtlasSize) self.atlas, self.useAtlasSize = atlas, useAtlasSize end
     function widget:SetRotation(value) self.rotation = value end
     function widget:SetHighlightTexture() end
     function widget:DisableDrawLayer() end
@@ -154,6 +154,8 @@ local function Initializer(name, kind, setting, tooltip)
             frame.Button = Widget(); frame.Button.Text = Widget()
         else
             frame.Text, frame.Tooltip = Widget(), Widget()
+            frame.Text:SetPoint("LEFT", 37, 0)
+            frame.Text:SetPoint("RIGHT", frame, "CENTER", -85, 0)
             frame[kind] = Widget()
             if kind == "Control" then frame.Control.Dropdown = Widget() end
         end
@@ -346,7 +348,12 @@ function CreateFrame(kind, name, parent, template)
         frame.NineSlice.Text = Widget()
         frame.ClosePanelButton = Widget()
     end
-    if kind == "Button" and template == "BackdropTemplate" then h.groupButtons[#h.groupButtons + 1] = frame end
+    if template == "SettingsCategoryListHeaderTemplate" then
+        frame:SetHeight(30)
+        frame.Background, frame.Label = Widget("Texture"), Widget("FontString")
+        frame.Background:SetPoint("TOPLEFT")
+        h.groupButtons[#h.groupButtons + 1] = frame
+    end
     if template == "UIPanelButtonTemplate" then
         if parent == h.launcher then h.openButton = frame
         elseif parent == h.canvas then

@@ -29,12 +29,28 @@ local function AssertSettingsLayout(canvas, sidebar, list)
     -- Blizzard's list template intentionally extends its ScrollBox past the list.
     if list.ScrollBox:IsVisible() then AssertInside(list.ScrollBox, canvas, "Scroll viewport") end
     AssertInside(list.Header.Title, list.Header, "Page title")
+    assertEquals(920, canvas:GetWidth())
+    assertEquals(724, canvas:GetHeight())
+    assertEquals(199, sidebar:GetWidth())
+    assertEquals(50, list.Header:GetHeight())
+    for _, region in ipairs({ list.Header:GetRegions() }) do
+        if region:IsObjectType("Texture") then
+            assertEquals("Options_HorizontalDivider", region:GetAtlas())
+            assertEquals(1, region:GetHeight())
+        end
+    end
     if list.Header.DefaultsButton:IsVisible() then
         AssertInside(list.Header.DefaultsButton, list.Header, "Defaults button")
     end
     for _, button in ipairs({ sidebar:GetChildren() }) do
         if button:IsObjectType("Button") and button:IsVisible() then
             AssertInside(button, sidebar, "Navigation button")
+            if button.Background then
+                local atlas = C_Texture.GetAtlasInfo(button.Background:GetAtlas())
+                assertEquals(atlas.width, button.Background:GetWidth())
+                assertEquals(atlas.height, button.Background:GetHeight())
+                assertTrue(button.Background:GetHeight() > button:GetHeight())
+            end
         end
     end
 end
@@ -50,7 +66,12 @@ local function VisibleCheckbox(list, setting)
             assertTrue(frame.Checkbox:GetWidth() > 0 and frame.Checkbox:GetHeight() > 0)
             AssertInside(frame, list.ScrollBox, "Setting row")
             AssertInside(frame.Text, frame, "Setting label")
+            assert(not frame.Text:IsTruncated(), "Incomplete setting label: " .. frame.Text:GetText())
             AssertInside(frame.Checkbox, frame, "Setting checkbox")
+            local point, _, relativePoint, x = frame.Checkbox:GetPoint(1)
+            assertEquals("LEFT", point)
+            assertEquals("CENTER", relativePoint)
+            assertEquals(-80, x)
             assertEquals(setting, frame:GetElementData():GetSetting())
             return frame.Checkbox
         end
@@ -121,7 +142,12 @@ for _, page in ipairs(pages) do
         function(canvas, sidebar, list)
             AssertSettingsLayout(canvas, sidebar, list)
             assertEquals(page[1], list.Header.Title:GetText())
-            assertTrue(PageButton(sidebar, page[1]).selected:IsShown())
+            local navigation = PageButton(sidebar, page[1])
+            assertTrue(navigation.selected:IsShown())
+            local r, g, b = navigation.text:GetTextColor()
+            assertEquals(1, r)
+            assertEquals(1, g)
+            assertEquals(1, b)
             local checkbox = VisibleCheckbox(list, setting)
             assertEquals(page[4], checkbox:GetChecked())
             checkbox:Click()
