@@ -118,7 +118,8 @@ ns.RegisterModuleSettings("unitFrames", function(module, context)
                     { L.castBarConfigure, cast.Configure, L.castBarConfigureHelp },
                     { L.castBarReset, cast.Reset, L.castBarResetHelp },
                 }) do
-                    local button = CreateSettingsButtonInitializer(action[1], action[1], action[2], action[3], false)
+                    local button = CreateSettingsButtonInitializer(action[1], action[1], action[2], action[3], true)
+                    button:AddSearchTags(action[3])
                     button:AddModifyPredicate(function()
                         return module.active and PyresinQoLDB.modules.unitFrames
                     end)

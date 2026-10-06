@@ -69,6 +69,35 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
     PyresinQoLDB.castBarCustomization = originalRawEnabled
 end)
 
+UI.Flow("German settings search finds localized labels and help at enlarged scale", {
+    function(canvas, sidebar, list)
+        UI.PageButton(sidebar, "Spielerrahmen"):Click()
+        UI.AssertInside(canvas.SearchBox, canvas, "Deutsches Suchfeld")
+        canvas.SearchBox:SetText("FuNkElN")
+        list:ScrollToElementByName("Questgegenstände funkeln lassen")
+    end,
+    function(canvas, _, list)
+        local row = UI.VisibleSetting(list, Settings.GetSetting("PyresinQoL_QuestItemSparkles"))
+        assertEquals("Questgegenstände funkeln lassen", row.Text:GetText())
+        UI.AssertInside(row.Text, row, "Deutscher Suchtreffer")
+        assertFalse(list.Header.DefaultsButton:IsShown())
+        canvas.SearchBox:SetText("spielneustart")
+        list:ScrollToElementByName("Questgegenstände funkeln lassen")
+    end,
+    function(canvas, _, list)
+        assertTrue(UI.VisibleSetting(list, Settings.GetSetting("PyresinQoL_QuestItemSparkles")).Checkbox:IsEnabled())
+        UI.Click(canvas.SearchBox.clearButton, canvas, "Suche leeren")
+    end,
+    function(canvas, _, list)
+        assertEquals("Spielerrahmen", list.Header.Title:GetText())
+        canvas.SearchBox:SetText("bedrohung")
+        list:ScrollToElementByName(Settings.GetSetting("PyresinQoL_NameplateThreat"):GetName())
+    end,
+    function(_, _, list)
+        assertTrue(UI.VisibleSetting(list, Settings.GetSetting("PyresinQoL_NameplateThreat")).Checkbox:IsEnabled())
+    end,
+})
+
 local sparkleSetting, originalSparkles
 UI.Flow("German quest-sparkle checkbox and post-close restart dialog fit at enlarged scale", {
     function(_, sidebar, list)

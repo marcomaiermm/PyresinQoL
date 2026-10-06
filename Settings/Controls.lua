@@ -11,6 +11,7 @@ function ns.CreateSettingsControls(category)
         return setting
     end
     local function AddControl(page, initializer)
+        initializer:AddSearchTags(initializer:GetName(), initializer:GetTooltip())
         if page.module then
             initializer:AddModifyPredicate(function()
                 return page.module.active and PyresinQoLDB.modules[page.module.id]
