@@ -10,6 +10,13 @@ if CanScanResearchSite == nil then
     function CanScanResearchSite() return false end
 end
 
+-- The pinned simulator omits the loot-effect CVar. Seed it only for UI scenarios;
+-- production must skip unavailable CVars, as covered by the Lua integration suite.
+if C_CVar.GetCVar("outlineModeShowLootEffectWhenDisabled") == nil then
+    C_CVar.SetCVar("outlineModeShowLootEffectWhenDisabled", "0")
+    Settings.GetSetting("PyresinQoL_QuestItemSparkles"):NotifyUpdate()
+end
+
 local function SettingsParts()
     local canvas = assert(PyresinQoLSettingsFrame, "Addon settings did not initialize")
     local sidebar, list

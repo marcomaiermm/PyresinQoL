@@ -69,6 +69,49 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
     PyresinQoLDB.castBarCustomization = originalRawEnabled
 end)
 
+local sparkleSetting, originalSparkles
+UI.Flow("German quest-sparkle checkbox and post-close restart dialog fit at enlarged scale", {
+    function(_, sidebar, list)
+        sparkleSetting = Settings.GetSetting("PyresinQoL_QuestItemSparkles")
+        originalSparkles = sparkleSetting:GetValue()
+        sparkleSetting:SetValue(true)
+        UI.PageButton(sidebar, "Quests"):Click()
+        list:ScrollToElementByName(sparkleSetting:GetName())
+    end,
+    function(_, _, list)
+        local row = UI.VisibleSetting(list, sparkleSetting)
+        assertEquals("Questgegenstände funkeln lassen", row.Text:GetText())
+        UI.AssertInside(row.Text, row, "Deutsche Funkeln-Beschriftung")
+        UI.Click(row.Checkbox, list.ScrollBox, "Funkeln ausschalten")
+    end,
+    function(_, _, list)
+        assertFalse(PyresinQoLDB.questItemSparkles)
+        assertNil(StaticPopup_FindVisible("PYRESINQOL_QUEST_SPARKLES_RESTART"))
+        UI.Click(list.Header.DefaultsButton, list.Header, "Quest-Standardwerte")
+    end,
+    function(canvas, _, list)
+        assertFalse(PyresinQoLDB.questItemSparkles)
+        assertFalse(UI.VisibleSetting(list, sparkleSetting).Checkbox:GetChecked())
+        UI.Click(canvas.ClosePanelButton, UIParent, "Quest-Einstellungen schließen")
+    end,
+    function(canvas)
+        assertFalse(canvas:IsShown())
+        local popup = assert(StaticPopup_FindVisible("PYRESINQOL_QUEST_SPARKLES_RESTART"))
+        -- The pinned popup formatter corrupts UTF-8 umlauts; validate the source
+        -- translation and the rendered ASCII instruction separately (SIM-010).
+        assertContains(StaticPopupDialogs.PYRESINQOL_QUEST_SPARKLES_RESTART.text, "vollständig neu")
+        assertContains(popup:GetTextFontString():GetText(), "Starte das Spiel")
+        assertContains(popup:GetTextFontString():GetText(), "/reload")
+        UI.AssertInside(popup, UIParent, "Deutscher Neustart-Dialog")
+        UI.AssertInside(popup:GetTextFontString(), popup, "Deutscher Neustart-Hinweis")
+        UI.Click(popup:GetButton1(), popup, "Neustart-Hinweis bestätigen")
+    end,
+}, function()
+    if sparkleSetting then sparkleSetting:SetValue(originalSparkles) end
+    PyresinQoLSettingsFrame:Hide()
+    StaticPopup_Hide("PYRESINQOL_QUEST_SPARKLES_RESTART")
+end)
+
 local enable, panel, original
 UI.Flow("German cast-bar labels and scrolled controls fit at enlarged scale", {
     function(_, sidebar, list)

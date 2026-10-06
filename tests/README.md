@@ -52,13 +52,13 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 | Edit Mode / performance | Physical-pixel movement, snapping, placement, idle work, FPS/latency polling, visibility and restoration | Real addon module combinations: both enabled, editor only, performance only, neither. Native FPS/MS visibility and display height in `ui/performance.lua`; movement stays local |
 | Unit frames | Health text/class colors, druid mana, player auras, target debuffs/threat, nameplate threat/combo points, threat meter | Native player class-color restoration, visible target text opacity, seeded player-aura layout and target-threat Always/Off dropdown in `ui/unitframes.lua`, `ui/auras.lua` and `ui/threat.lua`; druid mana, target debuffs, nameplates and threat-meter behavior currently stay local/manual |
 | Experience | Formats, tooltip ownership, quest preview boundaries, resize, coalescing and invalidation | English and German; both native bars' text/visibility checkbox and percent-format dropdown in `ui/experience.lua`; quest reward/overflow cases stay local because the pinned simulator cannot seed meaningful quest rewards |
-| Quests | Difficulty levels/colors, both dialogs, wrapping, row reuse and live level changes | Native gossip quest-row level decoration and live toggle in `ui/quests.lua`; full NPC dialog paths are blocked by simulator gaps listed in the error map |
+| Quests | Difficulty levels/colors, both dialogs, wrapping, row reuse and live level changes; sparkle login/preset timing (including normal/raid quality events before delayed outline resets), unchanged/unavailable CVars, visible write failures, incomplete-reset retries through real registered-setting callbacks, read-back failures, error-handler exceptions and subsequent recovery, event storms, timer cancellation, combat deferral, disabled startup and profile refreshes | Native gossip quest-row level decoration in `ui/quests.lua`; sparkle checkbox, CVar values, opt-in Defaults and post-close restart dialog (including cancellation and no repeat) in `ui/quest-sparkles.lua`. Full NPC dialog paths are blocked by simulator gaps; 3D sparkles, graphics presets and restart behavior require the game client |
 | Tooltips | Restricted HP, ranks/factions, metadata, target changes, anchors, live refresh limits | English and German; native tooltip health text/configured height and visible fixed-screen anchor in `ui/tooltips.lua`; visible status-bar rendering is a simulator gap, metadata/target cases stay local |
 | Tooling | Image immutability, cached builds, rejected tags/images, failure propagation and temporary resource cleanup; archive/source consistency | Python UI-command checks and Bash package checks remain separate from simulator assertions |
 
 The restructuring retains all 24 original leaf Lua suites and their 11 additional
 language/startup variants, then adds two pure suites and two profile recovery/
-composition suites: **40 isolated Lua processes**.
+composition suites: **41 isolated Lua processes**.
 Cast-bar's old top-level launcher delegates to its five leaf suites and is not
 counted a second time. Scenario counts refer to processes, not individual asserts.
 The UI runner discovers `ui/*.lua`; its scenario count is reported separately for
@@ -121,7 +121,16 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
 
 ## Current verification
 
-- All 40 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
+- All 41 isolated Lua scenarios, 9 runner contracts and 22 UI-command contracts pass.
+- The quest-sparkle change passes the full native UI matrix: **67/67** at all ten
+  resolutions, including checkbox/CVar values, post-close restart dialog, opt-in Defaults and a
+  layout-linked profile switch. The error-injection contracts detect all four
+  intended failures; same-process isolation passes **20/20** and German addon
+  labels at scale 1.25 pass **6/6**. World sparkles and restart behavior remain
+  unverified outside the game client. The shared UI helper seeds the simulator's
+  missing loot-effect CVar only for these scenarios; see SIM-009 in the error map.
+  German popup-source text is checked separately from rendered ASCII instructions
+  because the pinned simulator's popup formatter corrupts UTF-8 umlauts (SIM-010).
 - Package integrity, source consistency and the 0.1.6 manifest audit pass.
 - Native Dungeon Maps verification passes **66/66** at 1280×720, including
   catalog/subzone auto-detection and unsupported-instance handoff. CI runs the

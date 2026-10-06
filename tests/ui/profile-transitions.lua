@@ -1,6 +1,7 @@
 local UI = PyresinQoLUITest
 local original, originalLayout, nextLayout, preview, castSetting
 local profileName = "UI transition incoming"
+local originalSparkleCVars = {}
 local function SwitchLayout(index)
     C_EditMode.SetActiveLayout(index)
     -- The pinned simulator's native EDIT_MODE_LAYOUTS_UPDATED handler cannot
@@ -19,6 +20,11 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
     function(_, sidebar, list)
         preview = nil
         original = CopyTable(PyresinQoLDB)
+        for _, name in ipairs({ "outlineModeShowLootEffectWhenDisabled", "graphicsOutlineMode", "OutlineEngineMode",
+            "raidGraphicsOutlineMode", "RAIDOutlineEngineMode" }) do
+            originalSparkleCVars[name] = C_CVar.GetCVar(name)
+        end
+        Settings.GetSetting("PyresinQoL_QuestItemSparkles"):SetValue(true)
         originalLayout = C_EditMode.GetLayouts().activeLayout
         nextLayout = originalLayout == 1 and 2 or 1
         local store, character = PyresinQoLDB.profileStore, UnitGUID("player")
@@ -27,6 +33,7 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
         incoming.castBarCustomization = true
         incoming.castBar = { width = 280, colorMode = "custom", customColor = { r = .3, g = .4, b = .5 } }
         incoming.showFPS = false
+        incoming.questItemSparkles = false
         store.profiles[profileName] = incoming
         store.characterBindings[character]["preset:" .. nextLayout] = profileName
         store.profileLayouts[character][profileName] = "preset:" .. nextLayout
@@ -54,6 +61,10 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
     function()
         assertEquals(profileName, PyresinQoLDB.profileStore.active)
         assertEquals(false, Settings.GetSetting("PyresinQoL_ShowFPS"):GetValue())
+        assertFalse(Settings.GetSetting("PyresinQoL_QuestItemSparkles"):GetValue())
+        assertEquals("0", C_CVar.GetCVar("outlineModeShowLootEffectWhenDisabled"))
+        assertEquals("2", C_CVar.GetCVar("graphicsOutlineMode"))
+        assertEquals("2", C_CVar.GetCVar("RAIDOutlineEngineMode"))
         assertEquals(280, PlayerCastingBarFrame:GetWidth())
         assertTrue(preview:IsVisible())
         assertEquals(280, preview.fill:GetWidth())
@@ -80,7 +91,7 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
         for key, value in pairs(original.modules) do modules[key] = value end
         PyresinQoLDB.modules = modules
         SwitchLayout(originalLayout)
-        for _, variable in ipairs({ "CastBarCustomization", "ShowFPS", "ShowLatency" }) do
+        for _, variable in ipairs({ "CastBarCustomization", "ShowFPS", "ShowLatency", "QuestItemSparkles" }) do
             Settings.GetSetting("PyresinQoL_" .. variable):NotifyUpdate()
         end
         -- The live callback canonicalizes false to nil; preserve the exact saved
@@ -88,4 +99,7 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
         PyresinQoLDB.castBarCustomization = original.castBarCustomization
         EventRegistry:TriggerEvent("PyresinQoL.ProfileChanged")
     end
+    PyresinQoLSettingsFrame:Hide()
+    StaticPopup_Hide("PYRESINQOL_QUEST_SPARKLES_RESTART")
+    for name, value in pairs(originalSparkleCVars) do C_CVar.SetCVar(name, value) end
 end)

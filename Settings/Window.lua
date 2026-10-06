@@ -243,7 +243,9 @@ function ns.InitializeSettings()
     end
 
     for _, module in ipairs(ns.modules) do
-        module.buildSettings(module, { category = category, pages = modulePages[module.id], controls = controls })
+        module.buildSettings(module, { category = category, pages = modulePages[module.id], controls = controls,
+            canvas = canvas,
+        })
     end
 
     local function ResetPage(page)

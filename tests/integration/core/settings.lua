@@ -21,6 +21,8 @@ local experienceUpdates = 0
 ns.GetModule("experience").UpdateExperience = function() experienceUpdates = experienceUpdates + 1 end
 local questUpdates = 0
 ns.GetModule("quests").UpdateQuestLevels = function() questUpdates = questUpdates + 1 end
+local sparkleUpdates = 0
+ns.GetModule("quests").UpdateQuestSparkles = function() sparkleUpdates = sparkleUpdates + 1 end
 local pixelPerfectUpdates = 0
 ns.GetModule("editMode").UpdatePixelPerfectMode = function() pixelPerfectUpdates = pixelPerfectUpdates + 1 end
 local statusTextUpdates = 0
@@ -587,12 +589,17 @@ navigation[6].scripts.OnClick()
 assert(settingsList.Header.Title.value == ns.L.experience and #settingsList.rendered == 4)
 assert(PyresinQoLDB.xpTextFormat == "both" and PyresinQoLDB.xpAlwaysShow and PyresinQoLDB.xpTooltip and PyresinQoLDB.xpQuestRewards)
 navigation[7].scripts.OnClick()
-assert(settingsList.Header.Title.value == ns.L.quests and #settingsList.rendered == 1)
+assert(settingsList.Header.Title.value == ns.L.quests and #settingsList.rendered == 2)
 assert(settings.questLevels.name == ns.L.questLevels and PyresinQoLDB.questLevels)
+assert(settings.questItemSparkles.name == ns.L.questItemSparkles and PyresinQoLDB.questItemSparkles == false)
+assert(StaticPopupDialogs.PYRESINQOL_QUEST_SPARKLES_RESTART.text == ns.L.questItemSparklesRestart)
+settings.questItemSparkles:SetValue(true)
+assert(PyresinQoLDB.questItemSparkles and sparkleUpdates == 1 and #settingsList.rendered == 2)
 settings.questLevels:SetValue(false)
 assert(not PyresinQoLDB.questLevels and questUpdates == 1)
 settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(PyresinQoLDB.questLevels and questUpdates == 2)
+assert(PyresinQoLDB.questItemSparkles == false and sparkleUpdates == 2 and #settingsList.rendered == 2)
 assert(PyresinQoLDB.targetThreat == "auto")
 settings.targetThreat:SetValue("off")
 assert(threatUpdates == 1 and PyresinQoLDB.targetThreat == "off")

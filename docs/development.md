@@ -140,6 +140,15 @@ wrapped timed buffs, reusable quest-row decoration, game-menu shortcut geometry,
 tooltip health content and a visible fixed anchor. Target flows seed native data
 and dispatch `PLAYER_TARGET_CHANGED`; the pinned admin setter omits the event.
 Quest rows use Blizzard's actual pooled-row template and `Setup` method.
+`ui/quest-sparkles.lua` clicks the native quest-sparkle checkbox, checks all five
+CVar values, opt-in Defaults and the restart dialog after closing `/pqol`, including
+cancellation when re-enabled and no repeat for an already-disabled profile.
+Sparkle writes report failures through WoW's error handler after clearing self-event
+suppression. Only explicit off transitions retain a pending reset until all available
+CVars accept their requested values; `NotifyUpdate()` retries failures without
+continually resetting graphics for disabled profiles. Combat retries still defer.
+The simulator does not render the world loot effect or prove graphics-preset timing
+and full-restart behavior.
 These are bounded scenarios: complete NPC dialogs, cooldown-viewer opening and
 visible tooltip health-bar rendering have reproduced simulator gaps documented
 in the [error map](test-error-map.md). Quest reward/overflow previews also stay local:
@@ -337,6 +346,16 @@ do not enable branch protection.
 ### In-game release checklist
 
 - Install the ZIP into a clean addon folder; confirm AddOns icon and `/pqol` open.
+- Confirm new profiles default quest sparkles to off and preserve existing saved
+  choices. Enable under Quests and verify sparkles at login, after five seconds
+  and after changing normal/raid graphics presets. Toggle in combat and verify application
+  after combat. Switching off must set loot effect `0` and all four outline modes
+  `2` and stop enforcement. The restart dialog must wait until `/pqol` closes;
+  re-enabling before closing cancels it, and already-disabled profiles do not prompt.
+  Confirm enabling is immediate,
+  `/reload` does not remove the effect, and a full restart does. Check profiles with
+  the option off at startup leave existing graphics values untouched. Disabling
+  the module/addon does not restore persistent CVars; use the README reset commands.
 - Check an existing installation with saved settings and positions, then `/reload`.
 - Enable/disable modules and reload; disabled features stay inactive.
 - Enter a one-floor and a multi-floor Vanilla dungeon. Check **M**, Escape, the

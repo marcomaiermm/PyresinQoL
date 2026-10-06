@@ -11,7 +11,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Unit frames & threat:** class colors, health/resource text, druid mana, debuff timers, threat displays and combo points per enemy nameplate.
 - **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
-- **XP & quests:** experience text, completed-quest XP preview and quest levels.
+- **XP & quests:** experience text, completed-quest XP preview, quest levels and persistent sparkles on lootable quest items.
 - **Dungeon maps:** 50 illustrated map views across 18 original Vanilla dungeon complexes, embedded in Blizzard's world map with native zoom, pan and floor controls. Sunken Temple and original Upper Blackrock Spire are documented gaps; new WoW Forever dungeons are outside this module's scope. Player positions stay hidden until a matching WoW Forever coordinate source is verified.
 - **Edit Mode:** precise positioning and snapping.
 - **Addon profiles:** QoL settings automatically follow your Blizzard Edit Mode layout; manage profiles in `/pqol`.
@@ -49,6 +49,34 @@ Blackrock Spire appears only when its English subzone identifies a retained map;
 unknown or localized unmatched shared subzones remain on the native map. Scarlet
 Monastery and Dire Maul wings share their complex entry. Raids are outside this
 module's scope.
+
+### Quest item sparkles
+
+Under **Quests**, **Show quest item sparkles** is off by default; existing saved
+choices are preserved. Enabling keeps quest objects sparkling after graphics-preset
+changes by disabling normal and raid outlines. It can also highlight quest givers;
+the effect cannot be restricted to lootable world objects through this option.
+Changes during combat wait until combat ends.
+
+Turning the checkbox off stops enforcement, sets the loot effect to `0` and all
+four outline modes to High (`2`). Enabling works immediately; turning the effect
+off requires a **full game restart**, not `/reload`. After a successful reset, a
+reminder dialog appears when you close `/pqol`. Re-enabling before closing cancels
+it; already-disabled profiles do not prompt or reset your graphics. Failed writes
+are reported and incomplete resets can be retried. These graphics CVars are client-wide and persist
+in `WTF/Config.wtf`, even after disabling the Quests module or the addon.
+
+If the addon is already disabled, restore the settings manually, then restart:
+
+```text
+/console outlineModeShowLootEffectWhenDisabled 0
+/console graphicsOutlineMode 2
+/console OutlineEngineMode 2
+/console raidGraphicsOutlineMode 2
+/console RAIDOutlineEngineMode 2
+```
+
+### Profiles and customization
 
 QoL settings automatically switch with your Blizzard Edit Mode layout. The first
 layout keeps your existing settings; new layouts start with a copy of the current

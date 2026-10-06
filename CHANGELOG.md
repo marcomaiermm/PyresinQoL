@@ -1,5 +1,14 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+### Added
+- Add opt-in **Quests → Show quest item sparkles**, included in addon profiles, to keep quest objects sparkling after graphics changes. This can also highlight quest givers and disables normal and raid outlines. Switching off restores High outlines once; a dialog after closing `/pqol` reminds you that removing sparkles requires a full game restart, not `/reload`. Re-enabling before closing cancels the reminder. CVar updates are coalesced, unchanged values are not rewritten, and combat changes wait until combat ends.
+- Add opt-in **Quests → Show quest item sparkles**, included in addon profiles, to keep quest objects sparkling after graphics changes. This can also highlight quest givers and disables normal and raid outlines. Switching off restores High outlines once; a dialog after closing `/pqol` reminds you that removing sparkles requires a full game restart, not `/reload`. Re-enabling before closing cancels the reminder. CVar updates are coalesced, unchanged values are not rewritten, and combat changes wait until combat ends
+
+### Fixed
+- Report failed sparkle CVar writes and allow incomplete off transitions to be retried without resetting graphics for already-disabled profiles.
+- Report failed sparkle CVar writes and allow incomplete off transitions to be retried without resetting graphics for already-disabled profiles
 ## 0.1.7
 
 ### Added
