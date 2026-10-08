@@ -19,7 +19,6 @@ events:SetScript("OnEvent", function(self, event, loadedAddon)
     if loadedAddon ~= addonName then return end
     self:UnregisterEvent("ADDON_LOADED")
     ns.InitializeProfiles()
-    ns.SyncLayoutProfile()
     ns.InitializeDatabase()
 
     ns.InitializeModules()

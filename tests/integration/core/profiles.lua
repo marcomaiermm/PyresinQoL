@@ -292,6 +292,9 @@ end
 assert(loadfile("Core/Bootstrap.lua"))("PyresinQoL", ns)
 core.callback(core, "ADDON_LOADED", "PyresinQoL")
 assert(core.events.EDIT_MODE_LAYOUTS_UPDATED and core.events.PLAYER_REGEN_ENABLED)
+assert(not ns.currentLayoutKey, "Layouts are not guaranteed before login; startup keeps the last active profile")
+core.callback(core, "PLAYER_LOGIN")
+Flush()
 local root, moduleTable = PyresinQoLDB, PyresinQoLDB.modules
 local raidProfile = store.active
 local raidKey = ns.currentLayoutKey
@@ -405,12 +408,34 @@ assert(ns.SwitchProfile("Default") and store.characterBindings[character]["prese
 PyresinQoLDB = CopyTable(PyresinQoLDB)
 local fresh = Namespace()
 fresh.InitializeProfiles()
-fresh.SyncLayoutProfile()
 fresh.InitializeDatabase()
 fresh.InitializeModules()
+fresh.SyncLayoutProfile()
 assert(PyresinQoLDB.profileStore.active == "Default" and PyresinQoLDB.profileStore.characterBindings[character]["preset:1"] == "Default")
 assert(not fresh.GetModule("performance").active)
 assert(info.activeLayout == 1 and #info.layouts == 3, "Profile operations must never write native layout data")
+
+-- Before login GetLayouts may still report a preset bound to another profile.
+-- Startup modules must follow the last active profile, or disabling loops on reload.
+local late, freshRoot, freshCore = Namespace(), PyresinQoLDB, core
+local lateRoot = CopyTable(PyresinQoLDB)
+lateRoot.modules.performance = false
+lateRoot.profileStore.active = "Late"
+lateRoot.profileStore.profiles.Late = {}
+lateRoot.profileStore.profiles.Default.modules.performance = true
+lateRoot.profileStore.characterBindings[character]["preset:1"] = "Default"
+lateRoot.profileStore.characterBindings[character]["Player-1:2:Raid UI"] = "Late"
+PyresinQoLDB = lateRoot
+function late.InitializeSettings() function late.RefreshProfileSettings() end end
+assert(loadfile("Core/Bootstrap.lua"))("PyresinQoL", late)
+info.activeLayout = 1
+core.callback(core, "ADDON_LOADED", "PyresinQoL")
+assert(not late.GetModule("performance").active)
+info.activeLayout = 6
+core.callback(core, "PLAYER_LOGIN")
+Flush()
+assert(PyresinQoLDB.profileStore.active == "Late" and not late.ModulesNeedReload() and not late.profileReloadPending)
+info.activeLayout, PyresinQoLDB, core = 1, freshRoot, freshCore
 print("PASS: automatic layout binding, snapshots, live restore, rename/delete bursts, scopes, presets, combat and reload prompts")
 
 -- Several profiles can share an account layout, with a separate choice per character.
