@@ -105,6 +105,7 @@ local function Flush()
     local work = queued; queued = {}
     for _, callback in ipairs(work) do callback() end
 end
+Event("PLAYER_LOGIN"); Flush()
 local store = PyresinQoLDB.profileStore
 local firstProfile = store.active
 store.profiles.B = CopyTable(PyresinQoLDB); store.profiles.B.profileStore = nil

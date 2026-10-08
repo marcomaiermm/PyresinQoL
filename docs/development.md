@@ -991,6 +991,9 @@ The live root is authoritative for the active profile; snapshots are deep copies
 excluding `profileStore`. A manual switch records its target and reloads. Startup
 captures the outgoing profile, including logout writes, applies the target, then
 runs existing migrations and initializes modules/settings.
+`ADDON_LOADED` never selects a profile from Edit Mode layouts: `C_EditMode.GetLayouts()`
+is not guaranteed before login and can report a preset bound to another profile,
+which would initialize that profile's modules and then prompt a reload forever.
 
 `C_EditMode.GetLayouts()` returns saved layouts without presets; `activeLayout`
 includes preset indices. Use `Enum.EditModePresetLayoutsMeta.NumValues` for the

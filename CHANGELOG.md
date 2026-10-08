@@ -1,5 +1,10 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+### Fixed
+- Disabling a module with layout-linked profiles no longer loops on a reload prompt while the module stays enabled. Startup now keeps the last active profile and applies the Edit Mode layout's profile once layouts are available at login.
+- Disabling a module with layout-linked profiles no longer loops on a reload prompt while the module stays enabled. Startup now keeps the last active profile and applies the Edit Mode layout's profile once layouts are available at login
 ## 0.1.8
 
 ### Added
