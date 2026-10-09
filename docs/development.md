@@ -978,6 +978,25 @@ subsequently changing native settings leaves health prediction and aura layout
 untainted. Blizzard's automatic preview selection is left intact. After installing
 this mitigation, `/reload` discards frames tainted by the previous implementation.
 
+### Flight timer
+
+The client exposes taxi node positions but no flight durations or path shapes, so
+`Modules/FlightTimer/Data.lua` holds each route's flown length, generated from the
+client's own `TaxiPath`, `TaxiPathNode` and `TaxiNodes` tables. The length is the
+Catmull-Rom spline through the path's nodes; transports that change continent are
+left out. Regenerate it after a client update with
+`python3 tools/build-flight-routes.py --build <build>`, which downloads the tables
+from wago.tools (`--source-dir` reads exported CSVs instead, `--check` runs only the
+self-check). Time is length / (speed × 1.2 with Frequent Flier): the speed starts at
+30.4 yards per second and moves a quarter of the way toward each normal landing's
+measurement; one outside 75–133% of the current speed is ignored. It is stored
+account-wide in `PyresinQoLFlightSpeed`, outside the profiles; the flight in progress
+is per character in `PyresinQoLFlight`, for a `/reload` mid-flight. A route with a
+hop missing from the data shows no timer. `Bar.lua` is the view, `FlightTimer.lua`
+the flight state and events, `EditMode.lua` the preview and options dialog. The Edit
+Mode mover comes from `ns.CreateEditModeDisplay` in
+`Modules/EditMode/CustomDisplay.lua`, shared with FPS / MS.
+
 ## Settings migration
 
 Addon profiles keep the current settings at the existing `PyresinQoLDB` keys.

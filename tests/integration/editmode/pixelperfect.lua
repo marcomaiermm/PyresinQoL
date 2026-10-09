@@ -3,7 +3,7 @@ local frames, callbacks = {}, {}
 local combat, locked = false, false
 local physicalHeight = 1080
 local snapEnabled, magneticInfos, magneticQueries = true, nil, 0
-local ns, module, performance = {}, {}, {}
+local ns, module, performance = { customEditModeDisplays = {} }, {}, {}
 local unitFrames, castBarCustomized, castBarWidth = { active = true }, false, nil
 function ns.GetModule(id)
     assert(id == "performance" or id == "unitFrames")
@@ -157,6 +157,16 @@ performance.performanceDisplay = display
 function performance.SavePerformancePosition()
     PyresinQoLDB.performancePosition = { x = display.x - 960, y = display.y - 540 }
 end
+-- The entry CustomDisplay.lua builds, reduced to what the editor uses.
+display.customEditModeEntry = { frame = display, GetSystemName = function() return "PyresinQoL · FPS / MS" end,
+    Nudge = function(dx, dy)
+        performance.SavePerformancePosition()
+        local position = PyresinQoLDB.performancePosition
+        display:ClearAllPoints()
+        display:SetPoint("CENTER", UIParent, "CENTER", position.x + dx, position.y + dy)
+        performance.SavePerformancePosition()
+    end }
+table.insert(ns.customEditModeDisplays, display.customEditModeEntry)
 MinimalSliderWithSteppersMixin = { Event = { OnValueChanged = "OnValueChanged" } }
 local nextFrame
 C_Timer = { After = function(delay, callback) assert(delay == 0 and not nextFrame); nextFrame = callback end }
@@ -605,7 +615,7 @@ module.TogglePixelPerfectFrame(display)
 assert(panel.shown, "A new EditMode session resets the dismissal")
 -- Native frames must still work when the FPS/latency module is absent.
 module.ClearPixelPerfectFrame()
-performance.performanceDisplay, performance.SavePerformancePosition = nil, nil
+ns.customEditModeDisplays[1], display.customEditModeEntry = nil, nil
 module.ClearPixelPerfectFrame()
 module.SelectPixelPerfectFrame(native)
 module.UpdatePixelPerfectMode()

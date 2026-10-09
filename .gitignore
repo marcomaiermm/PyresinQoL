@@ -3,3 +3,4 @@
 *.zip
 /.stowrc
 /.codegraph/
+__pycache__/

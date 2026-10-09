@@ -6,7 +6,8 @@ local editMode = {
     OnPixelPerfectDragStart = function() dragStarts = dragStarts + 1 end,
     ClearPixelPerfectFrame = function() end,
 }
-local ns, module = {}, {}
+local ns, module = { customEditModeDisplays = {} }, {}
+assert(loadfile("Modules/EditMode/CustomDisplay.lua"))("PyresinQoL", ns)
 function ns.GetModule(id) assert(id == "editMode"); return editMode end
 EditModeManagerFrame = { ClearSelectedSystem = function() end }
 local combat, fps, home, world = false, 119.94, 23, 41
@@ -109,17 +110,17 @@ assert(display.moving)
 assert(dragStarts == 1)
 display.x, display.y = 1250, 220
 combat = true
-display.scripts.OnEvent(display, "PLAYER_REGEN_DISABLED")
+mover.scripts.OnEvent(mover, "PLAYER_REGEN_DISABLED")
 assert(not mover.shown and not display.moving, "Entering combat must end a drag")
 mover.scripts.OnDragStart()
 assert(not display.moving)
 combat = false
-display.scripts.OnEvent(display, "PLAYER_REGEN_ENABLED")
+mover.scripts.OnEvent(mover, "PLAYER_REGEN_ENABLED")
 assert(mover.shown)
 mover.scripts.OnDragStart()
 callbacks["EditMode.Exit"]()
 assert(not mover.shown and not display.moving and display.shown)
-display.scripts.OnEvent(display, "PLAYER_REGEN_ENABLED")
+mover.scripts.OnEvent(mover, "PLAYER_REGEN_ENABLED")
 assert(not mover.shown, "Combat exit must not enable dragging outside EditMode")
 
 PyresinQoLDB.showFPS = false
@@ -171,16 +172,16 @@ editMode.TogglePixelPerfectFrame, editMode.OnPixelPerfectDragStart, editMode.Cle
 PyresinQoLDB.showFPS = true
 module.UpdatePerformanceLayout()
 callbacks["EditMode.Enter"]()
-local standaloneMover = frames[2]
+local standaloneMover, entry = frames[2], ns.customEditModeDisplays[#ns.customEditModeDisplays]
 PyresinQoLDB.performancePosition = { x = -50, y = 70 }
-module.RestorePerformancePosition()
+entry.Restore()
 assert(frames[1].point[4] == -50 and frames[1].point[5] == 70)
 callbacks["EditMode.Enter"]()
 standaloneMover.scripts.OnDragStart()
 frames[1].x, frames[1].y = 1200, 700
-module.StopPerformanceDragging()
+entry.StopDragging()
 assert(not frames[1].moving and PyresinQoLDB.performancePosition.x == 240)
 PyresinQoLDB.performancePosition = nil
-module.RestorePerformancePosition()
+entry.Restore()
 assert(frames[1].point[1] == "BOTTOMRIGHT", "Profiles without a saved position restore the default anchor")
 print("PASS: FPS/latency, polling, EditMode, combat, live toggles and persisted state/position")

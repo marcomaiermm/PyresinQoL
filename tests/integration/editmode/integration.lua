@@ -151,6 +151,7 @@ end
 -- Blizzard's settings dialog only needs to accept the editor's hook here.
 EditModeSystemSettingsDialog = { UpdateSettings = function() end, IsShown = function() return false end }
 -- Load runtime definitions before saved module state is applied, exactly as in the TOC.
+assert(loadfile("Modules/EditMode/CustomDisplay.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Performance/Performance.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/PixelPerfect.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/SettingsDialog.lua"))("PyresinQoL", ns)
@@ -196,11 +197,11 @@ if display then
     end
     mover.scripts.OnDragStart()
     combat = true
-    display.scripts.OnEvent(display, "PLAYER_REGEN_DISABLED")
+    mover.scripts.OnEvent(mover, "PLAYER_REGEN_DISABLED")
     if panel then panel.scripts.OnEvent(panel, "PLAYER_REGEN_DISABLED") end
     assert(not display.moving and not mover:IsShown() and (not panel or not panel:IsShown()))
     combat = false
-    display.scripts.OnEvent(display, "PLAYER_REGEN_ENABLED")
+    mover.scripts.OnEvent(mover, "PLAYER_REGEN_ENABLED")
     if panel then panel.scripts.OnEvent(panel, "PLAYER_REGEN_ENABLED") end
     assert(mover:IsShown())
     Emit("EditMode.Exit")
@@ -209,6 +210,7 @@ if display then
     local fresh = {}
     assert(loadfile("Core/Localization.lua"))("PyresinQoL", fresh)
     assert(loadfile("Core/Modules.lua"))("PyresinQoL", fresh)
+    assert(loadfile("Modules/EditMode/CustomDisplay.lua"))("PyresinQoL", fresh)
     assert(loadfile("Modules/Performance/Performance.lua"))("PyresinQoL", fresh)
     fresh.InitializeModules()
     local restored = fresh.GetModule("performance").performanceDisplay

@@ -283,9 +283,9 @@ function CreateFrame(kind, ...)
     return core
 end
 local refreshes, positions, dragStops = 0, 0, 0
-local runtimePerformance = ns.GetModule("performance")
-function runtimePerformance.StopPerformanceDragging() dragStops = dragStops + 1 end
-function runtimePerformance.RestorePerformancePosition() positions = positions + 1 end
+-- Every custom Edit Mode display stops its drag and takes the new profile's position.
+table.insert(ns.customEditModeDisplays, { StopDragging = function() dragStops = dragStops + 1 end,
+    Restore = function() positions = positions + 1 end })
 function ns.InitializeSettings()
     function ns.RefreshProfileSettings() refreshes = refreshes + 1 end
 end

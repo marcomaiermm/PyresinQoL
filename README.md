@@ -12,6 +12,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview, quest levels and persistent sparkles on lootable quest items.
+- **Flight timer:** remaining flight time with a route bar, your portrait riding it and the stops on the way for flight master flights; movable and customizable in Edit Mode.
 - **Dungeon maps:** 50 illustrated map views across 18 original Vanilla dungeon complexes, embedded in Blizzard's world map with native zoom, pan and floor controls. Sunken Temple and original Upper Blackrock Spire are documented gaps; new WoW Forever dungeons are outside this module's scope. Player positions stay hidden until a matching WoW Forever coordinate source is verified.
 - **Edit Mode:** precise positioning and snapping.
 - **Addon profiles:** QoL settings automatically follow your Blizzard Edit Mode layout; manage profiles in `/pqol`.

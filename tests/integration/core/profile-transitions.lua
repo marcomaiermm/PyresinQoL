@@ -71,7 +71,7 @@ ColorPickerFrame = {
 }
 local ns = { CastBar = cast }
 for _, file in ipairs({ "Core/Localization.lua", "Core/Modules.lua", "Core/Profiles.lua", "Core/Database.lua",
-    "Modules/Performance/Performance.lua", "Modules/CastBar/EditMode.lua" }) do
+    "Modules/EditMode/CustomDisplay.lua", "Modules/Performance/Performance.lua", "Modules/CastBar/EditMode.lua" }) do
     assert(loadfile(file))("PyresinQoL", ns)
 end
 Enum.EditModeLayoutType = { Preset = 0, Account = 1, Character = 2 }

@@ -7,6 +7,7 @@ ns.modules = {
     { id = "performance", group = "misc", name = L.performance, description = L.performanceDescription },
     { id = "dungeonMaps", group = "misc", name = L.dungeonMaps, description = L.dungeonMapsDescription },
     { id = "experience", group = "misc", name = L.experience, description = L.experienceDescription },
+    { id = "flightTimer", group = "misc", name = L.flightTimer, description = L.flightTimerDescription },
     { id = "quests", group = "misc", name = L.quests, description = L.questsDescription },
     { id = "unitFrames", group = "unitFrames", name = L.unitFrames, description = L.unitFramesDescription,
         pages = {
@@ -20,6 +21,10 @@ ns.modules = {
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
     { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
 }
+
+-- Our own Edit Mode displays (Modules/EditMode/CustomDisplay.lua), for the pixel-perfect editor's
+-- snapping and the profile switch.
+ns.customEditModeDisplays = {}
 
 ns.settingsGroups = {
     { id = "general", name = L.general },

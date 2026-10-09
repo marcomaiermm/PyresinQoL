@@ -1,7 +1,6 @@
 local _, ns = ...
 
 ns.RegisterModule("performance", function(module)
-    local editMode = ns.GetModule("editMode")
     local blockWidth, blockHeight = 85, 15
     local display = CreateFrame("Frame", "PyresinQoLPerformance", UIParent)
     display:SetSize(blockWidth, blockHeight * 2 + 5)
@@ -34,49 +33,16 @@ ns.RegisterModule("performance", function(module)
         end
     end)
 
-    local mover = CreateFrame("Frame", nil, display, "EditModeSystemSelectionTemplate")
-    mover:SetAllPoints(display)
-    mover:SetSystem({ GetSystemName = function() return "PyresinQoL · FPS / MS" end })
-    mover:Hide()
-    display.Selection = mover
+    local function Enabled() return PyresinQoLDB.showFPS ~= false or PyresinQoLDB.showLatency ~= false end
+    local entry = ns.CreateEditModeDisplay(display, {
+        name = "PyresinQoL · FPS / MS", positionKey = "performancePosition", IsAvailable = Enabled,
+        default = { "BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -260, 20 },
+    })
     module.performanceDisplay = display
 
-    local editing = false
-    function module.SavePerformancePosition()
-        local x, y = display:GetCenter()
-        local centerX, centerY = UIParent:GetCenter()
-        -- ponytail: One shared position; use per-layout positions if separate layouts are needed.
-        PyresinQoLDB.performancePosition = { x = x - centerX, y = y - centerY }
-        display:ClearAllPoints()
-        display:SetPoint("CENTER", UIParent, "CENTER", x - centerX, y - centerY)
-    end
-
-    local function StopDragging()
-        if not display.isDragging then return end
-        display:StopMovingOrSizing()
-        display.isDragging = false
-        module.SavePerformancePosition()
-    end
-    module.StopPerformanceDragging = StopDragging
-
-    function module.RestorePerformancePosition()
-        local position = PyresinQoLDB.performancePosition
-        display:ClearAllPoints()
-        if position then
-            display:SetPoint("CENTER", UIParent, "CENTER", position.x, position.y)
-        else
-            display:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -260, 20)
-        end
-    end
-
     function module.UpdatePerformanceVisibility()
-        local enabled = PyresinQoLDB.showFPS ~= false or PyresinQoLDB.showLatency ~= false
-        if enabled and editing and not InCombatLockdown() then
-            if not mover:IsShown() then mover:ShowHighlighted() end
-        else
-            mover:Hide()
-        end
-        display:SetShown(enabled)
+        entry.Update()
+        display:SetShown(Enabled())
     end
 
     function module.UpdatePerformanceLayout()
@@ -112,46 +78,12 @@ ns.RegisterModule("performance", function(module)
         module.UpdatePerformanceVisibility()
     end
 
-    mover:SetScript("OnMouseDown", function(self)
-        if editing and not InCombatLockdown() then
-            self:ShowSelected()
-            if editMode.TogglePixelPerfectFrame then editMode.TogglePixelPerfectFrame(display) end
-        end
-    end)
-    mover:SetScript("OnDragStart", function()
-        if (PyresinQoLDB.showFPS ~= false or PyresinQoLDB.showLatency ~= false) and editing and not InCombatLockdown() then
-            display.isDragging = true
-            display:StartMoving()
-            if editMode.OnPixelPerfectDragStart then editMode.OnPixelPerfectDragStart(display) end
-        end
-    end)
-    mover:SetScript("OnDragStop", StopDragging)
-    mover:SetScript("OnHide", function()
-        StopDragging()
-        if editMode.ClearPixelPerfectFrame then editMode.ClearPixelPerfectFrame(display) end
-    end)
-
-    EventRegistry:RegisterCallback("EditMode.Enter", function()
-        editing = true
-        module.UpdatePerformanceVisibility()
-    end, display)
-    EventRegistry:RegisterCallback("EditMode.Exit", function()
-        editing = false
-        mover:Hide()
-    end, display)
-
     display:RegisterEvent("PLAYER_LOGIN")
-    display:RegisterEvent("PLAYER_REGEN_DISABLED")
-    display:RegisterEvent("PLAYER_REGEN_ENABLED")
-    display:SetScript("OnEvent", function(_, event)
-        if event == "PLAYER_LOGIN" then
-            PyresinQoLDB = PyresinQoLDB or {}
-            module.RestorePerformancePosition()
-            UpdateValues()
-            module.UpdatePerformanceLayout()
-            display:UnregisterEvent("PLAYER_LOGIN")
-        else
-            module.UpdatePerformanceVisibility()
-        end
+    display:SetScript("OnEvent", function()
+        PyresinQoLDB = PyresinQoLDB or {}
+        entry.Restore()
+        UpdateValues()
+        module.UpdatePerformanceLayout()
+        display:UnregisterEvent("PLAYER_LOGIN")
     end)
 end)

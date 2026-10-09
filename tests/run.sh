@@ -3,12 +3,12 @@ set -eu
 cd "$(dirname "$0")/.."
 
 usage() {
-    echo 'Usage: sh tests/run.sh [all|unit|integration|core|actionbars|castbar|dungeonmaps|editmode|unitframes|experience|quests|tooltips]' >&2
+    echo 'Usage: sh tests/run.sh [all|unit|integration|core|actionbars|castbar|dungeonmaps|editmode|flighttimer|unitframes|experience|quests|tooltips]' >&2
 }
 [ "$#" -le 1 ] || { usage; exit 2; }
 selector=${1:-all}
 case "$selector" in
-    all|unit|integration|core|actionbars|castbar|dungeonmaps|editmode|unitframes|experience|quests|tooltips) ;;
+    all|unit|integration|core|actionbars|castbar|dungeonmaps|editmode|flighttimer|unitframes|experience|quests|tooltips) ;;
     *) usage; exit 2 ;;
 esac
 
