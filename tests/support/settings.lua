@@ -274,7 +274,7 @@ Settings = {
             or (setting.key == "buffOwn" or setting.key == "debuffOwn" or setting.key == "buffSort" or setting.key == "debuffSort") and 3
             or setting.key == "tooltipAnchorPoint" and 9
             or (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
-            or setting.key == "xpTextFormat" and 4 or 2
+            or (setting.key == "xpTextFormat" or setting.key == "flyoutsVisibility") and 4 or 2
         assert(setting and #options() == count)
         for _, option in ipairs(options()) do assert(option.label and option.label ~= "") end
         if setting.key == "targetThreat" then
@@ -498,7 +498,9 @@ assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
 -- Blizzard's action bar labels, which the flyout bar's options reuse.
 for key, label in pairs({ ORIENTATION = "Orientation", ORIENTATION_HORIZONTAL = "Horizontal", ORIENTATION_VERTICAL = "Vertical",
-    NUM_ROWS = "# of Rows", NUM_ICONS = "# of Icons", ICON_SIZE = "Icon Size", ICON_PADDING = "Icon Padding" }) do
+    NUM_ROWS = "# of Rows", NUM_ICONS = "# of Icons", ICON_SIZE = "Icon Size", ICON_PADDING = "Icon Padding",
+    VISIBLE_SETTING = "Bar Visible", VISIBLE_SETTING_ALWAYS = "Always", VISIBLE_SETTING_IN_COMBAT = "In Combat",
+    VISIBLE_SETTING_OUT_OF_COMBAT = "Out of Combat", VISIBLE_SETTING_HIDDEN = "Hidden" }) do
     _G["HUD_EDIT_MODE_SETTING_ACTION_BAR_" .. key] = label
 end
 assert(loadfile("Modules/Flyouts/Options.lua"))("PyresinQoL", ns)

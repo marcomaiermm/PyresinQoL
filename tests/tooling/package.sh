@@ -5,7 +5,7 @@ temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 fixture="$temporary/PyresinQoL"
 mkdir -p "$fixture/tools"
-cp -R PyresinQoL.toc LICENSE Core Settings Modules Media "$fixture/"
+cp -R PyresinQoL.toc LICENSE Bindings.xml Core Settings Modules Media "$fixture/"
 cp tools/check-package.sh "$fixture/tools/"
 archive="$temporary/test.zip"
 

@@ -2,57 +2,128 @@ local _, ns = ...
 local L = ns.L
 
 -- A bar of flyout buttons, laid out like Blizzard's action bars, each opening its own menu of spells,
--- items and macros dropped onto it. The buttons are Blizzard's action buttons and the menus its flyout
--- popup; secure snippets open and close them, so they work in combat. Contents are per character
+-- items, toys, mounts and macros dropped onto it. The buttons are Blizzard's action buttons and the menus
+-- its flyout popup; secure snippets open and close them, so they work in combat. Contents are per character
 -- (PyresinQoLFlyouts[button][slot] = { type, id }), the bar's options per profile.
 local MAX = 12
 local BUTTON_SIZE, SLOT_SIZE = 45, 30 -- ActionButtonTemplate, SmallActionButtonTemplate
 local SPACING, INITIAL_SPACING, PADDING = 4, 9, 8 -- Blizzard's spell flyout
 local module = ns.GetModule("flyouts")
+-- Blizzard's action bar visibility, as state driver conditions.
+local VISIBILITY = { always = "show", combat = "[combat] show; hide", outOfCombat = "[combat] hide; show", hidden = "hide" }
+-- Where a menu sits on its button and grows from, per direction: its point, the button's, and the axis.
+local DIRECTIONS = {
+    UP = { point = "BOTTOM", relative = "TOP", x = 0, y = 1 },
+    DOWN = { point = "TOP", relative = "BOTTOM", x = 0, y = -1 },
+    LEFT = { point = "RIGHT", relative = "LEFT", x = -1, y = 0 },
+    RIGHT = { point = "LEFT", relative = "RIGHT", x = 1, y = 0 },
+}
 
--- Restricted snippets. A flyout button shows its own menu and hides the others; a menu button closes
--- its menu after its action.
-local TOGGLE = [[
+-- Restricted snippets. A click that dropped something (see DropTarget) is cancelled; otherwise a flyout
+-- button shows its own menu and hides the others (a right-click edits its name and icon instead, see
+-- CreateButton), and a menu button closes its menu after its action.
+local TOGGLE = ([[
+    if self:GetAttribute("placing") or button == "RightButton" then return false end
     local own = owner:GetFrameRef("popup" .. self:GetAttribute("index"))
-    for i = 1, 12 do
+    for i = 1, %d do
         local popup = owner:GetFrameRef("popup" .. i)
         if popup and popup ~= own then popup:Hide() end
     end
     if own:IsShown() then own:Hide() else own:Show() end
     return false
+]]):format(MAX)
+local SLOT_CLICK = [[
+    if self:GetAttribute("placing") then return false end
+    return nil, true
 ]]
 
+local function MountSpell(mountID) return (select(2, C_MountJournal.GetMountInfoByID(mountID))) end
+
+-- Each kind of entry, by its saved type: its id's Lua type, how to pick it up, its icon and tooltip, the
+-- spell or item whose cooldown and usability it shows, and the secure action that uses it (type, value).
+local TYPES = {
+    spell = {
+        idType = "number",
+        Pickup = function(id) C_Spell.PickupSpell(id) end,
+        Icon = function(id) return C_Spell.GetSpellTexture(id) end,
+        Tooltip = function(id) GameTooltip:SetSpellByID(id) end,
+        Spell = function(id) return id end,
+        Action = function(id) return "spell", id end,
+    },
+    item = {
+        idType = "number",
+        Pickup = function(id) C_Item.PickupItem(id) end,
+        Icon = function(id) return C_Item.GetItemIconByID(id) end,
+        Tooltip = function(id) GameTooltip:SetItemByID(id) end,
+        Item = function(id) return id end,
+        Action = function(id) return "item", "item:" .. id end,
+    },
+    toy = {
+        idType = "number",
+        Pickup = function(id) C_ToyBox.PickupToyBoxItem(id) end,
+        Icon = function(id) return (select(3, C_ToyBox.GetToyInfo(id))) end,
+        Tooltip = function(id) GameTooltip:SetToyByItemID(id) end,
+        Item = function(id) return id end,
+        Action = function(id) return "toy", id end,
+    },
+    mount = {
+        idType = "number",
+        -- The journal picks up by list position, so a mount its filters hide stays where it is.
+        Pickup = function(id)
+            for index = 1, C_MountJournal.GetNumDisplayedMounts() do
+                if C_MountJournal.GetDisplayedMountID(index) == id then return C_MountJournal.Pickup(index) end
+            end
+        end,
+        Icon = function(id) return (select(3, C_MountJournal.GetMountInfoByID(id))) end,
+        Tooltip = function(id) GameTooltip:SetMountBySpellID(MountSpell(id)) end,
+        Spell = MountSpell,
+        Action = function(id) return "spell", MountSpell(id) end,
+    },
+    -- By name, as a macro's index moves.
+    macro = {
+        idType = "string",
+        Pickup = function(name) PickupMacro(name) end,
+        Icon = function(name) return (select(2, GetMacroInfo(name))) end,
+        Tooltip = function(name) GameTooltip:SetText(name, HIGHLIGHT_FONT_COLOR:GetRGB()) end,
+        Spell = function(name) return GetMacroSpell(name) end,
+        Action = function(name) return "macro", name end,
+    },
+}
+
 local function Valid(entry)
-    if type(entry) ~= "table" then return false end
-    if entry.type == "spell" or entry.type == "item" then return type(entry.id) == "number" end
-    return entry.type == "macro" and type(entry.id) == "string"
+    local kind = type(entry) == "table" and TYPES[entry.type]
+    return kind and type(entry.id) == kind.idType or false
 end
 
--- What the cursor holds, as an entry; macros by name, as their index moves.
+-- What the cursor holds, as an entry. Toys are the one special case: they come as items.
 local function CursorEntry()
     local kind, info, _, spellID = GetCursorInfo()
     if kind == "spell" and spellID then return { type = "spell", id = spellID } end
-    if kind == "item" then return { type = "item", id = info } end
+    if kind == "mount" then return { type = "mount", id = info } end
+    if kind == "item" then return { type = PlayerHasToy(info) and "toy" or "item", id = info } end
     if kind == "macro" then
         local name = GetMacroInfo(info)
         if name then return { type = "macro", id = name } end
     end
 end
 
-local function Pickup(entry)
-    if entry.type == "spell" then C_Spell.PickupSpell(entry.id)
-    elseif entry.type == "item" then C_Item.PickupItem(entry.id)
-    else PickupMacro(entry.id) end
-end
-
-local function Icon(entry)
-    if entry.type == "spell" then return C_Spell.GetSpellTexture(entry.id) end
-    if entry.type == "item" then return C_Item.GetItemIconByID(entry.id) end
-    return select(2, GetMacroInfo(entry.id))
-end
+-- Key bindings: Bindings.xml lists one per button, MAX in all.
+local function Binding(i) return "CLICK PyresinQoLFlyoutButton" .. i .. ":LeftButton" end
+BINDING_HEADER_PYRESINQOL = "PyresinQoL"
+for i = 1, MAX do _G["BINDING_NAME_" .. Binding(i)] = L.flyoutsBinding:format(i) end
 
 ns.RegisterModule("flyouts", function()
+    -- Saved menus are checked once here, so reads can trust them: each a table of valid entries, with an
+    -- optional name and icon.
     PyresinQoLFlyouts = type(PyresinQoLFlyouts) == "table" and PyresinQoLFlyouts or {}
+    for i, menu in pairs(PyresinQoLFlyouts) do
+        if type(menu) ~= "table" then PyresinQoLFlyouts[i] = nil
+        else
+            for j = 1, MAX do if not Valid(menu[j]) then menu[j] = nil end end
+            if type(menu.name) ~= "string" then menu.name = nil end
+            if type(menu.icon) ~= "number" and type(menu.icon) ~= "string" then menu.icon = nil end
+        end
+    end
     local defaults = {}
     for _, option in ipairs(module.flyoutOptions) do defaults[option.key] = option.default end
     local function Get(key)
@@ -60,14 +131,25 @@ ns.RegisterModule("flyouts", function()
         if value == nil then return defaults[key] end
         return value
     end
-    local function Entry(i, j)
-        local list = PyresinQoLFlyouts[i]
-        local entry = type(list) == "table" and list[j]
-        return Valid(entry) and entry or nil
+    -- Menu(i) reads a menu, which may not exist yet; List(i) makes it for writing. Never write to what
+    -- Menu(i) returns: a missing menu is the one shared NONE.
+    local NONE = {}
+    local function Menu(i) return PyresinQoLFlyouts[i] or NONE end
+    local function List(i)
+        PyresinQoLFlyouts[i] = PyresinQoLFlyouts[i] or {}
+        return PyresinQoLFlyouts[i]
     end
-    local function SetEntry(i, j, entry)
-        if type(PyresinQoLFlyouts[i]) ~= "table" then PyresinQoLFlyouts[i] = {} end
-        PyresinQoLFlyouts[i][j] = entry
+    local function Entry(i, j) return Menu(i)[j] end
+    local function SetEntry(i, j, entry) List(i)[j] = entry end
+    -- A menu's own name and icon, kept with its entries; without an icon it shows its first entry's.
+    local function DefaultName(i) return L.flyoutsDefaultName:format(i) end
+    local function Name(i) return Menu(i).name or DefaultName(i) end
+    local function MenuIcon(i)
+        if Menu(i).icon then return Menu(i).icon end
+        for j = 1, MAX do
+            local entry = Entry(i, j)
+            if entry then return TYPES[entry.type].Icon(entry.id) end
+        end
     end
 
     -- The bar stays at scale 1 with the scaled size, for its saved position; content carries the scale.
@@ -77,17 +159,23 @@ ns.RegisterModule("flyouts", function()
     local content = CreateFrame("Frame", nil, bar)
     content:SetPoint("CENTER")
     local buttons, Layout = {}, nil
+    -- Changes to protected frames wait for the end of combat.
+    local pending = {}
+    local function OutOfCombat(Function)
+        if not InCombatLockdown() then return true end
+        pending[Function] = true
+    end
 
     -- A menu button's look, as Blizzard's spell flyout buttons: cooldown, count, usable colour and the
-    -- active spell checked. Macros show the spell they cast.
+    -- active spell checked, for the spell or item behind an entry.
     local function RefreshSlot(slot)
         local entry = Entry(slot.flyout, slot.slot)
-        local icon = entry and Icon(entry)
+        local kind = entry and TYPES[entry.type]
+        local icon = kind and kind.Icon(entry.id)
         slot.icon:SetTexture(icon)
         slot.icon:SetShown(icon ~= nil)
-        local spellID
-        if entry and entry.type == "spell" then spellID = entry.id
-        elseif entry and entry.type == "macro" then spellID = GetMacroSpell(entry.id) end
+        local spellID = kind and kind.Spell and kind.Spell(entry.id)
+        local itemID = kind and kind.Item and kind.Item(entry.id)
         slot.spellID = spellID
         local usable, noMana, count = true, false, ""
         if spellID then
@@ -97,10 +185,10 @@ ns.RegisterModule("flyouts", function()
             slot:SetChecked(C_Spell.IsCurrentSpell(spellID))
         else
             local start, duration, enable = 0, 0, false
-            if entry and entry.type == "item" then
-                start, duration, enable = C_Item.GetItemCooldown(entry.id)
-                usable, noMana = C_Item.IsUsableItem(entry.id)
-                if C_Item.IsConsumableItem(entry.id) then count = C_Item.GetItemCount(entry.id, false, true) end
+            if itemID then
+                start, duration, enable = C_Item.GetItemCooldown(itemID)
+                usable, noMana = C_Item.IsUsableItem(itemID)
+                if C_Item.IsConsumableItem(itemID) then count = C_Item.GetItemCount(itemID, false, true) end
             end
             ActionButton_ApplyCooldown(slot.cooldown, { startTime = start, duration = duration, modRate = 1,
                 isEnabled = enable, isActive = enable and duration > 0 }, slot.chargeCooldown, nil, slot.lossOfControlCooldown)
@@ -114,18 +202,25 @@ ns.RegisterModule("flyouts", function()
 
     local function Refresh()
         for i, button in ipairs(buttons) do
-            local icon
-            for j = 1, MAX do
-                local entry = Entry(i, j)
-                icon = entry and Icon(entry)
-                if icon then break end
-            end
+            local icon = MenuIcon(i)
             button.icon:SetTexture(icon)
             button.icon:SetShown(icon ~= nil)
             if button.popup:IsShown() then
                 for _, slot in ipairs(button.slots) do if slot:IsShown() then RefreshSlot(slot) end end
             end
         end
+    end
+
+    -- Makes frame take what the cursor holds by drag and, as on Blizzard's bars, by click: Drop() places it
+    -- and returns true if it did, and PreClick then flags the click so the snippets cancel it.
+    local function DropTarget(frame, Drop)
+        frame:SetScript("OnReceiveDrag", Drop)
+        frame:SetScript("PreClick", function(self)
+            if Drop() then self:SetAttribute("placing", true) end
+        end)
+        frame:SetScript("PostClick", function(self)
+            if not InCombatLockdown() then self:SetAttribute("placing", nil) end
+        end)
     end
 
     local function CreateSlot(button, j)
@@ -135,37 +230,73 @@ ns.RegisterModule("flyouts", function()
         slot:RegisterForClicks("AnyUp")
         slot:RegisterForDrag("LeftButton", "RightButton")
         slot:SetAttribute("useOnKeyDown", false)
-        popup:WrapScript(slot, "OnClick", "return nil, true", "owner:Hide()")
+        popup:WrapScript(slot, "OnClick", SLOT_CLICK, "owner:Hide()")
         slot:HookScript("OnEnter", function(self)
             local entry = Entry(i, j)
             if not entry then return end
             GameTooltip_SetDefaultAnchor(GameTooltip, self)
-            if entry.type == "spell" then GameTooltip:SetSpellByID(entry.id)
-            elseif entry.type == "item" then GameTooltip:SetItemByID(entry.id)
-            else GameTooltip:SetText(entry.id, HIGHLIGHT_FONT_COLOR:GetRGB()) end
+            TYPES[entry.type].Tooltip(entry.id)
         end)
         slot:HookScript("OnLeave", function() GameTooltip:Hide() end)
         -- As on Blizzard's bars: dragging out takes the action off while the bars are unlocked or with the
-        -- pickup modifier; dropping on swaps it with what the cursor holds.
+        -- pickup modifier, if it reached the cursor; dropping on swaps it with what the cursor holds.
         slot:HookScript("OnDragStart", function()
             local entry = Entry(i, j)
             if not entry or InCombatLockdown() then return end
             if Settings.GetValue("lockActionBars") and not IsModifiedClick("PICKUPACTION") then return end
+            TYPES[entry.type].Pickup(entry.id)
+            if not GetCursorInfo() then return end
             SetEntry(i, j, nil)
-            Pickup(entry)
             Layout()
         end)
-        slot:SetScript("OnReceiveDrag", function()
+        DropTarget(slot, function()
             local entry = CursorEntry()
             if not entry or InCombatLockdown() then return end
             local old = Entry(i, j)
             SetEntry(i, j, entry)
             ClearCursor()
-            if old then Pickup(old) end
+            if old then TYPES[old.type].Pickup(old.id) end
             Layout()
+            return true
         end)
         button.slots[j] = slot
         return slot
+    end
+
+    local function EditFlyout(i)
+        module.OpenFlyoutEditor(Name(i), Menu(i).icon, function(name, icon)
+            local list = List(i)
+            list.name = name ~= DefaultName(i) and name or nil
+            list.icon = icon
+            Refresh()
+        end)
+    end
+
+    local function RefreshHotkey(button)
+        local key = GetBindingKey(Binding(button:GetAttribute("index")))
+        button.HotKey:SetText(key and GetBindingText(key, 1) or "")
+        button.HotKey:SetShown(key ~= nil)
+    end
+
+    -- Blizzard's Quick Keybind Mode, wired as on its own bars; its template would replace the secure OnClick.
+    hooksecurefunc(ActionButtonUtil, "SetAllQuickKeybindButtonHighlights", function(show)
+        for _, button in ipairs(buttons) do button:DoModeChange(show) end
+    end)
+    local function EnableQuickKeybind(button, command)
+        Mixin(button, QuickKeybindButtonTemplateMixin)
+        button.commandName = command
+        local highlight = button:CreateTexture(nil, "OVERLAY")
+        highlight:SetAtlas("UI-HUD-ActionBar-IconFrame-Mouseover")
+        highlight:SetBlendMode("ADD")
+        highlight:SetAlpha(0.4)
+        highlight:SetPoint("CENTER")
+        highlight:SetSize(46, 45) -- ActionButtonTemplate's
+        highlight:Hide()
+        button.QuickKeybindHighlightTexture = highlight
+        button:HookScript("OnEnter", button.QuickKeybindButtonOnEnter)
+        button:HookScript("OnLeave", button.QuickKeybindButtonOnLeave)
+        button:HookScript("PostClick", button.QuickKeybindButtonOnClick)
+        button:DoModeChange(KeybindFrames_InQuickKeybindMode())
     end
 
     local function CreateButton(i)
@@ -186,10 +317,20 @@ ns.RegisterModule("flyouts", function()
         popup:SetBorderColor(0.7, 0.7, 0.7)
         function popup.GetDirection() return button:GetPopupDirection() end
         function popup.GetCrossAxisSize() return button.popupCrossAxisSize end
+        -- An open menu fades out the buttons it covers, on bars with several rows. Alpha is not protected,
+        -- so this works in combat too.
         local function Toggled()
             button:SetChecked(false)
             button:OnPopupToggled()
-            if popup:IsShown() then Refresh() end
+            local shown = popup:IsShown()
+            local left, bottom, width, height = popup:GetRect()
+            for _, other in ipairs(buttons) do
+                local x, y, w, h = other:GetRect()
+                local covered = shown and other ~= button and x and left
+                    and x < left + width and left < x + w and y < bottom + height and bottom < y + h
+                other:SetAlpha(covered and 0 or 1)
+            end
+            if shown then Refresh() end
         end
         popup:HookScript("OnShow", Toggled)
         popup:HookScript("OnHide", Toggled)
@@ -198,7 +339,7 @@ ns.RegisterModule("flyouts", function()
         bar:SetFrameRef("popup" .. i, popup)
         bar:WrapScript(button, "OnClick", TOGGLE)
         -- Dropping onto the button adds to its first free slot.
-        button:SetScript("OnReceiveDrag", function()
+        DropTarget(button, function()
             local entry = CursorEntry()
             if not entry or InCombatLockdown() then return end
             for j = 1, Get("flyoutsSlots") do
@@ -206,18 +347,28 @@ ns.RegisterModule("flyouts", function()
                     SetEntry(i, j, entry)
                     ClearCursor()
                     Layout()
-                    return
+                    return true
                 end
             end
         end)
+        -- A right-click that dropped nothing edits the menu's name and icon; TOGGLE leaves it unopened.
+        button:HookScript("PreClick", function(self, mouseButton)
+            if mouseButton == "RightButton" and not self:GetAttribute("placing") then EditFlyout(i) end
+        end)
+        -- Named like Blizzard's flyouts on its bars.
+        button:HookScript("OnEnter", function(self)
+            GameTooltip_SetDefaultAnchor(GameTooltip, self)
+            GameTooltip:SetText(Name(i), HIGHLIGHT_FONT_COLOR:GetRGB())
+        end)
+        button:HookScript("OnLeave", function() GameTooltip:Hide() end)
+        EnableQuickKeybind(button, Binding(i))
         buttons[i] = button
+        RefreshHotkey(button)
         return button
     end
 
-    local pending
     function Layout()
-        if InCombatLockdown() then pending = true; return end
-        pending = false
+        if not OutOfCombat(Layout) then return end
         local icons, slots, padding = Get("flyoutsIcons"), Get("flyoutsSlots"), Get("flyoutsPadding")
         local vertical = Get("flyoutsOrientation") == "vertical"
         local perLine = math.ceil(icons / Get("flyoutsRows"))
@@ -228,6 +379,7 @@ ns.RegisterModule("flyouts", function()
         local direction
         if vertical then direction = x and x > centerX and "LEFT" or "RIGHT"
         else direction = y and y > centerY and "DOWN" or "UP" end
+        local along = DIRECTIONS[direction]
         local length = INITIAL_SPACING + slots * (SLOT_SIZE + SPACING) - SPACING + PADDING
 
         for i = 1, MAX do
@@ -244,30 +396,25 @@ ns.RegisterModule("flyouts", function()
                 button:SetPopupDirection(direction)
 
                 local popup, offset = button.popup, button.popupOffset
-                local horizontal = direction == "LEFT" or direction == "RIGHT"
+                local horizontal = along.x ~= 0
                 popup:SetSize(horizontal and length or button.popupCrossAxisSize, horizontal and button.popupCrossAxisSize or length)
                 popup:ClearAllPoints()
-                if direction == "UP" then popup:SetPoint("BOTTOM", button, "TOP", 0, offset)
-                elseif direction == "DOWN" then popup:SetPoint("TOP", button, "BOTTOM", 0, -offset)
-                elseif direction == "LEFT" then popup:SetPoint("RIGHT", button, "LEFT", -offset, 0)
-                else popup:SetPoint("LEFT", button, "RIGHT", offset, 0) end
+                popup:SetPoint(along.point, button, along.relative, along.x * offset, along.y * offset)
                 popup:UpdateBackground()
 
                 for j = 1, MAX do
                     local slot = button.slots[j] or j <= slots and shown and CreateSlot(button, j)
                     if slot then
                         slot:SetShown(j <= slots)
+                        -- The action reads only the attribute its type names, so stale ones are harmless.
                         local entry = Entry(i, j)
-                        slot:SetAttribute("type", entry and entry.type)
-                        slot:SetAttribute("spell", entry and entry.type == "spell" and entry.id or nil)
-                        slot:SetAttribute("item", entry and entry.type == "item" and "item:" .. entry.id or nil)
-                        slot:SetAttribute("macro", entry and entry.type == "macro" and entry.id or nil)
+                        local action, value
+                        if entry then action, value = TYPES[entry.type].Action(entry.id) end
+                        slot:SetAttribute("type", action)
+                        if action then slot:SetAttribute(action, value) end
                         local step = (j - 1) * (SLOT_SIZE + SPACING) + INITIAL_SPACING
                         slot:ClearAllPoints()
-                        if direction == "UP" then slot:SetPoint("BOTTOM", 0, step)
-                        elseif direction == "DOWN" then slot:SetPoint("TOP", 0, -step)
-                        elseif direction == "LEFT" then slot:SetPoint("RIGHT", -step, 0)
-                        else slot:SetPoint("LEFT", step, 0) end
+                        slot:SetPoint(along.point, along.x * step, along.y * step)
                     end
                 end
             end
@@ -282,34 +429,62 @@ ns.RegisterModule("flyouts", function()
         bar:SetSize(width * scale, height * scale)
         Refresh()
     end
-    module.UpdateFlyouts = Layout
+
+    -- Edit Mode shows the bar to move it. Set by the Edit Mode display's OnEnter and OnExit below.
+    local editing = false
+    local function ApplyVisibility()
+        if not OutOfCombat(ApplyVisibility) then return end
+        if editing then
+            UnregisterStateDriver(bar, "visibility")
+            bar:Show()
+        else
+            RegisterStateDriver(bar, "visibility", VISIBILITY[Get("flyoutsVisibility")] or "show")
+        end
+    end
+    local function Update()
+        Layout()
+        ApplyVisibility()
+    end
+    module.UpdateFlyouts = Update
 
     bar:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_REGEN_ENABLED" then
-            if pending then Layout() end
+            for Function in pairs(pending) do
+                pending[Function] = nil
+                Function()
+            end
+        elseif event == "UPDATE_BINDINGS" then
+            for _, button in ipairs(buttons) do RefreshHotkey(button) end
         elseif event == "UPDATE_MACROS" or event == "PLAYER_ENTERING_WORLD" then
             Layout()
         else
             Refresh()
         end
     end)
-    for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "UPDATE_MACROS", "SPELLS_CHANGED",
-        "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN",
+    for _, event in ipairs({ "PLAYER_REGEN_ENABLED", "PLAYER_ENTERING_WORLD", "UPDATE_MACROS", "UPDATE_BINDINGS",
+        "SPELLS_CHANGED", "SPELL_UPDATE_COOLDOWN", "SPELL_UPDATE_USABLE", "SPELL_UPDATE_CHARGES", "BAG_UPDATE_COOLDOWN",
         "BAG_UPDATE_DELAYED", "CURRENT_SPELL_CAST_CHANGED", "UNIT_POWER_FREQUENT" }) do
         if event == "UNIT_POWER_FREQUENT" then bar:RegisterUnitEvent(event, "player") else bar:RegisterEvent(event) end
     end
 
     local name, OpenDialog = "PyresinQoL · " .. L.flyouts, nil
-    local entry = ns.CreateEditModeDisplay(bar, {
+    local display = ns.CreateEditModeDisplay(bar, {
         name = name, positionKey = "flyoutsPosition", default = { "BOTTOM", UIParent, "BOTTOM", 0, 280 },
         OnSelect = function() OpenDialog() end,
+        OnEnter = function()
+            editing = true
+            ApplyVisibility()
+        end,
         -- The menus open towards where the bar now sits.
-        OnExit = Layout,
+        OnExit = function()
+            editing = false
+            Update()
+        end,
     })
     OpenDialog = ns.CreateEditModeOptionsDialog(bar, {
         name = name, options = module.flyoutOptions, Get = Get, Format = module.FormatFlyoutOption,
     })
-    EventRegistry:RegisterCallback("PyresinQoL.ProfileChanged", Layout, bar)
-    entry.Restore()
-    Layout()
+    EventRegistry:RegisterCallback("PyresinQoL.ProfileChanged", Update, bar)
+    display.Restore()
+    Update()
 end)

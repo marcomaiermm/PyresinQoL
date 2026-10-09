@@ -14,6 +14,11 @@ module.flyoutOptions = {
     { key = "flyoutsIconSize", label = HUD_EDIT_MODE_SETTING_ACTION_BAR_ICON_SIZE, default = 100, min = 50, max = 200,
         step = 10, format = "%d%%" },
     { key = "flyoutsPadding", label = HUD_EDIT_MODE_SETTING_ACTION_BAR_ICON_PADDING, default = 2, min = 2, max = 10 },
+    { key = "flyoutsVisibility", label = HUD_EDIT_MODE_SETTING_ACTION_BAR_VISIBLE_SETTING, default = "always", choices = {
+        { "always", HUD_EDIT_MODE_SETTING_ACTION_BAR_VISIBLE_SETTING_ALWAYS },
+        { "combat", HUD_EDIT_MODE_SETTING_ACTION_BAR_VISIBLE_SETTING_IN_COMBAT },
+        { "outOfCombat", HUD_EDIT_MODE_SETTING_ACTION_BAR_VISIBLE_SETTING_OUT_OF_COMBAT },
+        { "hidden", HUD_EDIT_MODE_SETTING_ACTION_BAR_VISIBLE_SETTING_HIDDEN } } },
 }
 
 function module.FormatFlyoutOption(option, value)

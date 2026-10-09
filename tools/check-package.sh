@@ -20,7 +20,7 @@ version=$(sed -n 's/^## Version: //p' "$toc" | tr -d '\r')
 
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
-for path in "$toc" LICENSE Media/AddonIcon.tga; do
+for path in "$toc" LICENSE Bindings.xml Media/AddonIcon.tga; do
     [[ -f "$path" && ! -L "$path" ]] || fail "Missing or unsafe file: $path"
 done
 for directory in Core Settings Modules Media; do
@@ -28,7 +28,7 @@ for directory in Core Settings Modules Media; do
 done
 [[ -z $(find Core Settings Modules Media -type l -print -quit) ]] || fail 'Runtime files must not be symlinks'
 {
-    printf '%s\n' "$toc" LICENSE
+    printf '%s\n' "$toc" LICENSE Bindings.xml
     find Core Settings Modules Media -type f
 } | LC_ALL=C sort > "$temporary/files"
 

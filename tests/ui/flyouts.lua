@@ -1,6 +1,6 @@
 local UI = PyresinQoLUITest
 local bar, saved = PyresinQoLFlyoutBar, {}
-local keys = { "Orientation", "Rows", "Icons", "Slots", "IconSize", "Padding" }
+local keys = { "Orientation", "Rows", "Icons", "Slots", "IconSize", "Padding", "Visibility" }
 local function Setting(key) return Settings.GetSetting("PyresinQoL_Flyouts" .. key) end
 -- Test code runs tainted, where the secure snippets cannot run; a player's click is secure.
 local function Click(button) securecallfunction(button.Click, button) end
@@ -38,6 +38,34 @@ UI.Flow("flyout bar lays out like an action bar and opens one menu at a time", {
         assertTrue(PyresinQoLFlyoutButton2.popup:IsShown())
         Click(PyresinQoLFlyoutButton2)
         assertFalse(PyresinQoLFlyoutButton2.popup:IsShown(), "A second click closes it")
+        Click(fourth)
+        if fourth:GetPopupDirection() == "UP" then
+            assertEquals(0, first:GetAlpha(), "An open menu fades out the button it covers")
+            assertEquals(1, PyresinQoLFlyoutButton2:GetAlpha())
+        end
+        Click(fourth)
+        assertEquals(1, first:GetAlpha(), "Closing the menu brings it back")
+
+        -- A right-click edits the menu's name and icon instead of opening it.
+        saved.list = PyresinQoLFlyouts[1]
+        PyresinQoLFlyouts[1] = nil
+        securecallfunction(first.Click, first, "RightButton")
+        local picker = assert(PyresinQoLFlyoutIconPicker, "A right-click opens the icon picker")
+        assertTrue(picker:IsShown() and not first.popup:IsShown())
+        UI.AssertInside(picker, UIParent, "Flyout icon picker")
+        picker.BorderBox.SelectedIconArea.SelectedIconButton:SetIconTexture(136243)
+        picker.BorderBox.IconSelectorEditBox:SetText("Portals")
+        picker:OkayButton_OnClick()
+        assertFalse(picker:IsShown())
+        assertEquals(136243, first.icon:GetTexture(), "The chosen icon replaces the first entry's")
+        assertEquals("Portals", PyresinQoLFlyouts[1].name)
+        PyresinQoLFlyouts[1] = saved.list
+
+        ActionButtonUtil.SetAllQuickKeybindButtonHighlights(true)
+        assertTrue(first.QuickKeybindHighlightTexture:IsShown(), "Quick Keybind Mode highlights the buttons")
+        assertEquals("CLICK PyresinQoLFlyoutButton1:LeftButton", first.commandName)
+        ActionButtonUtil.SetAllQuickKeybindButtonHighlights(false)
+        assertFalse(first.QuickKeybindHighlightTexture:IsShown())
 
         Click(first)
         Click(first.slots[1])
@@ -57,8 +85,44 @@ UI.Flow("flyout bar lays out like an action bar and opens one menu at a time", {
     for key, value in pairs(saved) do Setting(key):SetValue(value) end
 end)
 
+UI.Flow("a click with something on the cursor drops it instead of acting", {
+    function()
+        for _, key in ipairs(keys) do saved[key] = Setting(key):GetValue() end
+        saved.entries, saved.GetCursorInfo, saved.PlayerHasToy = PyresinQoLFlyouts[1], GetCursorInfo, PlayerHasToy
+        PyresinQoLFlyouts[1] = nil
+        Setting("Icons"):SetValue(6)
+        Setting("Slots"):SetValue(4)
+        local cursor = { "item", 6948 }
+        GetCursorInfo = function() return unpack(cursor) end
+        PlayerHasToy = function(id) return id == 54452 end
+        Click(PyresinQoLFlyoutButton1)
+        assertFalse(PyresinQoLFlyoutButton1.popup:IsShown(), "Dropping does not open the menu")
+        assertEquals("item", PyresinQoLFlyouts[1][1].type)
+        cursor[2] = 54452
+        Click(PyresinQoLFlyoutButton1)
+        assertEquals("toy", PyresinQoLFlyouts[1][2].type, "Toys are kept as toys")
+        assertEquals(54452, PyresinQoLFlyoutButton1.slots[2]:GetAttribute("toy"))
+        assertEquals("toy", PyresinQoLFlyoutButton1.slots[2]:GetAttribute("type"))
+        GetCursorInfo = saved.GetCursorInfo
+        Click(PyresinQoLFlyoutButton1)
+        assertTrue(PyresinQoLFlyoutButton1.popup:IsShown(), "An empty cursor opens the menu again")
+        Click(PyresinQoLFlyoutButton1)
+    end,
+}, function()
+    GetCursorInfo, PlayerHasToy = saved.GetCursorInfo, saved.PlayerHasToy
+    PyresinQoLFlyouts[1] = saved.entries
+    for _, key in ipairs(keys) do Setting(key):SetValue(saved[key]) end
+end)
+
 UI.Flow("flyout bar options open from Edit Mode", {
-    function() ShowUIPanel(EditModeManagerFrame) end,
+    function()
+        saved.Visibility = Setting("Visibility"):GetValue()
+        Setting("Visibility"):SetValue("hidden")
+    end,
+    function()
+        assertFalse(bar:IsShown(), "A hidden bar stays hidden")
+        ShowUIPanel(EditModeManagerFrame)
+    end,
     function()
         assertTrue(bar.Selection:IsShown(), "Edit Mode shows the bar's mover")
         bar.Selection:GetScript("OnMouseDown")(bar.Selection)
@@ -71,7 +135,13 @@ UI.Flow("flyout bar options open from Edit Mode", {
     end,
     function()
         assertFalse(bar.Dialog:IsShown(), "Leaving Edit Mode closes the options")
+        assertFalse(bar:IsShown(), "Leaving Edit Mode hides the hidden bar again")
+        Setting("Visibility"):SetValue("outOfCombat")
+    end,
+    function()
+        assertTrue(bar:IsShown(), "Out of combat shows the bar")
     end,
 }, function()
     if EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
+    Setting("Visibility"):SetValue(saved.Visibility)
 end)

@@ -1,0 +1,15 @@
+<Bindings>
+	<!-- One per flyout button: as many as MAX in Modules/Flyouts/Flyouts.lua. -->
+	<Binding name="CLICK PyresinQoLFlyoutButton1:LeftButton" category="ADDONS" header="PYRESINQOL"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton2:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton3:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton4:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton5:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton6:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton7:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton8:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton9:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton10:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton11:LeftButton" category="ADDONS"/>
+	<Binding name="CLICK PyresinQoLFlyoutButton12:LeftButton" category="ADDONS"/>
+</Bindings>
