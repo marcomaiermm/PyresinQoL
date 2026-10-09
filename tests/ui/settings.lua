@@ -14,6 +14,7 @@ local pages = {
     { "Buffs & Debuffs", "buffLayout", "buffLayout", false },
     { "Tooltips", "TooltipAnchorCombat", "tooltipAnchorCombat", false },
     { "Dungeon Maps", "DungeonMapsEnabled", "dungeonMapsEnabled", true },
+    { "Flight Timer", "FlightTimerShowTime", "flightTimerShowTime", true },
 }
 
 local UI = PyresinQoLUITest

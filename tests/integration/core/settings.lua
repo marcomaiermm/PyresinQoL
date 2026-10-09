@@ -37,7 +37,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not h.events.registered.ADDON_LOADED)
-assert(h.canvas and #h.navigation == 15 and #h.sections == 0)
+assert(h.canvas and #h.navigation == 16 and #h.sections == 0)
 assert(#ns.GetModule("actionBars").pages == 1,
     "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
@@ -91,7 +91,7 @@ assert(h.navigation[4].shown and h.navigation[7].shown)
 h.groupButtons[1].scripts.OnClick()
 assert(h.navigation[1].shown and h.navigation[2].shown and h.navigation[3].shown)
 h.canvas.scripts.OnShow()
-assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 9)
+assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 10)
 assert(h.navigation[1].selected.shown and not h.reloadButton.enabled)
 assert(h.navigation[1].text.color[2] == 1 and h.navigation[1].text.color[3] == 1,
     "The selected page uses Blizzard's white label")
@@ -137,6 +137,15 @@ h.navigation[6].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.experience and #h.settingsList.rendered == 4)
 assert(PyresinQoLDB.xpTextFormat == "both" and PyresinQoLDB.xpAlwaysShow and PyresinQoLDB.xpTooltip and PyresinQoLDB.xpQuestRewards)
 h.navigation[7].scripts.OnClick()
+assert(h.settingsList.Header.Title.value == ns.L.flightTimer and #h.settingsList.rendered == 11)
+assert(PyresinQoLDB.flightTimerStyle == "castbar" and PyresinQoLDB.flightTimerMarker == "pointed"
+    and PyresinQoLDB.flightTimerFlags == "destination" and PyresinQoLDB.flightTimerStops == "scroll"
+    and PyresinQoLDB.flightTimerShowTime == true and PyresinQoLDB.flightTimerShowTotal == false
+    and PyresinQoLDB.flightTimerWidth == 300
+    and PyresinQoLDB.flightTimerShowStops == true and PyresinQoLDB.flightTimerStopArrows == true
+    and PyresinQoLDB.flightTimerShowPost == true
+    and PyresinQoLDB.flightTimerOverlap == "ends")
+h.navigation[8].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.quests and #h.settingsList.rendered == 2)
 assert(settings.questLevels.name == ns.L.questLevels and PyresinQoLDB.questLevels)
 assert(settings.questItemSparkles.name == ns.L.questItemSparkles and PyresinQoLDB.questItemSparkles == false)
@@ -163,7 +172,7 @@ settings.playerManaPosition:SetValue("RIGHT")
 settings.targetHPPosition:SetValue("BOTTOMRIGHT")
 settings.targetManaPosition:SetValue("LEFT")
 assert(updates.player == 6)
-h.navigation[8].scripts.OnClick()
+h.navigation[9].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.playerFrame)
 assert(settings.castBarCustomization and not ns.CastBar.IsEnabled())
 settings.castBarCustomization:SetValue(true)
@@ -190,7 +199,7 @@ h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(not ns.CastBar.IsEnabled() and ns.CastBar.Get("width") == 0)
 assert(PyresinQoLDB.druidMana and updates.druidMana == 2)
 assert(updates.player == 9 and not PyresinQoLDB.playerClassColor and PyresinQoLDB.targetClassColor)
-h.navigation[9].scripts.OnClick()
+h.navigation[10].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.targetFrame and #h.settingsList.rendered == 14)
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(updates.player == 12 and not PyresinQoLDB.targetClassColor)
@@ -199,7 +208,7 @@ assert(updates.debuff == 11 and PyresinQoLDB.targetDebuffs and PyresinQoLDB.targ
 assert(PyresinQoLDB.targetAuraLargeOwn and PyresinQoLDB.targetAuraSize == 17 and PyresinQoLDB.targetAuraOwnSize == 21)
 assert(PyresinQoLDB.playerHPPosition == "CENTER"
     and PyresinQoLDB.targetHPPosition == "CENTER" and PyresinQoLDB.targetManaPosition == "CENTER")
-h.navigation[10].scripts.OnClick()
+h.navigation[11].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.nameplates and #h.settingsList.rendered == 3)
 assert(PyresinQoLDB.nameplateComboPoints and h.nativeComboCheckbox:ShouldShow())
 h.nativeComboCheckbox.setting:SetValue(false)
@@ -213,7 +222,7 @@ assert(updates.nameplate == 2 and PyresinQoLDB.nameplateThreatPosition == "LEFT"
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(updates.nameplate == 4 and PyresinQoLDB.nameplateThreat and PyresinQoLDB.nameplateThreatPosition == "RIGHT")
 assert(updates.combo == 2 and PyresinQoLDB.nameplateComboPoints)
-h.navigation[11].scripts.OnClick()
+h.navigation[12].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.statusText and #h.settingsList.rendered == 5)
 assert(h.settingsList.rendered[1].Title.value == ns.L.hideStatusText)
 for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
@@ -228,7 +237,7 @@ for _, unit in ipairs({ "pet", "target", "targettarget", "focus" }) do
     assert(PyresinQoLDB[unit .. "HideStatusText"] == false)
 end
 assert(updates.statusText == 8)
-h.navigation[12].scripts.OnClick()
+h.navigation[13].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.auras and #h.settingsList.rendered == 36)
 assert(not PyresinQoLDB.buffLayout and not PyresinQoLDB.debuffLayout)
 settings.buffLayout:SetValue(true)
@@ -237,7 +246,7 @@ settings.debuffGapX:SetValue(12)
 assert(updates.aura == 3 and PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "first")
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(updates.aura == 37 and not PyresinQoLDB.buffLayout and PyresinQoLDB.buffOwn == "mixed" and PyresinQoLDB.debuffGapX == 5)
-h.navigation[13].scripts.OnClick()
+h.navigation[14].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.tooltips and #h.settingsList.rendered == 36)
 assert(PyresinQoLDB.tooltipHealth and PyresinQoLDB.tooltipGuildRank and PyresinQoLDB.tooltipObjectCursor)
 settings.tooltipHealth:SetValue(false)

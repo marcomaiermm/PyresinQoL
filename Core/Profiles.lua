@@ -322,12 +322,11 @@ function ns.SyncLayoutProfile()
             if links[candidate] == key then profile = candidate; break end
         end
     end
-    local performance = ns.GetModule("performance")
     if profile ~= store.active then
         -- Open editor callbacks belong to the outgoing profile.
         if ns.CastBar and ns.CastBar.CloseEditors then ns.CastBar.CloseEditors() end
         if ColorPickerFrame and ColorPickerFrame:IsShown() then ColorPickerFrame:Hide() end
-        if performance.StopPerformanceDragging then performance.StopPerformanceDragging() end
+        for _, entry in ipairs(ns.customEditModeDisplays) do entry.StopDragging() end
     end
     if not profile or not store.profiles[profile] then
         local candidate, suffix = name, 2
@@ -342,7 +341,7 @@ function ns.SyncLayoutProfile()
         ns.InitializeDatabase()
         if ns.RefreshProfileSettings then
             ns.RefreshProfileSettings()
-            if performance.RestorePerformancePosition then performance.RestorePerformancePosition() end
+            for _, entry in ipairs(ns.customEditModeDisplays) do entry.Restore() end
             ns.profileReloadPending = ns.ModulesNeedReload()
         end
     end

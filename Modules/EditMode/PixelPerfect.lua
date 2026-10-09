@@ -1,7 +1,9 @@
 local _, ns = ...
 
 ns.RegisterModule("editMode", function(module)
-    local performance, unitFrames = ns.GetModule("performance"), ns.GetModule("unitFrames")
+    local unitFrames = ns.GetModule("unitFrames")
+    -- Our own displays (CustomDisplay.lua) carry their entry.
+    local function Custom(frame) return frame and frame.customEditModeEntry end
     local selected, editing
     local dismissed = false
     local dragHooks = {}
@@ -36,7 +38,7 @@ ns.RegisterModule("editMode", function(module)
             or InCombatLockdown() or EditModeManagerFrame:IsEditModeLocked() or not selected:IsShown() then
             return false
         end
-        if selected == performance.performanceDisplay then
+        if Custom(selected) then
             return selected.Selection:IsShown()
         end
         return selected:CanBeMoved()
@@ -54,7 +56,7 @@ ns.RegisterModule("editMode", function(module)
     end
 
     local function DetectSnapTarget()
-        if selected ~= performance.performanceDisplay then
+        if not Custom(selected) then
             if not selected.isDragging and CanSnapTo(selected.snappedToFrame) then
                 return selected.snappedToFrame
             end
@@ -82,7 +84,7 @@ ns.RegisterModule("editMode", function(module)
             if gap <= distance then nearest, distance = frame, gap end
         end
         for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do Consider(frame) end
-        Consider(performance.performanceDisplay)
+        for _, entry in ipairs(ns.customEditModeDisplays) do Consider(entry.frame) end
         return nearest
     end
 
@@ -258,7 +260,7 @@ ns.RegisterModule("editMode", function(module)
     function module.ClearPixelPerfectFrame(frame)
         if frame and selected ~= frame then return end
         for _, input in ipairs(coordinateInputs) do input:ClearFocus() end
-        if selected and selected == performance.performanceDisplay and selected.Selection:IsShown() then
+        if selected and Custom(selected) and selected.Selection:IsShown() then
             selected.Selection:ShowHighlighted()
         end
         selected = nil
@@ -280,11 +282,11 @@ ns.RegisterModule("editMode", function(module)
         module.ClearPixelPerfectFrame()
         selected = frame
         if not frame then return end
-        if frame ~= performance.performanceDisplay and not dragHooks[frame] then
+        if not Custom(frame) and not dragHooks[frame] then
             hooksecurefunc(frame, "OnDragStart", module.OnPixelPerfectDragStart)
             dragHooks[frame] = true
         end
-        title:SetText(frame == performance.performanceDisplay and "PyresinQoL · FPS / MS" or frame:GetSystemName())
+        title:SetText((Custom(frame) or frame):GetSystemName())
         if EditModeManagerFrame:IsSnapEnabled() and CanSnapTo(frame.snappedToFrame) then
             snapTarget = frame.snappedToFrame
         end
@@ -298,7 +300,7 @@ ns.RegisterModule("editMode", function(module)
             dismissed = not frame.isDragging and not dismissed
             module.UpdatePixelPerfectMode()
         else
-            if frame == performance.performanceDisplay then EditModeManagerFrame:ClearSelectedSystem() end
+            if Custom(frame) then EditModeManagerFrame:ClearSelectedSystem() end
             module.SelectPixelPerfectFrame(frame)
         end
     end
@@ -307,12 +309,8 @@ ns.RegisterModule("editMode", function(module)
         if not CanMove() or selected.isDragging then return end
         local frame = selected
         local step = PixelUtil.GetPixelToUIUnitFactor() / frame:GetEffectiveScale()
-        if frame == performance.performanceDisplay then
-            performance.SavePerformancePosition()
-            local position = PyresinQoLDB.performancePosition
-            frame:ClearAllPoints()
-            frame:SetPoint("CENTER", UIParent, "CENTER", position.x + dx * step, position.y + dy * step)
-            performance.SavePerformancePosition()
+        if Custom(frame) then
+            Custom(frame).Nudge(dx * step, dy * step)
         else
             -- Follow Blizzard's movement path so layout saving/reverting and managed frames still work.
             if frame.isManagedFrame and frame:IsInDefaultPosition() then frame:BreakFromFrameManager() end
@@ -347,7 +345,7 @@ ns.RegisterModule("editMode", function(module)
         root:SetScrollMode(240)
         local function AddTarget(frame)
             if CanSnapTo(frame) then
-                local name = frame == performance.performanceDisplay and "PyresinQoL · FPS / MS" or frame:GetSystemName()
+                local name = (Custom(frame) or frame):GetSystemName()
                 root:CreateRadio(name, function() return snapTarget == frame end, function()
                     snapTarget = frame
                     module.UpdatePixelPerfectMode()
@@ -355,7 +353,7 @@ ns.RegisterModule("editMode", function(module)
             end
         end
         for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do AddTarget(frame) end
-        AddTarget(performance.performanceDisplay)
+        for _, entry in ipairs(ns.customEditModeDisplays) do AddTarget(entry.frame) end
     end)
 
     local function Snap(direction)

@@ -9,9 +9,10 @@ end
 
 local files = {
     gameMenu = { "Modules/GameMenu/GameMenu.lua" }, editMode = { "Modules/EditMode/PixelPerfect.lua", "Modules/EditMode/SettingsDialog.lua" },
-    performance = { "Modules/Performance/Performance.lua" },
+    performance = { "Modules/EditMode/CustomDisplay.lua", "Modules/Performance/Performance.lua" },
     dungeonMaps = { "Modules/DungeonMaps/Data.lua", "Modules/DungeonMaps/Logic.lua", "Modules/DungeonMaps/DungeonMaps.lua" },
     experience = { "Modules/Experience/Experience.lua" },
+    flightTimer = { "Modules/FlightTimer/Data.lua", "Modules/FlightTimer/Options.lua", "Modules/FlightTimer/Bar.lua", "Modules/FlightTimer/FlightTimer.lua", "Modules/FlightTimer/EditMode.lua" },
     quests = { "Modules/Quests/Quests.lua", "Modules/Quests/Sparkles.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
     actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
@@ -80,7 +81,7 @@ print("PASS: deferred module startup, isolated disabling, grouped target feature
 local seen, title, savedVariables = {}, nil, nil
 for line in io.lines("PyresinQoL.toc") do
     title = line:match("^## Title: (.+)$") or title
-    savedVariables = line:match("^## SavedVariables: (.+)$") or savedVariables
+    savedVariables = line:match("^## SavedVariables: ([^,]+)") or savedVariables
     if line:match("%.lua$") then
         assert(not seen[line], "Duplicate TOC entry: " .. line)
         seen[line] = true
@@ -89,7 +90,7 @@ for line in io.lines("PyresinQoL.toc") do
 end
 assert(title == "PyresinQoL" and savedVariables == "PyresinQoLDB")
 assert(_G[savedVariables] == PyresinQoLDB, "The runtime database must match the saved variable in the TOC")
-local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "quests", "unitFrames", "tooltips", "actionBars" }
+local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "flightTimer", "quests", "unitFrames", "tooltips", "actionBars" }
 assert(#ns.modules == #order)
 for index, id in ipairs(order) do
     local module = ns.GetModule(id)

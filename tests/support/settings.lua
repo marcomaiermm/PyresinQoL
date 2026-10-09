@@ -146,7 +146,10 @@ local function Initializer(name, kind, setting, tooltip)
             end
         end
     end
-    function initializer:SetParentInitializer() error("Expandable sections are not setting parents") end
+    function initializer:SetParentInitializer(parent, predicate)
+        assert(parent.kind ~= "section", "Expandable sections are not setting parents")
+        self.parentInitializer, self.parentPredicate = parent, predicate
+    end
     function initializer:AddModifyPredicate(predicate) self.modifyPredicate = predicate end
     function initializer:AddShownPredicate(predicate) self.predicate = predicate end
     function initializer:ShouldShow() return not self.predicate or self.predicate() end
@@ -258,6 +261,7 @@ Settings = {
     CreateDropdownInitializer = function(setting, options, tooltip)
         local count = (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
             or setting.key:match("TimerPosition$") and 5
+            or (setting.key == "flightTimerStyle" or setting.key == "flightTimerMarker" or setting.key == "flightTimerFlags" or setting.key == "flightTimerOverlap") and 4
             or (setting.key == "buffOwn" or setting.key == "debuffOwn" or setting.key == "buffSort" or setting.key == "debuffSort") and 3
             or setting.key == "tooltipAnchorPoint" and 9
             or (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
@@ -279,6 +283,7 @@ Settings = {
     CreateSliderOptions = function(minimum, maximum, step)
         assert((minimum == 0 and maximum == 40 and step == 1)
             or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and (maximum == 16 or maximum == 24)))
+            or (minimum == 100 and maximum == 600 and step == 1)
             or (minimum == -2500 and maximum == 2500 and step == 1)
             or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
@@ -475,6 +480,8 @@ assert(loadfile("Modules/EditMode/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Performance/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/DungeonMaps/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Experience/Settings.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/FlightTimer/Options.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/FlightTimer/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Quests/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
