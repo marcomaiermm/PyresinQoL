@@ -19,15 +19,17 @@ ns.RegisterModuleSettings("flightTimer", function(module, context)
                 return container:GetData()
             end)
         elseif option.min then
-            local slider = Settings.CreateSliderOptions(option.min, option.max, 1)
-            slider:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value) return ("%.0f px"):format(value) end)
+            local slider = Settings.CreateSliderOptions(option.min, option.max, option.step or 1)
+            slider:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value) return module.FormatFlightTimerOption(option, value) end)
             initializer = Settings.CreateSliderInitializer(setting, slider)
         else
             initializer = Settings.CreateCheckboxInitializer(setting)
         end
         local parent = built[option.parent]
         if parent then
-            initializer:SetParentInitializer(parent.initializer, function() return parent.setting:GetValue() end)
+            initializer:SetParentInitializer(parent.initializer, function()
+                return module.FlightTimerOptionEnabled(option, function() return parent.setting:GetValue() end)
+            end)
         end
         AddControl(main, initializer)
         built[option.key] = { setting = setting, initializer = initializer }

@@ -137,14 +137,14 @@ h.navigation[6].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.experience and #h.settingsList.rendered == 4)
 assert(PyresinQoLDB.xpTextFormat == "both" and PyresinQoLDB.xpAlwaysShow and PyresinQoLDB.xpTooltip and PyresinQoLDB.xpQuestRewards)
 h.navigation[7].scripts.OnClick()
-assert(h.settingsList.Header.Title.value == ns.L.flightTimer and #h.settingsList.rendered == 11)
+assert(h.settingsList.Header.Title.value == ns.L.flightTimer and #h.settingsList.rendered == 12)
 assert(PyresinQoLDB.flightTimerStyle == "castbar" and PyresinQoLDB.flightTimerMarker == "pointed"
     and PyresinQoLDB.flightTimerFlags == "destination" and PyresinQoLDB.flightTimerStops == "scroll"
-    and PyresinQoLDB.flightTimerShowTime == true and PyresinQoLDB.flightTimerShowTotal == false
-    and PyresinQoLDB.flightTimerWidth == 300
-    and PyresinQoLDB.flightTimerShowStops == true and PyresinQoLDB.flightTimerStopArrows == true
+    and PyresinQoLDB.flightTimerTime == "left" and PyresinQoLDB.flightTimerOverlap == "ends"
+    and PyresinQoLDB.flightTimerScrollNames == true and PyresinQoLDB.flightTimerStopArrows == true
     and PyresinQoLDB.flightTimerShowPost == true
-    and PyresinQoLDB.flightTimerOverlap == "ends")
+    and PyresinQoLDB.flightTimerWidth == 300 and PyresinQoLDB.flightTimerScale == 100
+    and PyresinQoLDB.flightTimerZones == true)
 h.navigation[8].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.quests and #h.settingsList.rendered == 2)
 assert(settings.questLevels.name == ns.L.questLevels and PyresinQoLDB.questLevels)

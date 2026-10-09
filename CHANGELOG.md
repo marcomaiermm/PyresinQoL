@@ -6,11 +6,13 @@
 - **Flight Timer** (Misc): shows the remaining flight time on a route bar with your portrait, the start, the destination and the stops on the way.
 - Gets more accurate with every flight and accounts for Frequent Flier.
 - Follows an early landing and keeps running after a `/reload`.
-- Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, time display and width.
+- Long place names scroll so you can read them in full.
+- Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, zone names, time display, width and scale.
 - **Flight Timer** (Misc): shows the remaining flight time on a route bar with your portrait, the start, the destination and the stops on the way
 - Gets more accurate with every flight and accounts for Frequent Flier
 - Follows an early landing and keeps running after a `/reload`
-- Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, time display and width
+- Long place names scroll so you can read them in full
+- Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, zone names, time display, width and scale
 ## 0.1.9
 
 ### Added

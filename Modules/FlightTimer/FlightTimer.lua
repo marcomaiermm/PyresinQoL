@@ -107,7 +107,8 @@ ns.RegisterModule("flightTimer", function(module)
         if flight then return end
         local route = PREVIEW_ROUTES[UnitFactionGroup("player")] or PREVIEW_ROUTES.Alliance
         local names = {}
-        for _, node in ipairs(C_TaxiMap.GetTaxiNodesForMap(route.map) or names) do names[node.nodeID] = node.name end
+        local nodes = C_TaxiMap and C_TaxiMap.GetTaxiNodesForMap and C_TaxiMap.GetTaxiNodesForMap(route.map)
+        for _, node in ipairs(nodes or names) do names[node.nodeID] = node.name end
         local points, yards = {}, 0
         for i, nodeID in ipairs(route) do
             if i > 1 then yards = yards + routes[route[i - 1] * 10000 + nodeID] end

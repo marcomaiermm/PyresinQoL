@@ -120,7 +120,7 @@ ns.RegisterModule("editMode", function(module)
     end
 
     local function CanMatchWidth(frame)
-        return SizeSettings(frame) ~= nil or OwnsCastBarWidth(frame)
+        return SizeSettings(frame) ~= nil or OwnsCastBarWidth(frame) or (Custom(frame) and Custom(frame).width) ~= nil
     end
 
     -- 1 when the setting sizes the frame's width, 2 for its height.
@@ -445,7 +445,12 @@ ns.RegisterModule("editMode", function(module)
     matchWidth:Hide()
     matchWidth:SetScript("OnClick", function()
         if not CanMove() or selected.isDragging or not CanMatchWidth(selected) then return end
-        if OwnsCastBarWidth(selected) then
+        local width = Custom(selected) and Custom(selected).width
+        if width then
+            -- The editor measures UI units; the setting sizes the display at Scale() of them each.
+            local units = module.GetSnapTargetUnits(selected, 1, width.Get() * width.Scale())
+            if units then width.Set(math.max(width.min, math.min(math.floor(units / width.Scale() + 0.5), width.max))) end
+        elseif OwnsCastBarWidth(selected) then
             local units = module.GetSnapTargetUnits(selected, 1, (ns.CastBar.GetConfiguredSize()))
             local minimum, maximum = ns.CastBar.GetRange("width")
             if units then ns.CastBar.Set("width", math.max(minimum, math.min(units, maximum))) end

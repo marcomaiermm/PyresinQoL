@@ -261,7 +261,9 @@ Settings = {
     CreateDropdownInitializer = function(setting, options, tooltip)
         local count = (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
             or setting.key:match("TimerPosition$") and 5
-            or (setting.key == "flightTimerStyle" or setting.key == "flightTimerMarker" or setting.key == "flightTimerFlags" or setting.key == "flightTimerOverlap") and 4
+            or setting.key == "flightTimerMarker" and 5
+            or (setting.key == "flightTimerStyle" or setting.key == "flightTimerFlags" or setting.key == "flightTimerOverlap") and 4
+            or (setting.key == "flightTimerTime" or setting.key == "flightTimerStops") and 3
             or (setting.key == "buffOwn" or setting.key == "debuffOwn" or setting.key == "buffSort" or setting.key == "debuffSort") and 3
             or setting.key == "tooltipAnchorPoint" and 9
             or (setting.key == "nameplateThreatPosition" or setting.key == "targetThreat") and 4 or setting.key:match("Position$") and 9
@@ -284,12 +286,13 @@ Settings = {
         assert((minimum == 0 and maximum == 40 and step == 1)
             or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and (maximum == 16 or maximum == 24)))
             or (minimum == 100 and maximum == 600 and step == 1)
+            or (minimum == 50 and maximum == 200 and step == 10)
             or (minimum == -2500 and maximum == 2500 and step == 1)
             or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
             assert(label == MinimalSliderWithSteppersMixin.Label.Right)
             assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
-                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12"))
+                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12" or formatter(12) == "12%"))
         end }
     end,
     CreateSliderInitializer = function(setting, options, tooltip)

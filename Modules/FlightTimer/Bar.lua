@@ -6,6 +6,7 @@ local BAR_HEIGHT = 13 -- MirrorTimerTemplate's bar
 local PIN_SIZE = 14
 local FLAG_SIZE = 20
 local AVATAR_SIZE = 30
+local MOUNT_HEIGHT = 22 -- the action bar end cap, drawn 154 x 95 there
 local NAME_ROOM = 24 -- room for the names above and the stops below the bar
 local ARROW_HEIGHT = 7
 local LOOKAHEAD = 60 -- seconds before arrival a stop scrolls in at the bar's right end
@@ -40,6 +41,10 @@ ns.RegisterModule("flightTimer", function(module)
     display:EnableMouse(false)
     display:Hide()
     module.flightTimerDisplay = display
+    -- Everything sits on content, which carries the scale: display stays at scale 1 with the scaled
+    -- size, so its saved position and the pixel-perfect editor need no scale of their own.
+    local content = CreateFrame("Frame", nil, display)
+    content:SetPoint("CENTER")
 
     local flight -- the one shown, see StartFlight in FlightTimer.lua
 
@@ -53,7 +58,15 @@ ns.RegisterModule("flightTimer", function(module)
     end
     module.GetFlightTimerOption = Get
 
+    local function Scale() return Get("flightTimerScale") / 100 end
+    -- Before the scale, which scales the whole timer, width and all.
     local function Width() return Get("flightTimerWidth") end
+
+    -- Node names read "Place, Zone"; without zones, the place alone.
+    local function PlaceName(name)
+        name = name or ""
+        return Get("flightTimerZones") and name or name:match("^[^,]*")
+    end
 
     local function FormatTime(sec)
         sec = math.max(0, math.floor(sec + 0.5))
@@ -61,7 +74,7 @@ ns.RegisterModule("flightTimer", function(module)
     end
 
     -- The bar; ApplyStyle paints it in the chosen style.
-    local track = CreateFrame("StatusBar", nil, display)
+    local track = CreateFrame("StatusBar", nil, content)
     track:SetPoint("LEFT")
     track:SetPoint("RIGHT")
     local fill = track:CreateTexture(nil, "ARTWORK")
@@ -70,8 +83,8 @@ ns.RegisterModule("flightTimer", function(module)
     track:SetValue(0)
     local background = track:CreateTexture(nil, "BACKGROUND")
     -- Marks sit on frames above the bar.
-    local over = CreateFrame("Frame", nil, display)
-    over:SetAllPoints()
+    local over = CreateFrame("Frame", nil, content)
+    over:SetAllPoints(content)
     local border = over:CreateTexture(nil, "ARTWORK")
     local timeText = over:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     -- The minimal line's round ends.
@@ -87,12 +100,49 @@ ns.RegisterModule("flightTimer", function(module)
         dots[i]:AddMaskTexture(mask)
     end
 
-    -- A stop on the route: an icon with a label, under an arrow pointing up at the bar.
+    -- A name in a clipping box, at most maxWidth wide when fitted. A longer one slides to its end and
+    -- back, pausing at each, or with scrolling off ends in an ellipsis.
+    local function NewName(parent, side)
+        local box = CreateFrame("Frame", nil, parent)
+        box:SetClipsChildren(true)
+        box:SetHeight(14)
+        local holder = CreateFrame("Frame", nil, box)
+        holder:SetAllPoints()
+        local text = holder:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        text:SetWordWrap(false)
+        text:SetJustifyH(side)
+        text:SetPoint(side)
+        local slide = holder:CreateAnimationGroup()
+        slide:SetLooping("BOUNCE")
+        local move = slide:CreateAnimation("Translation")
+        move:SetStartDelay(1.5)
+        move:SetEndDelay(1.5)
+        move:SetSmoothing("IN_OUT")
+        local name = { box = box, text = text }
+        function name.Fit(value, maxWidth)
+            slide:Stop()
+            text:SetWidth(0)
+            text:SetText(value)
+            local full = text:GetStringWidth() or 0
+            local overflow, scroll = full - maxWidth, Get("flightTimerScrollNames")
+            if overflow > 0 and not scroll then text:SetWidth(maxWidth) end
+            box:SetWidth(math.min(full, maxWidth))
+            if overflow > 0 and scroll then
+                move:SetOffset(side == "LEFT" and -overflow or overflow, 0)
+                move:SetDuration(overflow / 20)
+                slide:Play()
+            end
+        end
+        return name
+    end
+
+    -- A stop on the route: an icon with a name, under an arrow pointing up at the bar.
     local function NewMark(parent, size)
-        local mark = { icon = parent:CreateTexture(nil, "OVERLAY"), label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall"),
+        local mark = { icon = parent:CreateTexture(nil, "OVERLAY"), name = NewName(parent, "LEFT"),
             arrow = parent:CreateTexture(nil, "OVERLAY") }
+        mark.label = mark.name.text
         mark.icon:SetSize(size, size)
-        mark.label:SetWordWrap(false)
+        mark.name.box:SetPoint("LEFT", mark.icon, "RIGHT", 2, 0)
         -- A flat chevron; there is no up one, so the down one turned over.
         mark.arrow:SetAtlas("uitools-icon-chevron-down")
         mark.arrow:SetRotation(math.pi)
@@ -108,13 +158,13 @@ ns.RegisterModule("flightTimer", function(module)
         for _, part in ipairs({ mark.icon, mark.label, mark.arrow }) do part:SetAlpha(alpha) end
     end
 
-    -- text: a string shows icon and label, false neither.
-    local function ShowMark(mark, text, arrow)
+    -- text: a string shows icon and label, at most maxWidth wide; false neither.
+    local function ShowMark(mark, text, arrow, maxWidth)
         mark.icon:SetShown(text ~= false)
         mark.label:SetShown(text ~= false)
         mark.arrow:SetShown(text ~= false and arrow)
         SetMarkAlpha(mark, 1)
-        if text then mark.label:SetText(text) end
+        if text then mark.name.Fit(text, maxWidth) end
     end
 
     -- The spark rides the fill's edge; the client resizes the fill, so no OnUpdate.
@@ -122,11 +172,10 @@ ns.RegisterModule("flightTimer", function(module)
     spark:SetPoint("CENTER", fill, "RIGHT")
     -- End names above the bar's ends, each beside its flag when shown: the arena commentator's pole
     -- and cloth atlases, the cloth in Blizzard gold.
-    local ends, flags = {}, {}
+    local ends, names, flags = {}, {}, {}
     for i, side in ipairs({ "LEFT", "RIGHT" }) do
-        ends[i] = over:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-        ends[i]:SetWordWrap(false)
-        ends[i]:SetJustifyH(side)
+        names[i] = NewName(over, side)
+        ends[i] = names[i].text
         flags[i] = CreateFrame("Frame", nil, over)
         flags[i]:SetSize(FLAG_SIZE, FLAG_SIZE)
         flags[i]:SetPoint("BOTTOM" .. side, track, "TOP" .. side, i == 1 and -2 or 2, 1)
@@ -142,10 +191,13 @@ ns.RegisterModule("flightTimer", function(module)
     post:SetColorTexture(1, 1, 1, 0.8)
     post:SetPoint("CENTER", track, "CENTER")
     -- The player on the fill's edge: a portrait in its unit frame ring, or the name in class colour.
+    -- The marker rides above the names and flags, which sit on frames of their own.
+    local marks = CreateFrame("Frame", nil, over)
+    marks:SetAllPoints()
     local avatars = {}
     for kind, art in pairs(PORTRAITS) do
         local k = AVATAR_SIZE / art.ring
-        local avatar = CreateFrame("Frame", nil, over)
+        local avatar = CreateFrame("Frame", nil, marks)
         avatar:SetSize(AVATAR_SIZE, AVATAR_SIZE)
         avatar.portrait = avatar:CreateTexture(nil, "ARTWORK")
         avatar.portrait:SetSize(art.portrait * k, art.portrait * k)
@@ -168,17 +220,22 @@ ns.RegisterModule("flightTimer", function(module)
     local function UpdatePortrait()
         for _, avatar in pairs(avatars) do SetPortraitTexture(avatar.portrait, "player") end
     end
-    local nameText = over:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    -- Or the main action bar's end cap of the player's faction, as Blizzard picks it: a gryphon, or
+    -- a wind rider for the Horde. The left cap faces right, the way the flight goes.
+    local mount = marks:CreateTexture(nil, "OVERLAY")
+    mount:SetSize(MOUNT_HEIGHT * 154 / 95, MOUNT_HEIGHT)
+    mount:SetSnapToPixelGrid(false)
+    local nameText = marks:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     -- Points down at the bar, toward the stop arrows pointing up.
-    local nameArrow = over:CreateTexture(nil, "OVERLAY")
+    local nameArrow = marks:CreateTexture(nil, "OVERLAY")
     nameArrow:SetAtlas("uitools-icon-chevron-down")
     nameArrow:SetSize(ARROW_HEIGHT * 2, ARROW_HEIGHT * 2)
     nameArrow:SetSnapToPixelGrid(false)
     -- The stops ride a strip inside a clipping frame under the bar (see PlaceStrip).
-    local clip = CreateFrame("Frame", nil, display)
+    local clip = CreateFrame("Frame", nil, content)
     clip:SetClipsChildren(true)
     clip:SetPoint("TOPLEFT", track, "BOTTOMLEFT", 0, -2)
-    clip:SetPoint("BOTTOMRIGHT", display, "BOTTOMRIGHT")
+    clip:SetPoint("BOTTOMRIGHT", content, "BOTTOMRIGHT")
     local strip = CreateFrame("Frame", nil, clip)
     strip:SetSize(1, 1)
     local glide = strip:CreateAnimationGroup()
@@ -196,10 +253,10 @@ ns.RegisterModule("flightTimer", function(module)
         glide:Stop()
         strip:ClearAllPoints()
         if fixed then
-            strip:SetPoint("CENTER", display, "LEFT")
+            strip:SetPoint("CENTER", content, "LEFT")
             return
         end
-        strip:SetPoint("CENTER", display, "CENTER", -elapsed * pps, 0)
+        strip:SetPoint("CENTER", content, "CENTER", -elapsed * pps, 0)
         local left = flight.eta - elapsed
         if left > 0 then
             move:SetDuration(left)
@@ -239,26 +296,27 @@ ns.RegisterModule("flightTimer", function(module)
         local level = track:GetFrameLevel() + 2
         over:SetFrameLevel(level)
         clip:SetFrameLevel(level)
+        marks:SetFrameLevel(level + 5)
 
         local flagMode = Get("flightTimerFlags")
         for i, side in ipairs({ "LEFT", "RIGHT" }) do
             local flagged = n > 0 and (flagMode == "both" or flagMode == (i == 1 and "departure" or "destination"))
             flags[i]:SetShown(flagged)
             ends[i]:SetShown(n > 0)
-            if n > 0 then ends[i]:SetText(points[i == 1 and 1 or n].name or "") end
             -- Each end name gets at most 42% of the width, leaving the centre to the stops.
-            ends[i]:SetWidth(Width() * 0.42)
-            ends[i]:ClearAllPoints()
+            names[i].Fit(n > 0 and PlaceName(points[i == 1 and 1 or n].name) or "", Width() * 0.42)
+            local box = names[i].box
+            box:ClearAllPoints()
             if flagged then
-                ends[i]:SetPoint("BOTTOM" .. side, flags[i], "BOTTOM" .. (i == 1 and "RIGHT" or "LEFT"), i == 1 and 2 or -2, 4)
+                box:SetPoint("BOTTOM" .. side, flags[i], "BOTTOM" .. (i == 1 and "RIGHT" or "LEFT"), i == 1 and 2 or -2, 2)
             else
-                ends[i]:SetPoint("BOTTOM" .. side, track, "TOP" .. side, 0, 5)
+                box:SetPoint("BOTTOM" .. side, track, "TOP" .. side, 0, 3)
             end
         end
 
         -- Stop positions come from route lengths, their passing from the ETA. After an early landing
         -- request the route ends at the next stop, so the stops go.
-        local scroll = points and not flight.early and n > 2 and Get("flightTimerShowStops")
+        local scroll = points and not flight.early and n > 2 and Get("flightTimerStops") ~= "off"
         local arrows = Get("flightTimerStopArrows")
         clip:SetShown(scroll)
         fixed = Get("flightTimerStops") == "fixed"
@@ -274,11 +332,17 @@ ns.RegisterModule("flightTimer", function(module)
             if y and not mark then
                 mark = NewMark(strip, PIN_SIZE)
                 mark.icon:SetTexture(STOP_ICON)
-                mark.label:SetPoint("LEFT", mark.icon, "RIGHT", 2, 0)
                 stops[k] = mark
             end
             if mark then
-                ShowMark(mark, y and (points[k + 1].name or "") or false, arrows)
+                -- Fixed stops keep their names clear of the next stop and the bar's end; scrolling
+                -- ones pass under the bar's ends whole.
+                local room = math.huge
+                if y and fixed then
+                    local nextX = k < n - 2 and points[k + 2].yards * ppy - PIN_SIZE / 2 - 4 or Width()
+                    room = nextX - (y * ppy + PIN_SIZE / 2 + 2)
+                end
+                ShowMark(mark, y and PlaceName(points[k + 1].name) or false, arrows, room)
                 if y then
                     mark.icon:ClearAllPoints()
                     mark.icon:SetPoint("CENTER", strip, "CENTER", y * ppy, -barHeight / 2 - 3 - ARROW_HEIGHT - PIN_SIZE / 2)
@@ -306,7 +370,7 @@ ns.RegisterModule("flightTimer", function(module)
         local x = math.min(math.max(GetTime() - flight.start, 0), flight.eta) / flight.eta * width
         local step, hitAny = dt * 4, false
         for i = 1, 2 do
-            local reach = (flags[i]:IsShown() and FLAG_SIZE or 0) + (ends[i]:GetStringWidth() or 0) + 4
+            local reach = (flags[i]:IsShown() and FLAG_SIZE or 0) + (names[i].box:GetWidth() or 0) + 4
             local hit = ends[i]:IsShown() and (i == 1 and x - fade.left < reach or i == 2 and x + fade.right > width - reach)
             hitAny = hitAny or hit
             local alpha = hit and fade.mode ~= "marker" and FADED or 1
@@ -320,7 +384,10 @@ ns.RegisterModule("flightTimer", function(module)
         local style = STYLES[Get("flightTimerStyle")] or STYLES.castbar
         local minimal = style == STYLES.minimal
         barHeight = style.height or BAR_HEIGHT
-        display:SetSize(Width(), barHeight + 2 * NAME_ROOM)
+        local scale = Scale()
+        content:SetSize(Width(), barHeight + 2 * NAME_ROOM)
+        content:SetScale(scale)
+        display:SetSize(Width() * scale, (barHeight + 2 * NAME_ROOM) * scale)
         track:SetHeight(barHeight)
         post:SetSize(2, barHeight + 4)
         background:ClearAllPoints()
@@ -349,7 +416,7 @@ ns.RegisterModule("flightTimer", function(module)
         -- Minimal reads its time before the line, the bars after theirs.
         timeText:ClearAllPoints()
         if minimal then timeText:SetPoint("RIGHT", track, "LEFT", -8, 0) else timeText:SetPoint("LEFT", track, "RIGHT", 8, 0) end
-        timeText:SetShown(Get("flightTimerShowTime"))
+        timeText:SetShown(Get("flightTimerTime") ~= "off")
         spark:SetShown(not minimal)
         local marker = Get("flightTimerMarker")
         local lift = minimal and 3 or 10 -- just over the spark
@@ -361,6 +428,15 @@ ns.RegisterModule("flightTimer", function(module)
                 -- The tip points down at the spark; a round portrait sits centred over it.
                 avatar:SetPoint(kind == "pointed" and "BOTTOMRIGHT" or "BOTTOM", fill, "RIGHT", 0, lift)
             end
+        end
+        mount:SetShown(marker == "mount")
+        if marker == "mount" then
+            -- Trilinear filtering reads the art's mipmaps: shrunk this far, its highlights blend
+            -- instead of flickering into noise.
+            mount:SetAtlas(UnitFactionGroup("player") == "Horde" and "ui-hud-actionbar-wyvern-left" or "ui-hud-actionbar-gryphon-left",
+                false, "TRILINEAR")
+            mount:ClearAllPoints()
+            mount:SetPoint("BOTTOM", fill, "RIGHT", 0, lift - 3)
         end
         nameText:SetShown(marker == "name")
         nameArrow:SetShown(marker == "name")
@@ -374,23 +450,29 @@ ns.RegisterModule("flightTimer", function(module)
         end
 
         -- What fades where the marker meets an end name, with the marker's reach either side of the spark.
-        for _, region in ipairs({ ends[1], ends[2], flags[1], flags[2], nameText, nameArrow, avatars.pointed, avatars.round }) do
+        for _, region in ipairs({ ends[1], ends[2], flags[1], flags[2], nameText, nameArrow, mount, avatars.pointed, avatars.round }) do
             region:SetAlpha(1)
         end
         local overlap = Get("flightTimerOverlap")
         fade = nil
         if marker and marker ~= "none" and overlap ~= "none" then
-            local half = marker == "name" and (nameText:GetStringWidth() or 0) / 2 or AVATAR_SIZE / 2
+            local half = marker == "name" and (nameText:GetStringWidth() or 0) / 2
+                or marker == "mount" and MOUNT_HEIGHT * 154 / 95 / 2 or AVATAR_SIZE / 2
             fade = { mode = overlap, left = marker == "pointed" and AVATAR_SIZE or half, right = marker == "pointed" and 0 or half,
-                marker = marker == "name" and { nameText, nameArrow } or { avatars[marker] } }
+                marker = marker == "name" and { nameText, nameArrow } or marker == "mount" and { mount } or { avatars[marker] } }
         end
         over:SetScript("OnUpdate", fade and Fade or nil)
         LayoutRoute()
+        -- The marker rises over the frame; screen clamping keeps it on screen too.
+        local shown = marker == "name" and nameText or marker == "mount" and mount or avatars[marker]
+        local top, frameTop = shown and shown:GetTop(), display:GetTop()
+        local rise = top and frameTop and top * shown:GetEffectiveScale() / display:GetEffectiveScale() - frameTop or 0
+        display:SetClampRectInsets(0, 0, math.max(0, rise), 0)
     end
 
     local function UpdateTime()
         local left = FormatTime(flight.eta - (GetTime() - flight.start))
-        timeText:SetText(Get("flightTimerShowTotal") and (left .. " / " .. FormatTime(flight.eta)) or left)
+        timeText:SetText(Get("flightTimerTime") == "total" and (left .. " / " .. FormatTime(flight.eta)) or left)
     end
 
     local bar = { UpdateTime = UpdateTime }

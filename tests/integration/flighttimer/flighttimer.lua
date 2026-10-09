@@ -41,6 +41,7 @@ local function Frame(template)
     function frame:CreateFontString(_, _, fontTemplate)
         local text = Object(fontTemplate)
         function text:SetText(value) self.text = value end
+        function text:SetWidth(value) self.width = value end
         function text:SetShown(value) self.shown = value end
         function text:IsShown() return self.shown end
         fontStrings[#fontStrings + 1] = text
@@ -70,7 +71,7 @@ function SetPortraitTexture() end
 local function Setting(key)
     return { SetValue = function(_, value) PyresinQoLDB[key] = value; module.UpdateFlightTimerStyle() end }
 end
-EditModeManagerFrame = { ClearSelectedSystem = function() end }
+EditModeManagerFrame = { ClearSelectedSystem = function() end, IsSnapEnabled = function() return false end }
 EditModeSystemSettingsDialog = Object()
 MinimalSliderWithSteppersMixin = { Label = { Right = 1 }, Event = { OnValueChanged = 1 } }
 UIParent = { GetCenter = function() return 960, 540 end }
@@ -100,7 +101,7 @@ function TaxiRequestEarlyLanding() hooks.TaxiRequestEarlyLanding() end
 -- Slots 1 (start), 2 and 3 are nodes 10, 20, 30; the flight goes 1 -> 2 -> 3.
 function GetNumRoutes() return 2 end
 function TaxiGetNodeSlot(_, hop, source) return source and hop or hop + 1 end
-function TaxiNodeName(slot) return ({ "Start", "Middle", "End" })[slot] end
+function TaxiNodeName(slot) return ({ "Start, North", "Middle, Centre", "End, South" })[slot] end
 function GetTaxiMapID() return 1 end
 C_TaxiMap = { GetAllTaxiNodes = function()
     return { { slotIndex = 1, nodeID = 10 }, { slotIndex = 2, nodeID = 20 }, { slotIndex = 3, nodeID = 30 } }
@@ -159,6 +160,27 @@ for _, frame in ipairs(frames) do if frame.scripts.OnUpdate then over = frame en
 for _, text in ipairs(fontStrings) do if text.template == "GameFontHighlightSmall" then departure = departure or text end end
 over.scripts.OnUpdate(over, 1)
 assert(departure.alpha == 0.3)
+-- Names keep their zone by default; one switch drops it everywhere.
+local stopLabel
+for _, text in ipairs(fontStrings) do if text.text == "Middle, Centre" then stopLabel = text end end
+assert(departure.text == "Start, North" and stopLabel)
+Setting("flightTimerZones"):SetValue(false)
+assert(departure.text == "Start" and stopLabel.text == "Middle")
+PyresinQoLDB.flightTimerZones = nil
+-- A name wider than its room (40 > 50 * 0.42) scrolls whole, or with scrolling off ends in an
+-- ellipsis at the room's width.
+Setting("flightTimerWidth"):SetValue(50)
+assert(departure.width == 0)
+Setting("flightTimerScrollNames"):SetValue(false)
+assert(departure.width == 21, departure.width)
+PyresinQoLDB.flightTimerScrollNames = nil
+-- The width reads what it measures on screen, at the timer's scale.
+local widthOption = module.flightTimerOptions[#module.flightTimerOptions - 1]
+assert(widthOption.key == "flightTimerWidth" and module.FormatFlightTimerOption(widthOption, 300) == "300 px")
+PyresinQoLDB.flightTimerScale = 50
+assert(module.FormatFlightTimerOption(widthOption, 300) == "150 px")
+PyresinQoLDB.flightTimerScale = nil
+Setting("flightTimerWidth"):SetValue(300)
 now = now + 100 -- the marker in the middle, clear of both ends
 over.scripts.OnUpdate(over, 1)
 assert(departure.alpha == 1)
@@ -166,9 +188,9 @@ now = now - 100
 now = now + 50
 Tick()
 assert(timeText.text == "2:30", timeText.text)
-Setting("flightTimerShowTotal"):SetValue(true)
+Setting("flightTimerTime"):SetValue("total")
 assert(timeText.text == "2:30 / 3:20", "The total shows at once, not on the next tick")
-PyresinQoLDB.flightTimerShowTotal = nil
+PyresinQoLDB.flightTimerTime = nil
 
 -- A normal landing learns a quarter of the way toward the measured speed.
 Land(140) -- 6080 yards in 190 s = 32 yards/s
@@ -254,17 +276,27 @@ local checkboxes = {}
 for _, frame in ipairs(frames) do
     if frame.template == "EditModeSettingCheckboxTemplate" then checkboxes[#checkboxes + 1] = frame end
 end
-local showStops, stopArrows, showPost, showTime = unpack(checkboxes)
-assert(showTime and timeText.shown ~= false and stopArrows.Button.enabled)
--- Stops off greys out their own options.
-showStops.OnCheckButtonClick()
-assert(PyresinQoLDB.flightTimerShowStops == false and stopArrows.Button.enabled == false and showPost.Button.enabled == false)
-showStops.OnCheckButtonClick()
-assert(PyresinQoLDB.flightTimerShowStops == true and stopArrows.Button.enabled)
-showTime.OnCheckButtonClick()
-assert(PyresinQoLDB.flightTimerShowTime == false and timeText.shown == false)
-showTime.OnCheckButtonClick()
-assert(PyresinQoLDB.flightTimerShowTime == true and timeText.shown == true)
+local zones, scrollNames, stopArrows, showPost = unpack(checkboxes)
+assert(zones and scrollNames and stopArrows.Button.enabled and showPost.Button.enabled)
+zones.OnCheckButtonClick()
+assert(PyresinQoLDB.flightTimerZones == false)
+zones.OnCheckButtonClick()
+-- Stops off greys out their own options; the centre line only runs with scrolling stops.
+local stops = module.flightTimerOptions[8]
+assert(stops.key == "flightTimerStops")
+stops.setting:SetValue("off")
+display.Dialog:Refresh()
+assert(stopArrows.Button.enabled == false and showPost.Button.enabled == false)
+stops.setting:SetValue("fixed")
+display.Dialog:Refresh()
+assert(stopArrows.Button.enabled and showPost.Button.enabled == false)
+stops.setting:SetValue("scroll")
+display.Dialog:Refresh()
+assert(stopArrows.Button.enabled and showPost.Button.enabled)
+Setting("flightTimerTime"):SetValue("off")
+assert(timeText.shown == false)
+Setting("flightTimerTime"):SetValue("left")
+assert(timeText.shown == true)
 callbacks["EditMode.Exit"]()
 assert(not display.shown and not mover.shown and ticker.cancelled)
 
