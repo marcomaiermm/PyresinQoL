@@ -494,6 +494,13 @@ function castBar.GetNativeLayout()
     return 208, 11, false, 1, 16, 16
 end
 
+-- The configured bar size in UI units, resolving automatic dimensions to the native ones.
+function castBar.GetConfiguredSize()
+    local nativeWidth, nativeHeight = castBar.GetNativeLayout()
+    local configured = castBar.GetLayout(nil, nativeWidth, nativeHeight)
+    return configured.width, configured.height
+end
+
 function castBar.Apply()
     if not frame then return end
     if not castBar.IsEnabled() or not castBar.HasOverrides() then

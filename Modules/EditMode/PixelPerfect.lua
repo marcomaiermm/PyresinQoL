@@ -1,7 +1,7 @@
 local _, ns = ...
 
 ns.RegisterModule("editMode", function(module)
-    local performance = ns.GetModule("performance")
+    local performance, unitFrames = ns.GetModule("performance"), ns.GetModule("unitFrames")
     local selected, editing
     local dismissed = false
     local dragHooks = {}
@@ -11,6 +11,7 @@ ns.RegisterModule("editMode", function(module)
     local coordinateInputs = {}
     local coordinates = {}
     local inputsEnabled, snapButtonsEnabled
+    local matchWidth
     local panelX, panelY
     local panel = CreateFrame("Frame", "PyresinQoLPixelPerfect", UIParent, "BackdropTemplate")
     panel:SetSize(260, 160)
@@ -83,6 +84,55 @@ ns.RegisterModule("editMode", function(module)
         for _, frame in ipairs(EditModeManagerFrame.registeredSystemFrames) do Consider(frame) end
         Consider(performance.performanceDisplay)
         return nearest
+    end
+
+    -- Rendered bounds in physical pixels. Like Blizzard's magnetism, Edit Mode frames are measured by their
+    -- visible selection: frames such as the player frame carry invisible padding around their art.
+    local function PixelBounds(frame)
+        local region = frame.Selection or frame
+        local x, y, width, height = region:GetRect()
+        local scale = region:GetEffectiveScale() / PixelUtil.GetPixelToUIUnitFactor()
+        return x * scale, y * scale, width * scale, height * scale
+    end
+
+    -- Blizzard settings that size the frame itself in whole UI units, as width and height.
+    local function SizeSettings(frame)
+        local system = frame and frame.system and Enum.EditModeSystem
+        if not system then return end
+        local width, height
+        if frame.system == system.SwingTimer then
+            width, height = Enum.EditModeSwingTimerSetting.Width, Enum.EditModeSwingTimerSetting.Height
+        elseif frame.system == system.DamageMeter then
+            width, height = Enum.EditModeDamageMeterSetting.FrameWidth, Enum.EditModeDamageMeterSetting.FrameHeight
+        elseif frame.system == system.UnitFrame then -- Raid-style member frames.
+            width, height = Enum.EditModeUnitFrameSetting.FrameWidth, Enum.EditModeUnitFrameSetting.FrameHeight
+        elseif frame.system == system.ChatFrame then
+            width, height = Enum.EditModeChatFrameDisplayOnlySetting.Width, Enum.EditModeChatFrameDisplayOnlySetting.Height
+        end
+        if width and frame:HasSetting(width) and frame:ShouldShowSetting(width) then return width, height end
+    end
+
+    -- With cast-bar customization, our own width setting sizes the player cast bar in its UI units.
+    local function OwnsCastBarWidth(frame)
+        return frame == PlayerCastingBarFrame and unitFrames.active and ns.CastBar.IsEnabled()
+    end
+
+    local function CanMatchWidth(frame)
+        return SizeSettings(frame) ~= nil or OwnsCastBarWidth(frame)
+    end
+
+    -- 1 when the setting sizes the frame's width, 2 for its height.
+    function module.GetSizeAxis(frame, setting)
+        local width, height = SizeSettings(frame)
+        return width and (setting == width and 1 or setting == height and 2) or nil
+    end
+
+    -- The size setting value that gives the frame the snap target's visible width (axis 1) or height (axis 2).
+    -- Size settings grow the visible frame unit for unit, so shift the current value by the measured gap.
+    function module.GetSnapTargetUnits(frame, axis, current)
+        if not PyresinQoLDB.pixelPerfectEditMode or not CanSnapTo(snapTarget) or snapTarget == frame then return end
+        local gap = select(axis + 2, PixelBounds(snapTarget)) - select(axis + 2, PixelBounds(frame))
+        return math.floor(current + gap * PixelUtil.GetPixelToUIUnitFactor() / frame:GetEffectiveScale() + 0.5)
     end
 
     local function GetCoordinates()
@@ -189,6 +239,12 @@ ns.RegisterModule("editMode", function(module)
             SetSnapTarget(nil)
         end
         wasDragging = selected.isDragging
+        -- Cast-bar customization can change while the bar stays selected.
+        local canMatch = CanMatchWidth(selected)
+        if canMatch ~= matchWidth:IsShown() then
+            matchWidth:SetShown(canMatch)
+            panel:SetSize(260, canMatch and 190 or 160)
+        end
         UpdateCoordinates()
         UpdatePanelPosition()
         local enabled = not selected.isDragging and not not CanSnapTo(snapTarget)
@@ -304,12 +360,6 @@ ns.RegisterModule("editMode", function(module)
 
     local function Snap(direction)
         if not CanMove() or selected.isDragging or not CanSnapTo(snapTarget) then return end
-        -- Compare rendered bounds in physical pixels, even when the two frames use different scales.
-        local function PixelBounds(frame)
-            local x, y, width, height = frame:GetRect()
-            local scale = frame:GetEffectiveScale() / PixelUtil.GetPixelToUIUnitFactor()
-            return x * scale, y * scale, width * scale, height * scale
-        end
         local x, y, width, height = PixelBounds(selected)
         local tx, ty, tw, th = PixelBounds(snapTarget)
         local dx, dy = tx + tw / 2 - x - width / 2, 0
@@ -388,6 +438,30 @@ ns.RegisterModule("editMode", function(module)
         dismissed = true
         panel:Hide()
     end)
+
+    -- Copies the snap target's width through the owning setting: Blizzard's (Save/Revert keep working) or ours.
+    matchWidth = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    matchWidth:SetSize(236, 24)
+    matchWidth:SetPoint("TOPLEFT", 12, -116)
+    matchWidth:SetText(ns.L.snapWidth)
+    matchWidth:Hide()
+    matchWidth:SetScript("OnClick", function()
+        if not CanMove() or selected.isDragging or not CanMatchWidth(selected) then return end
+        if OwnsCastBarWidth(selected) then
+            local units = module.GetSnapTargetUnits(selected, 1, (ns.CastBar.GetConfiguredSize()))
+            local minimum, maximum = ns.CastBar.GetRange("width")
+            if units then ns.CastBar.Set("width", math.max(minimum, math.min(units, maximum))) end
+        else
+            local setting = SizeSettings(selected)
+            local units = module.GetSnapTargetUnits(selected, 1, selected:GetSettingValue(setting))
+            local info = selected.settingDisplayInfoMap[setting]
+            if units then
+                EditModeManagerFrame:OnSystemSettingChange(selected, setting, math.max(info.minValue, math.min(units, info.maxValue)))
+            end
+        end
+        module.UpdatePixelPerfectMode()
+    end)
+    snapButtons[#snapButtons + 1] = matchWidth
 
     -- Read the live position while dragging, including native keyboard movement and layout reverts.
     panel:SetScript("OnUpdate", module.UpdatePixelPerfectMode)

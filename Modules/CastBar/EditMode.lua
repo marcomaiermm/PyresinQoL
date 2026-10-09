@@ -192,7 +192,18 @@ local function Install()
             end
         end
     end
-    local function Slider(key, label, max, encode, decode, format, visible)
+    -- While dragging, stick to Pixel-perfect Edit Mode's snap target like Blizzard's frame magnetism.
+    local function SnapToTarget(key, axis, units)
+        local editMode = ns.GetModule("editMode") -- Its snap API exists only while the module is active.
+        local target = units ~= 0 and editMode.GetSnapTargetUnits and EditModeManagerFrame:IsSnapEnabled()
+            and editMode.GetSnapTargetUnits(PlayerCastingBarFrame, axis, (select(axis, cast.GetConfiguredSize())))
+        local minimum, maximum = cast.GetRange(key)
+        if target and target ~= units and target >= minimum and target <= maximum
+            and math.abs(target - units) <= EditModeMagnetismManager.magnetismRange then
+            return target
+        end
+    end
+    local function Slider(key, label, max, encode, decode, format, visible, snapAxis)
         local row = Row(nil, 56, visible)
         Label(row, label)
         local valueLabel = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -206,6 +217,8 @@ local function Install()
         row.handles:RegisterCallback(slider, MinimalSliderWithSteppersMixin.Event.OnValueChanged, function(_, value)
             if row.initializing then return end
             value = math.floor(value + .5)
+            local snapped = snapAxis and slider.Slider:IsDraggingThumb() and SnapToTarget(key, snapAxis, encode(value))
+            if snapped then slider:SetValue(decode(snapped)); return end
             -- Relayout during a drag changes the thumb's coordinate space.
             changingSlider = true
             cast.Set(key, encode(value))
@@ -258,11 +271,12 @@ local function Install()
             })
         end)
     end
-    local function NativeSlider(key, label, first, last)
+    local function NativeSlider(key, label, first, last, snapAxis)
         Slider(key, label, last - first + 1,
             function(value) return value == 0 and 0 or value + first - 1 end,
             function(value) return value == 0 and 0 or value - first + 1 end,
-            function(value) return value == 0 and L.castBarAutomatic or ("%d px"):format(value + first - 1) end)
+            function(value) return value == 0 and L.castBarAutomatic or ("%d px"):format(value + first - 1) end,
+            nil, snapAxis)
     end
     Dropdown("texture", L.castBarTexture, function()
         local options = {}
@@ -312,8 +326,8 @@ local function Install()
 
     section = "layout"
     Dropdown("layout", L.castBarLayout, { { "native", L.castBarNative }, { "compact", L.castBarCompact } })
-    NativeSlider("width", L.castBarWidth, 100, 600)
-    NativeSlider("height", L.castBarHeight, 6, 48)
+    NativeSlider("width", L.castBarWidth, 100, 600, 1)
+    NativeSlider("height", L.castBarHeight, 6, 48, 2)
     Choices("icon", L.castBarIcon, {
         { "native", L.castBarAutomatic }, { "off", L.castBarOff },
         { "left", L.castBarIconOutsideLeft }, { "right", L.castBarIconOutsideRight },

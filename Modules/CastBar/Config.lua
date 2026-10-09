@@ -116,6 +116,10 @@ function castBar.Set(key, value)
     return true
 end
 
+function castBar.GetRange(key)
+    return bounds[key][1], bounds[key][2]
+end
+
 function castBar.IsEnabled()
     return PyresinQoLDB and PyresinQoLDB.castBarCustomization == true or false
 end
