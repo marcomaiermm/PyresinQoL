@@ -120,6 +120,7 @@ ns.RegisterModule("flightTimer", function(module)
         move:SetSmoothing("IN_OUT")
         local name = { box = box, text = text }
         function name.Fit(value, maxWidth)
+            maxWidth = math.max(1, maxWidth) -- crowded fixed stops leave no room; a width of 0 would mean unlimited
             slide:Stop()
             text:SetWidth(0)
             text:SetText(value)

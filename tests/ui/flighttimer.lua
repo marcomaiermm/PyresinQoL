@@ -93,10 +93,12 @@ UI.Flow("flight timer mover snaps on drop and matches a snap target's width", {
         display.Selection:GetScript("OnMouseDown")(display.Selection)
         display.Selection:GetScript("OnDragStart")(display.Selection)
         display:ClearAllPoints()
-        display:SetPoint("CENTER", UIParent, "CENTER", 3, 200)
+        display:SetPoint("CENTER", UIParent, "CENTER", 3, -1)
         display.Selection:GetScript("OnUpdate")(display.Selection) -- draws the preview lines
         display.Selection:GetScript("OnDragStop")(display.Selection)
-        assertTrue(math.abs(display:GetCenter() - UIParent:GetCenter()) < 0.01, "Drops onto the screen centre")
+        local x, y = display:GetCenter()
+        local centerX, centerY = UIParent:GetCenter()
+        assertTrue(math.abs(x - centerX) < 0.01 and math.abs(y - centerY) < 0.01, "Drops onto the screen centre")
         UI.OpenMenu(UI.Find(PyresinQoLPixelPerfect, function(frame) return frame.OpenMenu end))
     end,
     function()
@@ -117,6 +119,8 @@ UI.Flow("flight timer mover snaps on drop and matches a snap target's width", {
     if EditModeManagerFrame:IsShown() then HideUIPanel(EditModeManagerFrame) end
     EditModeManagerFrame:SetEnableSnap(snap)
     PyresinQoLDB.flightTimerPosition = position
+    display:ClearAllPoints() -- the drop re-anchored it; put it back where the saved position says
+    display:SetPoint("CENTER", UIParent, "CENTER", position and position.x or 0, position and position.y or 250)
     if width then Setting("Width"):SetValue(width) end
     if pixelPerfect then pixelPerfect:SetValue(pixelPerfectOriginal) end
 end)

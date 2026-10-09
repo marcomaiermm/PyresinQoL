@@ -162,6 +162,13 @@ local function Initializer(name, kind, setting, tooltip)
             frame.Text:SetPoint("RIGHT", frame, "CENTER", -85, 0)
             frame[kind] = Widget()
             if kind == "Control" then frame.Control.Dropdown = Widget() end
+            if kind == "SliderWithSteppers" then
+                function frame.SliderWithSteppers:FormatValue(value) self.formatted = value end
+            end
+            frame.valueCallbacks = {}
+            frame.cbrHandles = { SetOnValueChangedCallback = function(_, variable, callback)
+                frame.valueCallbacks[variable] = callback
+            end }
         end
     end
     return initializer
@@ -292,7 +299,7 @@ Settings = {
         return { SetLabelFormatter = function(_, label, formatter)
             assert(label == MinimalSliderWithSteppersMixin.Label.Right)
             assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
-                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12" or formatter(12) == "12%"))
+                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12" or minimum == 50 and maximum == 200 and formatter(12) == "12%"))
         end }
     end,
     CreateSliderInitializer = function(setting, options, tooltip)

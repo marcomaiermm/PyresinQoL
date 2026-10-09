@@ -145,6 +145,10 @@ assert(PyresinQoLDB.flightTimerStyle == "castbar" and PyresinQoLDB.flightTimerMa
     and PyresinQoLDB.flightTimerShowPost == true
     and PyresinQoLDB.flightTimerWidth == 300 and PyresinQoLDB.flightTimerScale == 100
     and PyresinQoLDB.flightTimerZones == true)
+-- A new scale reformats the width's on-screen text.
+local widthRow = h.settingsList.rendered[11]
+widthRow.valueCallbacks.PyresinQoL_FlightTimerScale()
+assert(widthRow.SliderWithSteppers.formatted == 300)
 h.navigation[8].scripts.OnClick()
 assert(h.settingsList.Header.Title.value == ns.L.quests and #h.settingsList.rendered == 2)
 assert(settings.questLevels.name == ns.L.questLevels and PyresinQoLDB.questLevels)

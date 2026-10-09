@@ -22,6 +22,16 @@ ns.RegisterModuleSettings("flightTimer", function(module, context)
             local slider = Settings.CreateSliderOptions(option.min, option.max, option.step or 1)
             slider:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value) return module.FormatFlightTimerOption(option, value) end)
             initializer = Settings.CreateSliderInitializer(setting, slider)
+            if option.scaled then
+                -- A new scale changes the width's text alone.
+                local initialize = initializer.InitFrame
+                function initializer:InitFrame(frame)
+                    initialize(self, frame)
+                    frame.cbrHandles:SetOnValueChangedCallback("PyresinQoL_FlightTimerScale", function()
+                        frame.SliderWithSteppers:FormatValue(setting:GetValue())
+                    end)
+                end
+            end
         else
             initializer = Settings.CreateCheckboxInitializer(setting)
         end
