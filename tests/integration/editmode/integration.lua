@@ -148,9 +148,12 @@ function CreateFrame(kind, name, parent, template)
     return frame
 end
 
+-- Blizzard's settings dialog only needs to accept the editor's hook here.
+EditModeSystemSettingsDialog = { UpdateSettings = function() end, IsShown = function() return false end }
 -- Load runtime definitions before saved module state is applied, exactly as in the TOC.
 assert(loadfile("Modules/Performance/Performance.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/EditMode/PixelPerfect.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/EditMode/SettingsDialog.lua"))("PyresinQoL", ns)
 assert(#frames == 0 and next(callbacks) == nil)
 ns.InitializeModules()
 local editor, performance = ns.GetModule("editMode"), ns.GetModule("performance")

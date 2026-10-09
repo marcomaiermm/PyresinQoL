@@ -253,6 +253,25 @@ for _, value in ipairs({ 237, 400, 501, 0 }) do
     assert(castBar.Get("width") == expected)
     assert(frame:GetWidth() == (expected == 0 and 150 or expected))
 end
+-- Dragging near the pixel-perfect snap target's width sticks to it; steppers and far values do not.
+EditModeManagerFrame.IsSnapEnabled = function() return true end
+EditModeMagnetismManager = { magnetismRange = 8 }
+uiSession.GetModule("editMode").GetSnapTargetUnits = function(target, axis)
+    assert(target == frame and axis == 1)
+    return 260
+end
+slider.callbacks.OnValueChanged(155) -- 254 units, within range: snaps via the slider to 260.
+assert(slider.sliderValue == 161 and castBar.Get("width") ~= 254)
+slider.callbacks.OnValueChanged(161)
+assert(castBar.Get("width") == 260)
+slider.callbacks.OnValueChanged(141)
+assert(castBar.Get("width") == 240, "Outside Blizzard's magnetism range")
+slider.Slider.dragging = false
+slider.callbacks.OnValueChanged(158)
+assert(castBar.Get("width") == 257, "Steppers never snap")
+uiSession.GetModule("editMode").GetSnapTargetUnits = nil
+slider.Slider.dragging = true
+slider.callbacks.OnValueChanged(0)
 slider.Slider.dragging = false
 assert(EditModeSystemSettingsDialog.layoutCount == layouts, "Dragging must not relayout the dialog")
 assert(slider.initCount == 1, "Initialize the slider range once, not on every value change")

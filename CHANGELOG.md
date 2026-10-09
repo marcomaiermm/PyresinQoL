@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+### Added
+- Pixel-perfect Edit Mode replaces Blizzard's coarse size sliders (swing timers, raid/party frames, damage meter, Personal Resource Display bar heights) and all direct width/height sliders (also the chat frame) with identical-looking sliders that step by one unit and show their value. While dragging, width/height snap to the snap target's size (respecting Edit Mode's Snap toggle), also in the cast bar's own width/height sliders. **Match width** copies the target's width in one click for every frame with a whole-unit width: swing timers, damage meter, raid/party frames, chat frame and the player cast bar when **Customize cast bar** is on. Frames sized only in percent steps (e.g. action bars) keep Blizzard's steps and instead show their measured width in screen pixels. Sizes and snapping compare the frames' visible Edit Mode selections, like Blizzard's magnetism, so padded frames such as the player frame match their visible art. Changes go through Blizzard's own settings, so Save/Revert work as usual.
+
 ### Fixed
 - Disabling a module with layout-linked profiles no longer loops on a reload prompt while the module stays enabled. Startup now keeps the last active profile and applies the Edit Mode layout's profile once layouts are available at login.
 - Disabling a module with layout-linked profiles no longer loops on a reload prompt while the module stays enabled. Startup now keeps the last active profile and applies the Edit Mode layout's profile once layouts are available at login

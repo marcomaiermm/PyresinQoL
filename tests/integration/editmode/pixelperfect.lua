@@ -4,7 +4,15 @@ local combat, locked = false, false
 local physicalHeight = 1080
 local snapEnabled, magneticInfos, magneticQueries = true, nil, 0
 local ns, module, performance = {}, {}, {}
-function ns.GetModule(id) assert(id == "performance"); return performance end
+local unitFrames, castBarCustomized, castBarWidth = { active = true }, false, nil
+function ns.GetModule(id)
+    assert(id == "performance" or id == "unitFrames")
+    return id == "performance" and performance or unitFrames
+end
+local castBarFrame
+ns.CastBar = { IsEnabled = function() return castBarCustomized end, GetRange = function() return 100, 600 end,
+    GetConfiguredSize = function() return castBarFrame.width, castBarFrame.height end,
+    Set = function(key, value) assert(key == "width"); castBarWidth, castBarFrame.width = value, value end }
 function GetLocale() return "enUS" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
 PyresinQoLDB = {}
@@ -13,7 +21,10 @@ function UIParent:IsShown() return true end
 function UIParent:GetRect() return 0, 0, 1920, 1080 end
 PixelUtil = { GetPixelToUIUnitFactor = function() return 768 / physicalHeight end }
 function InCombatLockdown() return combat end
-Enum = { EditModeCastBarSetting = { LockToPlayerFrame = 1 } }
+Enum = { EditModeCastBarSetting = { LockToPlayerFrame = 1 }, EditModeSystem = { SwingTimer = 29, ChatFrame = 3 },
+    EditModeChatFrameDisplayOnlySetting = { Width = 10, Height = 11 },
+    EditModeSettingDisplayType = { Slider = 1 },
+    EditModeSwingTimerSetting = { Scale = 0, Width = 3, Height = 4, ShowTime = 5 } }
 EventRegistry = { RegisterCallback = function(_, event, callback) callbacks[event] = callback end }
 function hooksecurefunc(object, name, callback)
     local original = object[name]
@@ -27,6 +38,12 @@ EditModeManagerFrame = {
     SelectSystem = function(_, frame) frame.isSelected = not locked end,
     ClearSelectedSystem = function() end,
     OnSystemSettingChange = function(_, frame, setting, value)
+        if frame.system == 29 then
+            assert(value == math.floor(value), "Size settings store whole UI units")
+            if setting == 3 then frame.width = value else frame.height = value end
+            frame.settingChanges = (frame.settingChanges or 0) + 1
+            return
+        end
         assert(frame == PlayerCastingBarFrame and setting == 1 and value == 0)
         frame.unlocked = true
     end,
@@ -45,16 +62,20 @@ EditModeMagnetismManager = {
 }
 local function Text()
     return {
-        SetPoint = function() end, SetWidth = function() end,
+        SetPoint = function() end, SetWidth = function() end, ClearAllPoints = function() end,
+        Show = function(self) self.shown = true end, Hide = function(self) self.shown = false end,
         SetText = function(self, value) self.text = value end,
         SetFormattedText = function(self, format, ...) self.text = format:format(...) end,
     }
 end
-function CreateFrame(kind, name, parent)
-    local frame = { scripts = {}, texts = {}, shown = true, x = 1200, y = 700, scale = 0.8, width = 200, height = 50 }
+function CreateFrame(kind, name, parent, template)
+    local frame = { template = template, scripts = {}, texts = {}, shown = true, x = 1200, y = 700, scale = 0.8, width = 200, height = 50 }
     frames[#frames + 1] = frame
     function frame:SetSize(width, height) self.width, self.height = width, height end
     function frame:GetSize() return self.width, self.height end
+    function frame:GetWidth() return self.width end
+    function frame:HasSetting(setting) return self.settingDisplayInfoMap and self.settingDisplayInfoMap[setting] ~= nil end
+    function frame:ShouldShowSetting() return true end
     function frame:GetRect() return self.x - self.width / 2, self.y - self.height / 2, self.width, self.height end
     function frame:SetFrameStrata() end
     function frame:SetClampedToScreen() end
@@ -68,6 +89,13 @@ function CreateFrame(kind, name, parent)
         if wasShown and self.scripts.OnHide then self.scripts.OnHide(self) end
     end
     function frame:IsShown() return self.shown end
+    function frame:SetShown(value) if value then self:Show() else self:Hide() end end
+    function frame:SetupSetting(data) self.setting, self.data = data.displayInfo.setting, data end
+    if template == "EditModeSettingSliderTemplate" then
+        frame.Slider = { Slider = { IsDraggingThumb = function() return frame.dragging end } }
+        function frame.Slider:RegisterCallback(event, callback) assert(event == "OnValueChanged"); self.changed = callback end
+        function frame.Slider:SetValue(value) self.value = value end
+    end
     function frame:SetScript(event, callback) self.scripts[event] = callback end
     function frame:SetText(text) self.text = text end
     function frame:GetText() return self.text end
@@ -129,8 +157,23 @@ performance.performanceDisplay = display
 function performance.SavePerformancePosition()
     PyresinQoLDB.performancePosition = { x = display.x - 960, y = display.y - 540 }
 end
+MinimalSliderWithSteppersMixin = { Event = { OnValueChanged = "OnValueChanged" } }
+local nextFrame
+C_Timer = { After = function(delay, callback) assert(delay == 0 and not nextFrame); nextFrame = callback end }
+-- Blizzard's settings dialog with its pooled native sliders.
+local nativeSliders, layouts = {}, 0
+local settingsDialog = { attachedToSystem = nil, Settings = { Layout = function() layouts = layouts + 1 end },
+    pools = { EnumerateActiveByTemplate = function(_, template)
+        assert(template == "EditModeSettingSliderTemplate")
+        local index = 0
+        return function() index = index + 1; return nativeSliders[index] end
+    end } }
+function settingsDialog:UpdateSettings() end
+function settingsDialog:IsShown() return false end
+EditModeSystemSettingsDialog = settingsDialog
 ns.RegisterModule = function(id, initialize) assert(id == "editMode"); initialize(module) end
 assert(loadfile("Modules/EditMode/PixelPerfect.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/EditMode/SettingsDialog.lua"))("PyresinQoL", ns)
 local panel = frames[2]
 local left, up, down, right = frames[3], frames[4], frames[5], frames[6]
 local xInput, yInput = frames[11], frames[12]
@@ -273,7 +316,8 @@ assert(not panel.shown, "Do not restore a stale selection")
 local dropdown, above, below, center = frames[7], frames[8], frames[9], frames[10]
 local target = CreateFrame()
 function target:GetSystemName() return "Cast Bar" end
-target.Selection = { IsShown = function() return target.shown end }
+target.Selection = { IsShown = function() return target.shown end,
+    GetRect = function() return target:GetRect() end, GetEffectiveScale = function() return target.scale end }
 native.Selection = { IsShown = function() return native.shown end,
     GetRect = function() return native:GetRect() end, GetEffectiveScale = function() return native.scale end }
 EditModeManagerFrame.registeredSystemFrames = { native, target }
@@ -622,3 +666,157 @@ xInput:SetFocus(); xInput:SetText("unfinished")
 xInput.scripts.OnEscapePressed(xInput)
 assert(xInput.text == savedCoordinate, "Discarding a draft must restore an unchanged coordinate")
 print("PASS: idle controls, cached placement and geometry/focus invalidation")
+
+-- Swing timer: native-template size sliders replace Blizzard's 10-step ones; Match width copies the target.
+local matchWidth = frames[14]
+assert(matchWidth.text == "Match width" and not matchWidth.shown, "Match width only for sized systems")
+local swing = CreateFrame()
+swing.system, swing.width, swing.height, swing.scale = 29, 400, 20, 0.8
+local function DiffFromMin(self, value) return value - self.minValue end
+local function StepIndex(self, value) return (value - self.minValue) / self.stepSize end
+local function Slider(setting, minValue, maxValue, stepSize, convert, hideValue, percent)
+    return { setting = setting, type = 1, minValue = minValue, maxValue = maxValue, stepSize = stepSize,
+        ConvertValue = convert, hideValue = hideValue, minText = hideValue and "Narrow", formatter = percent and tostring }
+end
+local widthInfo, heightInfo = Slider(3, 213, 852, 10, DiffFromMin, true), Slider(4, 15, 60, 1, DiffFromMin, true)
+swing.settingDisplayInfoMap = { [3] = widthInfo, [4] = heightInfo, [0] = Slider(0, 50, 200, 10, StepIndex, false, true),
+    [5] = Slider(5, 2, 10, 1, DiffFromMin) }
+function swing:GetSystemName() return "Main Hand" end
+function swing:CanBeMoved() return self.isSelected end
+function swing:GetSettingValue(setting) return setting == 3 and self.width or self.height end
+local function NativeSlider(setting, layoutIndex)
+    local slider = CreateFrame(); slider.setting, slider.layoutIndex = setting, layoutIndex
+    slider.Slider = { RightText = {} }
+    slider.Label = { GetText = function() return setting == 3 and "Width" or "Height" end }
+    return slider
+end
+nativeSliders = { NativeSlider(0, 1), NativeSlider(3, 3), NativeSlider(4, 4), NativeSlider(5, 5) }
+settingsDialog.attachedToSystem = swing
+settingsDialog:UpdateSettings(swing)
+local replaced = {}
+for _, frame in ipairs(frames) do
+    if frame.template == "EditModeSettingSliderTemplate" and frame.shown then replaced[frame.setting] = frame end
+end
+for setting, native in pairs({ [3] = nativeSliders[2], [4] = nativeSliders[3] }) do
+    local slider = replaced[setting]
+    assert(slider and not native.shown and slider.layoutIndex == native.layoutIndex, "Swap in place")
+    local info = slider.data.displayInfo
+    assert(info.stepSize == 1 and not info.hideValue and not info.minText and info.minValue == swing.settingDisplayInfoMap[setting].minValue)
+    assert(slider.data.settingName == native.Label:GetText() and slider.data.currentValue == swing:GetSettingValue(setting))
+end
+assert(nativeSliders[1].shown and nativeSliders[4].shown and not replaced[0] and not replaced[5], "Keep step-index and already precise sliders")
+-- Percent sliders keep Blizzard's steps but show the frame's measured width in screen pixels.
+local pixelLabel = nativeSliders[1].texts[1]
+assert(nextFrame and pixelLabel and pixelLabel.shown and not nativeSliders[2].texts[1] and not nativeSliders[4].texts[1])
+assert(pixelLabel.text == nil, "Measure only after the frame resized")
+nextFrame(); nextFrame = nil
+assert(pixelLabel.text == ("%d px"):format(math.floor(swing.width * swing.scale / (768 / physicalHeight) + 0.5)))
+assert(layouts == 1 and replaced[3].data.displayInfo.formatter(246.6) == "247")
+PyresinQoLDB.pixelPerfectEditMode = false
+for _, native in ipairs(nativeSliders) do native:Show() end
+settingsDialog:UpdateSettings(swing)
+assert(not replaced[3].shown and not replaced[4].shown and nativeSliders[2].shown, "Disabled mode keeps Blizzard's sliders")
+assert(not pixelLabel.shown, "Disabled mode keeps Blizzard's percent labels")
+assert(not nextFrame, "No measuring without pixel labels")
+PyresinQoLDB.pixelPerfectEditMode = true
+
+EditModeManagerFrame.registeredSystemFrames = { swing, target }
+physicalHeight = 1080
+EditModeManagerFrame:SelectSystem(swing)
+assert(matchWidth.shown and panel.height == 190)
+-- Pixel-exact match: rendered widths agree within half a pixel whenever one UI unit is at most one pixel.
+for _, height in ipairs({ 1080, 1440 }) do
+    for _, scale in ipairs({ 0.64, 0.8, 1 }) do
+        physicalHeight, swing.scale, target.scale = height, scale, 0.9
+        target.width = 250.3
+        SelectTarget(target)
+        Click(matchWidth)
+        local ppu = scale / (768 / height)
+        local error = math.abs(swing.width * ppu - target.width * 0.9 / (768 / height))
+        assert(error <= ppu / 2 + 1e-9, error)
+    end
+end
+target.width = 5000
+Click(matchWidth)
+assert(swing.width == 852, "Clamp matches to Blizzard's range")
+swing.isDragging = true
+local changes = swing.settingChanges
+Click(matchWidth)
+assert(swing.settingChanges == changes)
+swing.isDragging = false
+EditModeManagerFrame:SelectSystem(native)
+assert(not matchWidth.shown and panel.height == 160)
+-- Dragging a size slider sticks to the snap target's size within Blizzard's magnetism range.
+EditModeManagerFrame:SelectSystem(swing)
+physicalHeight, swing.scale, target.scale = 1080, 0.8, 0.8
+target.width, target.height = 300, 30
+SelectTarget(target)
+settingsDialog.attachedToSystem = swing
+local widthSlider, heightSlider = replaced[3], replaced[4]
+local function Drag(slider, value, dragging)
+    slider.Slider.value, slider.dragging = nil, dragging ~= false
+    slider.Slider.changed(nil, value)
+    return slider.Slider.value
+end
+assert(Drag(widthSlider, 305) == 300 and Drag(widthSlider, 292) == 300 and Drag(heightSlider, 33) == 30)
+assert(Drag(widthSlider, 309) == nil and Drag(widthSlider, 300) == nil, "Outside the range or already matched")
+assert(Drag(widthSlider, 301, false) == nil, "Steppers never snap")
+snapEnabled = false
+assert(Drag(widthSlider, 305) == nil, "Respect Blizzard's snap toggle")
+snapEnabled = true
+PyresinQoLDB.pixelPerfectEditMode = false
+assert(Drag(widthSlider, 305) == nil, "No snapping while pixel-perfect mode is off")
+PyresinQoLDB.pixelPerfectEditMode = true
+
+-- Direct size sliders are swapped even at one-unit steps (chat frame), so they can snap too.
+local chat = CreateFrame()
+chat.system, chat.scale = 3, 0.8
+chat.settingDisplayInfoMap = { [10] = Slider(10, 250, 800, 1, DiffFromMin), [11] = Slider(11, 120, 800, 1, DiffFromMin) }
+function chat:GetSystemName() return "Chat" end
+function chat:CanBeMoved() return self.isSelected end
+function chat:GetSettingValue(setting) return setting == 10 and self.width or self.height end
+EditModeManagerFrame.registeredSystemFrames = { chat, target }
+EditModeManagerFrame:SelectSystem(chat)
+assert(matchWidth.shown)
+SelectTarget(target)
+nativeSliders = { NativeSlider(10, 1) }
+settingsDialog.attachedToSystem = chat
+settingsDialog:UpdateSettings(chat)
+assert(not nativeSliders[1].shown and widthSlider.shown and widthSlider.setting == 10)
+assert(Drag(widthSlider, 296) == 300)
+-- With cast-bar customization, Match width writes our own cast-bar width in the bar's UI units.
+castBarFrame = CreateFrame()
+castBarFrame.scale = 0.8
+-- The cast bar's visible selection includes a 20-unit icon left of its fill.
+castBarFrame.Selection = { IsShown = function() return true end, GetRect = function()
+    local x, y, width, height = castBarFrame:GetRect()
+    return x - 20, y, width + 20, height
+end, GetEffectiveScale = function() return castBarFrame.scale end }
+function castBarFrame:GetSystemName() return "Cast Bar" end
+function castBarFrame:CanBeMoved() return self.isSelected end
+PlayerCastingBarFrame = castBarFrame
+EditModeManagerFrame.registeredSystemFrames = { castBarFrame, target }
+EditModeManagerFrame:SelectSystem(castBarFrame)
+assert(not matchWidth.shown, "Blizzard's cast bar has only coarse percent steps")
+castBarCustomized = true
+EditModeManagerFrame:SelectSystem(swing); EditModeManagerFrame:SelectSystem(castBarFrame)
+assert(matchWidth.shown)
+physicalHeight, target.scale, target.width = 1080, 0.9, 250.3
+SelectTarget(target)
+-- Regression: like the player frame, the target pads its art by 20 units per side. Match visible selections.
+target.Selection.GetRect = function()
+    local x, y, width, height = target:GetRect()
+    return x + 20, y, width - 40, height
+end
+Click(matchWidth)
+assert(castBarWidth == math.floor(210.3 * 0.9 / 0.8 - 20 + 0.5))
+local _, _, castVisible = castBarFrame.Selection.GetRect()
+local _, _, targetVisible = target.Selection.GetRect()
+assert(math.abs(castVisible * 0.8 - targetVisible * 0.9) <= 0.8 / 2, "Visible widths match within half a unit")
+target.width = 5000
+Click(matchWidth)
+assert(castBarWidth == 600, "Clamp to the cast-bar width range")
+unitFrames.active = false
+EditModeManagerFrame:SelectSystem(swing); EditModeManagerFrame:SelectSystem(castBarFrame)
+assert(not matchWidth.shown, "Inactive unit-frame module leaves the cast bar alone")
+print("PASS: pixel-perfect size sliders and match width")

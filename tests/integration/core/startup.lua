@@ -8,7 +8,7 @@ local function Registry()
 end
 
 local files = {
-    gameMenu = { "Modules/GameMenu/GameMenu.lua" }, editMode = { "Modules/EditMode/PixelPerfect.lua" },
+    gameMenu = { "Modules/GameMenu/GameMenu.lua" }, editMode = { "Modules/EditMode/PixelPerfect.lua", "Modules/EditMode/SettingsDialog.lua" },
     performance = { "Modules/Performance/Performance.lua" },
     dungeonMaps = { "Modules/DungeonMaps/Data.lua", "Modules/DungeonMaps/Logic.lua", "Modules/DungeonMaps/DungeonMaps.lua" },
     experience = { "Modules/Experience/Experience.lua" },

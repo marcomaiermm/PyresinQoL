@@ -28,6 +28,7 @@ ns.GetModule("experience").UpdateExperience = function() updates.experience = up
 ns.GetModule("quests").UpdateQuestLevels = function() updates.quest = updates.quest + 1 end
 ns.GetModule("quests").UpdateQuestSparkles = function() updates.sparkle = updates.sparkle + 1 end
 ns.GetModule("editMode").UpdatePixelPerfectMode = function() updates.pixelPerfect = updates.pixelPerfect + 1 end
+ns.GetModule("editMode").UpdateSettingsDialog = function() end
 ns.GetModule("unitFrames").UpdateStatusText = function() updates.statusText = updates.statusText + 1 end
 ns.GetModule("unitFrames").UpdatePlayerFrame = function() updates.player = updates.player + 1 end
 ns.GetModule("unitFrames").UpdateDruidMana = function() updates.druidMana = updates.druidMana + 1 end

@@ -19,6 +19,7 @@ Modules/DungeonMaps/Data.lua
 Modules/DungeonMaps/Logic.lua
 Modules/DungeonMaps/DungeonMaps.lua
 Modules/EditMode/PixelPerfect.lua
+Modules/EditMode/SettingsDialog.lua
 Modules/Experience/Experience.lua
 Modules/Quests/Quests.lua
 Modules/Quests/Sparkles.lua
