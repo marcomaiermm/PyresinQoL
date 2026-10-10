@@ -8,6 +8,14 @@
 ## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts
 
 Core/Localization.lua
+Core/Locales/deDE.lua
+Core/Locales/frFR.lua
+Core/Locales/esES.lua
+Core/Locales/esMX.lua
+Core/Locales/itIT.lua
+Core/Locales/ptBR.lua
+Core/Locales/ruRU.lua
+Core/Locales/zhCN.lua
 Core/Modules.lua
 Core/Database.lua
 Core/Profiles.lua

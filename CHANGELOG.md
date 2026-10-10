@@ -14,6 +14,7 @@
 - Right-click a button to give its menu a name and an icon; the question mark uses the first entry's icon
 - On bars with several rows, an open menu hides the buttons behind it
 - Move it in Edit Mode; click it there to set icons, rows, orientation, size, padding, icons per menu and when the bar is visible
+- **Languages**: now in French, Spanish, Italian, Portuguese, Russian and Simplified Chinese, alongside English and German
 
 ## 0.1.9
 

@@ -5,6 +5,7 @@ local module = {}
 local ns, postCall, objectPostCall = {}, nil, nil
 function GetLocale() return arg[1] == "de" and "deDE" or "enUS" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
+assert(loadfile("Core/Locales/deDE.lua"))("PyresinQoL", ns)
 UIParent, YOU = {}, "You"
 local combat, callbacks = false, {}
 function InCombatLockdown() return combat end

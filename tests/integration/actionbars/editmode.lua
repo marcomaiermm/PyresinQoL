@@ -68,7 +68,7 @@ function CreateSettingsButtonInitializer(label, text, callback)
 end
 
 local ns = { CastBar = h.castBar }
-for _, path in ipairs({ "Core/Localization.lua", "Core/Modules.lua", "Settings/Controls.lua",
+for _, path in ipairs({ "Core/Localization.lua", "Core/Locales/deDE.lua", "Core/Modules.lua", "Settings/Controls.lua",
     "Modules/ActionBars/Config.lua", "Modules/CastBar/EditMode.lua", "Modules/ActionBars/EditMode.lua",
     "Modules/ActionBars/Settings.lua" }) do assert(loadfile(path))("PyresinQoL", ns) end
 local module, L = ns.GetModule("actionBars"), ns.L
