@@ -19,7 +19,7 @@
 
 ### Changed
 - **Quests** is now off by default for new installs; turn it on under `/pqol` → Modules. If you already use it, it stays on
-- **Profiles**: the profile lists only show this character's profiles; profiles of your other characters no longer clutter them. Like in Edit Mode, the Gamepad layout and its profile only appear in gamepad mode
+- **Profiles**: profiles linked only to your other characters no longer appear in this character's lists. Gamepad layouts and their profiles are hidden outside gamepad mode, except for the active profile
 
 ### Fixed
 - **Languages**: corrected the Spanish and Portuguese help text for the player frame text position and class color options

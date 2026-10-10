@@ -521,11 +521,11 @@ function ns.CreateProfilesPage(parent)
     end)
     local function Refresh()
         local store = PyresinQoLDB.profileStore
-        local available = {}
+        local available, listed = {}, {}
         for _, name in ipairs(OwnProfileNames()) do
-            if name ~= DEFAULT_PROFILE and name ~= store.active then available[#available + 1] = name end
+            if name ~= DEFAULT_PROFILE and name ~= store.active then available[#available + 1] = name; listed[name] = true end
         end
-        if not store.profiles[toDelete] or toDelete == store.active then toDelete = available[1] end
+        if not listed[toDelete] then toDelete = available[1] end
         local enabled = not InCombatLockdown()
         dropdown:SetEnabled(enabled)
         layoutDropdown:SetEnabled(ns.ProfileSwitchError() == nil and #ns.GetEditModeLayouts() > 0)
