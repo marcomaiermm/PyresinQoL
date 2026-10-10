@@ -35,7 +35,7 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
     function(canvas, sidebar, list)
         UI.AssertInside(canvas, UIParent, "Wieder geöffnetes Fenster")
         assertTrue(UI.VisibleSetting(list, Settings.GetSetting("PyresinQoL_CastBarCustomization")).Checkbox:GetChecked())
-        UI.PageButton(sidebar, "Profiles"):Click()
+        UI.PageButton(sidebar, "Profile"):Click()
     end,
     function(_, _, list)
         assertFalse(list.Header.DefaultsButton:IsShown())
