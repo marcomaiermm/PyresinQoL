@@ -104,7 +104,6 @@ ns.RegisterModule("flightTimer", function(module)
     -- back, pausing at each, or with scrolling off ends in an ellipsis.
     local function NewName(parent, side)
         local box = CreateFrame("Frame", nil, parent)
-        box:SetClipsChildren(true)
         box:SetHeight(14)
         local holder = CreateFrame("Frame", nil, box)
         holder:SetAllPoints()
@@ -125,10 +124,13 @@ ns.RegisterModule("flightTimer", function(module)
             text:SetWidth(0)
             text:SetText(value)
             local full = text:GetStringWidth() or 0
-            local overflow, scroll = full - maxWidth, Get("flightTimerScrollNames")
-            if overflow > 0 and not scroll then text:SetWidth(maxWidth) end
+            local overflow = full - maxWidth
+            local slides = overflow > 0 and Get("flightTimerScrollNames") == true
+            if overflow > 0 and not slides then text:SetWidth(maxWidth) end
             box:SetWidth(math.min(full, maxWidth))
-            if overflow > 0 and scroll then
+            -- Clipping only where a name slides: boxes nested in the stop strip's clip drew nothing.
+            box:SetClipsChildren(slides)
+            if slides then
                 move:SetOffset(side == "LEFT" and -overflow or overflow, 0)
                 move:SetDuration(overflow / 20)
                 slide:Play()
@@ -149,9 +151,7 @@ ns.RegisterModule("flightTimer", function(module)
         mark.arrow:SetRotation(math.pi)
         mark.arrow:SetSize(ARROW_HEIGHT * 2, ARROW_HEIGHT * 2)
         mark.arrow:SetPoint("BOTTOM", mark.icon, "TOP", 0, -ARROW_HEIGHT / 2)
-        -- Unsnapped, the strip glides instead of stepping a pixel at a time.
-        mark.icon:SetSnapToPixelGrid(false)
-        mark.arrow:SetSnapToPixelGrid(false)
+        -- Left snapped like the name: text always snaps, so an unsnapped icon drifted 1px against it.
         return mark
     end
 
