@@ -255,10 +255,14 @@ ns.RegisterModule("flyouts", function()
             local old = Entry(i, j)
             SetEntry(i, j, entry)
             ClearCursor()
-            -- The old one goes to the cursor; if it cannot (a mount the journal's filters hide), it stays.
+            -- The old one goes to the cursor; if it cannot (a mount the journal's filters hide), it stays and
+            -- the new one goes back on the cursor, so one dragged out of another slot is not lost.
             if old then
                 TYPES[old.type].Pickup(old.id)
-                if not GetCursorInfo() then SetEntry(i, j, old) end
+                if not GetCursorInfo() then
+                    SetEntry(i, j, old)
+                    TYPES[entry.type].Pickup(entry.id)
+                end
             end
             Layout()
             return true

@@ -16,7 +16,7 @@
 - Move it in Edit Mode; click it there to set icons, rows, orientation, size, padding, icons per menu and when the bar is visible
 
 ### Fixed
-- Flyout menu edits retain entries the cursor cannot pick up and ignore blank menu names
+- Flyout menu edits keep a dragged entry on the cursor when the replaced entry cannot be picked up
 ## 0.1.9
 
 ### Added
