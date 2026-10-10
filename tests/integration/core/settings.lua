@@ -37,7 +37,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not h.events.registered.ADDON_LOADED)
-assert(h.canvas and #h.navigation == 16 and #h.sections == 0)
+assert(h.canvas and #h.navigation == 17 and #h.sections == 0)
 assert(#ns.GetModule("actionBars").pages == 1,
     "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
@@ -91,7 +91,7 @@ assert(h.navigation[4].shown and h.navigation[7].shown)
 h.groupButtons[1].scripts.OnClick()
 assert(h.navigation[1].shown and h.navigation[2].shown and h.navigation[3].shown)
 h.canvas.scripts.OnShow()
-assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 10)
+assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 11)
 assert(h.navigation[1].selected.shown and not h.reloadButton.enabled)
 assert(h.navigation[1].text.color[2] == 1 and h.navigation[1].text.color[3] == 1,
     "The selected page uses Blizzard's white label")

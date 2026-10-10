@@ -5,7 +5,7 @@ temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 fixture="$temporary/PyresinQoL"
 mkdir -p "$fixture/tools"
-cp -R PyresinQoL.toc LICENSE Core Settings Modules Media "$fixture/"
+cp -R PyresinQoL.toc LICENSE Bindings.xml Core Settings Modules Media "$fixture/"
 cp tools/check-package.sh "$fixture/tools/"
 archive="$temporary/test.zip"
 
@@ -25,7 +25,7 @@ version=$(check)
 build
 check --tag "v$version" --archive "$archive" >/dev/null
 for tag in v999.0.0 "$version" "v$version-beta" 'v1.0.0; exit 0'; do rejects --tag "$tag"; done
-for missing in LICENSE Media/AddonIcon.tga Core/Bootstrap.lua; do
+for missing in LICENSE Bindings.xml Media/AddonIcon.tga Core/Bootstrap.lua; do
     cp "$fixture/$missing" "$temporary/saved"
     zip -qd "$archive" "PyresinQoL/$missing"
     rejects --archive "$archive"

@@ -5,7 +5,7 @@
 ## Version: 0.1.9
 ## X-License: MIT
 ## SavedVariables: PyresinQoLDB, PyresinQoLFlightSpeed
-## SavedVariablesPerCharacter: PyresinQoLFlight
+## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts
 
 Core/Localization.lua
 Core/Modules.lua
@@ -34,6 +34,9 @@ Modules/ActionBars/Config.lua
 Modules/ActionBars/ActionBars.lua
 Modules/ActionBars/Visibility.lua
 Modules/ActionBars/EditMode.lua
+Modules/Flyouts/Options.lua
+Modules/Flyouts/IconPicker.lua
+Modules/Flyouts/Flyouts.lua
 Modules/CastBar/Config.lua
 Modules/CastBar/Models.lua
 Modules/CastBar/Textures.lua
@@ -60,3 +63,4 @@ Modules/Quests/Settings.lua
 Modules/UnitFrames/Settings.lua
 Modules/Tooltips/Settings.lua
 Modules/ActionBars/Settings.lua
+Modules/Flyouts/Settings.lua

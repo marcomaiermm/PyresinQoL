@@ -107,11 +107,12 @@ test("loads Forever and initializes all settings pages", function()
     local _, sidebar = SettingsParts()
     for _, page in ipairs(pages) do PageButton(sidebar, page[1]) end
     PageButton(sidebar, "Profiles")
+    PageButton(sidebar, "Flyout Bar") -- sliders and a dropdown only; flyouts.lua drives them
     local count = 0
     for _, button in ipairs({ sidebar:GetChildren() }) do
         if button.selected then count = count + 1 end
     end
-    assertEquals(#pages + 1, count)
+    assertEquals(#pages + 2, count)
 end)
 
 UIFlow("slash command opens and native close button closes settings", {

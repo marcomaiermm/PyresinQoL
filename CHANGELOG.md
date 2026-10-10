@@ -3,16 +3,18 @@
 ## Unreleased
 
 ### Added
-- **Flight Timer** (Misc): shows the remaining flight time on a route bar with your portrait, the start, the destination and the stops on the way.
-- Gets more accurate with every flight and accounts for Frequent Flier.
-- Follows an early landing and keeps running after a `/reload`.
-- Long place names scroll so you can read them in full.
-- Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, zone names, time display, width and scale.
 - **Flight Timer** (Misc): shows the remaining flight time on a route bar with your portrait, the start, the destination and the stops on the way
 - Gets more accurate with every flight and accounts for Frequent Flier
 - Follows an early landing and keeps running after a `/reload`
 - Long place names scroll so you can read them in full
 - Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, zone names, time display, width and scale
+- **Flyout Bar** (Action Bars): a bar of up to 12 buttons, each opening its own menu of spells, items, toys, mounts and macros; the menus work in combat
+- Drag spells, items, toys, mounts and macros onto a button or into its menu, or click it while holding one
+- Bind keys to its buttons under Key Bindings → AddOns or with Quick Keybind Mode
+- Right-click a button to give its menu a name and an icon; the question mark uses the first entry's icon
+- On bars with several rows, an open menu hides the buttons behind it
+- Move it in Edit Mode; click it there to set icons, rows, orientation, size, padding, icons per menu and when the bar is visible
+
 ## 0.1.9
 
 ### Added

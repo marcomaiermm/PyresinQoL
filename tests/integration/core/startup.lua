@@ -16,6 +16,7 @@ local files = {
     quests = { "Modules/Quests/Quests.lua", "Modules/Quests/Sparkles.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
     tooltips = { "Modules/Tooltips/Tooltip.lua" },
     actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
+    flyouts = { "Modules/EditMode/CustomDisplay.lua", "Modules/Flyouts/Options.lua", "Modules/Flyouts/Flyouts.lua" },
 }
 -- Loading files or initializing a disabled module must not touch game APIs.
 function CreateFrame() error("A disabled module created a frame") end
@@ -90,7 +91,7 @@ for line in io.lines("PyresinQoL.toc") do
 end
 assert(title == "PyresinQoL" and savedVariables == "PyresinQoLDB")
 assert(_G[savedVariables] == PyresinQoLDB, "The runtime database must match the saved variable in the TOC")
-local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "flightTimer", "quests", "unitFrames", "tooltips", "actionBars" }
+local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "flightTimer", "quests", "unitFrames", "tooltips", "actionBars", "flyouts" }
 assert(#ns.modules == #order)
 for index, id in ipairs(order) do
     local module = ns.GetModule(id)

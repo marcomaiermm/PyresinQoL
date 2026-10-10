@@ -20,6 +20,7 @@ ns.modules = {
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
     { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
+    { id = "flyouts", group = "actionBars", name = L.flyouts, description = L.flyoutsDescription },
 }
 
 -- Our own Edit Mode displays (Modules/EditMode/CustomDisplay.lua), for the pixel-perfect editor's
