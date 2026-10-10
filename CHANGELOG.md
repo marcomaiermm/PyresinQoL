@@ -9,12 +9,17 @@
 - Long place names scroll so you can read them in full
 - Move it in Edit Mode; click it there to choose the bar style, player marker, flags, stops, zone names, time display, width and scale
 - **Flyout Bar** (Action Bars): a bar of up to 12 buttons, each opening its own menu of spells, items, toys, mounts and macros; the menus work in combat
+- Off by default; turn it on under `/pqol` → Modules
 - Drag spells, items, toys, mounts and macros onto a button or into its menu, or click it while holding one
 - Bind keys to its buttons under Key Bindings → AddOns or with Quick Keybind Mode
 - Right-click a button to give its menu a name and an icon; the question mark uses the first entry's icon
 - On bars with several rows, an open menu hides the buttons behind it
 - Move it in Edit Mode; click it there to set icons, rows, orientation, size, padding, icons per menu and when the bar is visible
 - **Languages**: now in French, Spanish, Italian, Portuguese, Russian and Simplified Chinese, alongside English and German
+
+### Changed
+- **Quests** is now off by default for new installs; turn it on under `/pqol` → Modules. If you already use it, it stays on
+- **Profiles**: the profile lists only show this character's profiles; profiles of your other characters no longer clutter them. Like in Edit Mode, the Gamepad layout and its profile only appear in gamepad mode
 
 ### Fixed
 - **Languages**: corrected the Spanish and Portuguese help text for the player frame text position and class color options

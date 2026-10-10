@@ -397,6 +397,8 @@ assert(PyresinQoLDB.performanceColor == "FFFFFFFF" and PyresinQoLDB.performanceO
 assert(PyresinQoLDB.pixelPerfectEditMode and not PyresinQoLDB.cooldownShortcut, "Defaults affect only the selected page")
 h.canvas.OnDefault()
 assert(not PyresinQoLDB.pixelPerfectEditMode and PyresinQoLDB.cooldownShortcut)
+assert(PyresinQoLDB.modules.quests == false, "Defaults restore opt-in modules to off")
+settings.PyresinQoL_Module_quests:SetValue(true)
 assert(PyresinQoLDB.performancePosition.x == 11 and PyresinQoLDB.performancePosition.y == 22)
 -- Module switches share their value across overview and detail pages.
 local unitFramesModule = settings.PyresinQoL_Module_unitFrames
@@ -452,7 +454,8 @@ ns.modules[3].active = true
 performanceModule:SetValue(false)
 h.navigation[1].scripts.OnClick()
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
-assert(PyresinQoLDB.modules.performance and not ns.ModulesNeedReload())
+assert(PyresinQoLDB.modules.performance and PyresinQoLDB.modules.quests == false and ns.ModulesNeedReload(),
+    "Defaults switch the running opt-in Quests module off")
 assert(PyresinQoLDB.performancePosition.x == 11, "Module defaults must preserve feature settings and position")
 print("PASS: standalone settings/navigation, localized controls, collapse, defaults, migration, live callbacks and menu isolation")
 
