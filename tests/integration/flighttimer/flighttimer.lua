@@ -10,6 +10,7 @@ local function Object(template)
     function object:SetAlpha(value) self.alpha = value end
     function object:GetAlpha() return self.alpha end
     function object:GetStringWidth() return 40 end
+    function object:SetClipsChildren(value) self.clipsChildren = value end
     return setmetatable(object, { __index = function(_, key)
         if key:match("^Create") then return function() return Object() end end
         return function() end
@@ -40,6 +41,7 @@ local function Frame(template)
     function frame:SetSystem(system) self.system = system end
     function frame:CreateFontString(_, _, fontTemplate)
         local text = Object(fontTemplate)
+        text.parent = self
         function text:SetText(value) self.text = value end
         function text:SetWidth(value) self.width = value end
         function text:SetShown(value) self.shown = value end
@@ -49,8 +51,9 @@ local function Frame(template)
     end
     return frame
 end
-function CreateFrame(_, name, _, template)
+function CreateFrame(_, name, parent, template)
     local frame = Frame(template)
+    frame.parent = parent
     frame.name = name
     if template == "EditModeSettingCheckboxTemplate" then
         frame.Label, frame.Button = frame:CreateFontString(), Object()
@@ -171,8 +174,10 @@ PyresinQoLDB.flightTimerZones = nil
 -- ellipsis at the room's width.
 Setting("flightTimerWidth"):SetValue(50)
 assert(departure.width == 0)
+assert(departure.parent.parent.clipsChildren == true, "Sliding names clip")
 Setting("flightTimerScrollNames"):SetValue(false)
 assert(departure.width == 21, departure.width)
+assert(departure.parent.parent.clipsChildren == false, "Truncated names do not clip")
 PyresinQoLDB.flightTimerScrollNames = nil
 -- The width reads what it measures on screen, at the timer's scale.
 local widthOption = module.flightTimerOptions[#module.flightTimerOptions - 1]
