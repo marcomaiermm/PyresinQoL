@@ -27,6 +27,12 @@ local loopRows = {
 }
 local textures, byID
 
+local function ProfessionName(key)
+    local skillLine = C_TradeSkillUI.GetProfessionSkillLineID(Enum.Profession[key])
+    local name = skillLine and skillLine ~= 0 and C_TradeSkillUI.GetTradeSkillDisplayName(skillLine)
+    return name and name ~= "" and name or key
+end
+
 local function finite(value)
     return not (issecretvalue and issecretvalue(value)) and type(value) == "number"
         and value == value and value ~= math.huge and value ~= -math.huge
@@ -61,7 +67,7 @@ function castBar.GetTextures()
         textures[#textures + 1], byID[descriptor.id] = descriptor, descriptor
     end
     if not (C_Texture and C_Texture.GetAtlasInfo and Enum and Enum.Profession) then return textures end
-    local names = ns.L.castBarProfession or {}
+    local prefix = TRADE_SKILLS .. HEADER_COLON .. " "
     for _, key in ipairs(professions) do
         if Enum.Profession[key] ~= nil then
             local atlas = "Skillbar_Fill_Flipbook_" .. key
@@ -71,7 +77,7 @@ function castBar.GetTextures()
                 local loopFrames = loopRows[file] == rows and info.width == 1712
                     and (rows * 2 - math.floor(rows * .3 + .5))
                 local descriptor = {
-                    id = key:lower(), name = "Professions: " .. (names[key] or key), category = "profession",
+                    id = key:lower(), name = prefix .. ProfessionName(key), category = "profession",
                     atlas = atlas, texture = file, supportsTint = true, flipBookRows = rows,
                     aspectRatio = 441 / 18, -- ProfessionsRankBarTemplate's displayed Fill size.
                     left = left, right = right, top = top, bottom = bottom,
