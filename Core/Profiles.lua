@@ -516,10 +516,12 @@ function ns.CreateProfilesPage(parent)
     deleteDropdown:SetWidth(240)
     deleteDropdown:SetPoint("TOPLEFT", frame, "TOP", -80, -332)
     deleteDropdown:SetDefaultText(L.profileNone)
+    local Refresh
     local delete = Button(L.profileDelete, DELETE, 367, function()
+        Refresh() -- Input mode changes do not refresh this page; drop a target that has since been hidden.
         if toDelete then StaticPopup_Show("PYRESINQOL_PROFILE_DELETE", ProfileLabel(toDelete), nil, toDelete) end
     end)
-    local function Refresh()
+    function Refresh()
         local store = PyresinQoLDB.profileStore
         local available, listed = {}, {}
         for _, name in ipairs(OwnProfileNames()) do
