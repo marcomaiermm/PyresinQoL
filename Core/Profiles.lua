@@ -67,7 +67,7 @@ local function Restore(settings)
     end
     PyresinQoLDB.modules = PyresinQoLDB.modules or {}
     for _, module in ipairs(ns.modules) do
-        if PyresinQoLDB.modules[module.id] == nil then PyresinQoLDB.modules[module.id] = true end
+        if PyresinQoLDB.modules[module.id] == nil then PyresinQoLDB.modules[module.id] = module.enabledByDefault end
     end
 end
 
@@ -226,10 +226,15 @@ function ns.GetEditModeLayouts()
     if not C_EditMode then return layouts end
     local character, info = UnitGUID("player"), C_EditMode.GetLayouts()
     if not character or not info then return layouts end
-    local presets = Enum.EditModePresetLayoutsMeta.NumValues
-    for index = 1, presets do
-        layouts[#layouts + 1] = { key = "preset:" .. index, name = PresetName(index),
-            scope = L.profilePreset }
+    local presets = EditModePresetLayoutManager and EditModePresetLayoutManager:GetCopyOfPresetLayouts() or {}
+    -- Like Blizzard's layout dropdown, show only the presets of the current input mode (no Gamepad on mouse/keyboard).
+    local style = InputUtil and InputUtil.GetCurrentInterfaceStyle and InputUtil.GetCurrentInterfaceStyle()
+    for index = 1, Enum.EditModePresetLayoutsMeta.NumValues do
+        local preset = presets[index]
+        if not (style and preset and preset.interfaceStyle and preset.interfaceStyle ~= style) then
+            layouts[#layouts + 1] = { key = "preset:" .. index, name = PresetName(index),
+                scope = L.profilePreset }
+        end
     end
     for _, layout in ipairs(info.layouts) do
         layouts[#layouts + 1] = { key = LayoutKey(layout, character), name = layout.layoutName,
@@ -356,6 +361,27 @@ function ns.MaybePromptProfileReload()
     if ns.ModulesNeedReload() then StaticPopup_Show("PYRESINQOL_PROFILE_RELOAD") end
 end
 
+-- Profiles linked only by other characters belong to them, and profiles of presets hidden in the
+-- current input mode (Gamepad) stay hidden like the preset itself.
+local function OwnProfileNames()
+    local store = PyresinQoLDB.profileStore
+    local own = select(2, CharacterMappings()) or {}
+    local linked, available = {}, {}
+    for _, layout in ipairs(ns.GetEditModeLayouts()) do available[layout.key] = true end
+    for _, links in pairs(store.profileLayouts) do
+        for name in pairs(links) do linked[name] = true end
+    end
+    local names = {}
+    for _, name in ipairs(ns.GetProfileNames()) do
+        local key = own[name]
+        local hiddenPreset = key and key:match("^preset:") and next(available) and not available[key]
+        if name == DEFAULT_PROFILE or name == store.active or (key and not hiddenPreset) or not linked[name] then
+            names[#names + 1] = name
+        end
+    end
+    return names
+end
+
 local function ProfileLabel(name)
     return name == DEFAULT_PROFILE and L.profileDefault or name
 end
@@ -444,7 +470,7 @@ function ns.CreateProfilesPage(parent)
         local store = PyresinQoLDB.profileStore
         local switchError = ns.ProfileSwitchError()
         root:SetScrollMode(320)
-        for _, name in ipairs(ns.GetProfileNames()) do
+        for _, name in ipairs(OwnProfileNames()) do
             local radio = root:CreateRadio(ProfileLabel(name), function() return store.active == name end, function()
                 if store.active == name then return end
                 local reason = ns.ProfileSwitchError()
@@ -490,16 +516,18 @@ function ns.CreateProfilesPage(parent)
     deleteDropdown:SetWidth(240)
     deleteDropdown:SetPoint("TOPLEFT", frame, "TOP", -80, -332)
     deleteDropdown:SetDefaultText(L.profileNone)
+    local Refresh
     local delete = Button(L.profileDelete, DELETE, 367, function()
+        Refresh() -- Input mode changes do not refresh this page; drop a target that has since been hidden.
         if toDelete then StaticPopup_Show("PYRESINQOL_PROFILE_DELETE", ProfileLabel(toDelete), nil, toDelete) end
     end)
-    local function Refresh()
+    function Refresh()
         local store = PyresinQoLDB.profileStore
-        local available = {}
-        for _, name in ipairs(ns.GetProfileNames()) do
-            if name ~= DEFAULT_PROFILE and name ~= store.active then available[#available + 1] = name end
+        local available, listed = {}, {}
+        for _, name in ipairs(OwnProfileNames()) do
+            if name ~= DEFAULT_PROFILE and name ~= store.active then available[#available + 1] = name; listed[name] = true end
         end
-        if not store.profiles[toDelete] or toDelete == store.active then toDelete = available[1] end
+        if not listed[toDelete] then toDelete = available[1] end
         local enabled = not InCombatLockdown()
         dropdown:SetEnabled(enabled)
         layoutDropdown:SetEnabled(ns.ProfileSwitchError() == nil and #ns.GetEditModeLayouts() > 0)
@@ -514,7 +542,7 @@ function ns.CreateProfilesPage(parent)
     end
     deleteDropdown:SetupMenu(function(_, root)
         root:SetScrollMode(320)
-        for _, name in ipairs(ns.GetProfileNames()) do
+        for _, name in ipairs(OwnProfileNames()) do
             if name ~= DEFAULT_PROFILE and name ~= PyresinQoLDB.profileStore.active then
                 root:CreateRadio(ProfileLabel(name), function() return toDelete == name end, function()
                     toDelete = name

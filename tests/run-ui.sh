@@ -58,7 +58,12 @@ if [[ $lane == all || $lane == contracts ]]; then
 fi
 
 test_dir="$root/tests/ui"
-fixture_mounts=()
+# Opt-in modules (Quests, Flyouts) must run for their native UI flows; ADDON_LOADED reads the
+# defaults before any --exec-lua, so overlay them on.
+sed 's/, enabledByDefault = false//' Core/Modules.lua > "$build_dir/Modules.lua"
+fixture_mounts=(
+    --mount "type=bind,src=$build_dir/Modules.lua,dst=/app/Interface/AddOns/PyresinQoL/Core/Modules.lua,readonly"
+)
 run() {
     local resolution=$1
     shift
@@ -144,7 +149,7 @@ if [[ $lane == all || $lane == locale-scale ]]; then
     # Overlay an existing file: a new nested-bind destination would create a
     # placeholder in the host checkout, even with the outer addon mount read-only.
     cat tests/tooling/ui-locale.lua Core/Localization.lua > "$build_dir/Localization.lua"
-    fixture_mounts=(
+    fixture_mounts+=(
         --mount "type=bind,src=$build_dir/Localization.lua,dst=/app/Interface/AddOns/PyresinQoL/Core/Localization.lua,readonly"
     )
     echo 'Testing addon German labels at UIParent scale 1.25 (native Blizzard strings remain enUS)'

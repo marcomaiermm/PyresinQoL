@@ -284,9 +284,9 @@ function ns.InitializeSettings()
     local overview = pages[1]
     for _, module in ipairs(ns.modules) do
         local setting = Settings.RegisterAddOnSetting(category, "PyresinQoL_Module_" .. module.id,
-            module.id, PyresinQoLDB.modules, Settings.VarType.Boolean, module.name, true)
+            module.id, PyresinQoLDB.modules, Settings.VarType.Boolean, module.name, module.enabledByDefault)
         setting:SetValueChangedCallback(RefreshView)
-        table.insert(overview.settings, { setting = setting, default = true })
+        table.insert(overview.settings, { setting = setting, default = module.enabledByDefault })
         AddControl(overview, Settings.CreateCheckboxInitializer(setting, nil, module.description .. "\n\n" .. L.moduleHelp))
     end
 

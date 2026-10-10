@@ -43,11 +43,12 @@ for id, paths in pairs(files) do
 end
 ns.InitializeModules()
 for id, paths in pairs(files) do
-    assert(started[id] == (id ~= "performance" and #paths or nil))
+    assert(started[id] == (id ~= "performance" and id ~= "flyouts" and id ~= "quests" and #paths or nil))
 end
+assert(PyresinQoLDB.modules.flyouts == false and PyresinQoLDB.modules.quests == false, "Opt-in modules must start disabled")
 assert(not ns.ModulesNeedReload())
-PyresinQoLDB.modules.quests = false
-assert(ns.ModulesNeedReload() and started.quests == 2, "A toggle must not reinitialize running modules")
+PyresinQoLDB.modules.tooltips = false
+assert(ns.ModulesNeedReload() and started.tooltips == #files.tooltips, "A toggle must not reinitialize running modules")
 
 -- Boot the actual TOC with everything disabled; only the core event frame may exist.
 ns = {}

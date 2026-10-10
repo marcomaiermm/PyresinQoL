@@ -99,7 +99,7 @@ def main():
     with tempfile.TemporaryDirectory(prefix="pyresinqol-ui-runner-") as temporary:
         root = Path(temporary)
         checkout = root / "checkout"
-        for name in ("tests/run-ui.sh", "tools/ui.sh", "Core/Localization.lua", "tests/ui/resolutions.txt",
+        for name in ("tests/run-ui.sh", "tools/ui.sh", "Core/Localization.lua", "Core/Modules.lua", "tests/ui/resolutions.txt",
                      "tests/ui/00-helpers.lua", "tests/ui/profiles.lua", "tests/ui/profile-transitions.lua",
                      "tests/ui/castbar.lua", "tests/ui/auras.lua",
                      "tests/ui/variants/locale-scale.lua", "tests/tooling/ui-harness.lua",

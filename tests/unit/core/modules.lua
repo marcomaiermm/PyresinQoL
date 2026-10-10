@@ -49,5 +49,6 @@ ns.RegisterModule("unitFrames", function(module)
 end)
 PyresinQoLDB = {}
 ns.InitializeModules()
-assert(table.concat(calls, ",") == "gameMenu,editMode,performance,dungeonMaps,experience,quests,unitFrames,targetDebuffs,tooltips,actionBars")
+assert(table.concat(calls, ",") == "gameMenu,editMode,performance,dungeonMaps,experience,unitFrames,targetDebuffs,tooltips,actionBars")
+assert(PyresinQoLDB.modules.quests == false, "Quests are opt-in")
 print("PASS: module startup/reload table, registration guards and initializer ordering")

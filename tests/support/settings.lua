@@ -41,6 +41,7 @@ ns.GetModule("unitFrames").UpdatePlayerAuras = function() updates.aura = updates
 ns.GetModule("tooltips").UpdateTooltips = function() updates.tooltip = updates.tooltip + 1 end
 ns.GetModule("actionBars").UpdateActionBars = function() updates.actionBar = updates.actionBar + 1 end
 PyresinQoLDB = variant == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
+PyresinQoLDB.modules = { quests = true } -- Opt-in; the quest page tests need it running.
 DEFAULTS, CLOSE = "Defaults", "Close"
 SETTINGS_SEARCH_RESULTS, SETTINGS_SEARCH_NOTHING_FOUND = "Search Results", "No settings found"
 StaticPopupDialogs = {}

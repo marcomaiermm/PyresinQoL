@@ -8,7 +8,7 @@ ns.modules = {
     { id = "dungeonMaps", group = "misc", name = L.dungeonMaps, description = L.dungeonMapsDescription },
     { id = "experience", group = "misc", name = L.experience, description = L.experienceDescription },
     { id = "flightTimer", group = "misc", name = L.flightTimer, description = L.flightTimerDescription },
-    { id = "quests", group = "misc", name = L.quests, description = L.questsDescription },
+    { id = "quests", group = "misc", name = L.quests, description = L.questsDescription, enabledByDefault = false },
     { id = "unitFrames", group = "unitFrames", name = L.unitFrames, description = L.unitFramesDescription,
         pages = {
             { id = "player", name = L.playerFrame },
@@ -20,7 +20,7 @@ ns.modules = {
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
     { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
-    { id = "flyouts", group = "actionBars", name = L.flyouts, description = L.flyoutsDescription },
+    { id = "flyouts", group = "actionBars", name = L.flyouts, description = L.flyoutsDescription, enabledByDefault = false },
 }
 
 -- Our own Edit Mode displays (Modules/EditMode/CustomDisplay.lua), for the pixel-perfect editor's
@@ -35,6 +35,7 @@ ns.settingsGroups = {
 }
 for _, module in ipairs(ns.modules) do
     module.pages = module.pages or { { id = "main", name = module.name } }
+    module.enabledByDefault = module.enabledByDefault ~= false
 end
 
 -- The ordered list owns metadata and startup order; callers share these objects.
@@ -60,7 +61,7 @@ end
 function ns.InitializeModules()
     PyresinQoLDB.modules = PyresinQoLDB.modules or {}
     for _, module in ipairs(ns.modules) do
-        if PyresinQoLDB.modules[module.id] == nil then PyresinQoLDB.modules[module.id] = true end
+        if PyresinQoLDB.modules[module.id] == nil then PyresinQoLDB.modules[module.id] = module.enabledByDefault end
         module.active = PyresinQoLDB.modules[module.id]
         if module.active then
             for _, initialize in ipairs(module.initializers or {}) do initialize(module) end

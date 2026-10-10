@@ -251,8 +251,10 @@ function UnitGUID() return character end
 Enum = { EditModeLayoutType = { Preset = 0, Account = 1, Character = 2 },
     EditModePresetLayoutsMeta = { NumValues = 3 } }
 EditModePresetLayoutManager = { GetCopyOfPresetLayouts = function()
-    return { { layoutName = "Modern" }, { layoutName = "Classic" }, { layoutName = "Gamepad" } }
+    return { { layoutName = "Modern", interfaceStyle = 0 }, { layoutName = "Classic", interfaceStyle = 0 },
+        { layoutName = "Gamepad", interfaceStyle = 1 } }
 end }
+InputUtil = { GetCurrentInterfaceStyle = function() return 0 end }
 local info = { activeLayout = 4, layouts = {
     { layoutType = 1, layoutName = "Raid UI" }, { layoutType = 1, layoutName = "Solo UI" },
     { layoutType = 2, layoutName = "Raid UI" },
@@ -469,6 +471,21 @@ ns.SyncLayoutProfile()
 assert(store.active == "Shared two" and PyresinQoLDB.custom == "two")
 assert(store.characterBindings["Player-1"][sharedKey] == "Shared one"
     and store.characterBindings["Player-2"][sharedKey] == "Shared two")
+profilePage.scripts.OnShow()
+local profileSelector = dropdowns[#dropdowns - 2]
+assert(Entry(profileSelector, "Shared two") and Entry(profileSelector, ns.L.profileDefault))
+assert(not pcall(Entry, profileSelector, "Shared one") and not pcall(Entry, dropdowns[#dropdowns], "Shared one"),
+    "Profiles of other characters stay out of this character's lists")
+assert(not pcall(Entry, linkedDropdown, "Gamepad (" .. ns.L.profilePreset .. ")"),
+    "Like Blizzard, the Gamepad preset only appears in gamepad mode")
+store.profiles.Gamepad = {}
+store.profileLayouts[character].Gamepad, store.characterBindings[character]["preset:3"] = "preset:3", "Gamepad"
+profilePage.scripts.OnShow()
+assert(not pcall(Entry, profileSelector, "Gamepad"), "Profiles of hidden presets stay hidden")
+InputUtil.GetCurrentInterfaceStyle = function() return 1 end
+profilePage.scripts.OnShow()
+assert(Entry(profileSelector, "Gamepad") and Entry(linkedDropdown, "Gamepad (" .. ns.L.profilePreset .. ")"))
+InputUtil.GetCurrentInterfaceStyle = function() return 0 end
 
 -- Explicit linking never selects a Blizzard layout, even during later same-layout updates.
 profilePage.scripts.OnShow()
