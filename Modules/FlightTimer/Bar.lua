@@ -104,7 +104,6 @@ ns.RegisterModule("flightTimer", function(module)
     -- back, pausing at each, or with scrolling off ends in an ellipsis.
     local function NewName(parent, side)
         local box = CreateFrame("Frame", nil, parent)
-        box:SetClipsChildren(true)
         box:SetHeight(14)
         local holder = CreateFrame("Frame", nil, box)
         holder:SetAllPoints()
@@ -113,11 +112,15 @@ ns.RegisterModule("flightTimer", function(module)
         text:SetJustifyH(side)
         text:SetPoint(side)
         local slide = holder:CreateAnimationGroup()
-        slide:SetLooping("BOUNCE")
-        local move = slide:CreateAnimation("Translation")
-        move:SetStartDelay(1.5)
-        move:SetEndDelay(1.5)
-        move:SetSmoothing("IN_OUT")
+        slide:SetLooping("REPEAT")
+        -- There and back as two steps, each after a pause: BOUNCE flickered where it turned round.
+        local there, back = slide:CreateAnimation("Translation"), slide:CreateAnimation("Translation")
+        there:SetOrder(1)
+        back:SetOrder(2)
+        for _, move in ipairs({ there, back }) do
+            move:SetStartDelay(1.5)
+            move:SetSmoothing("IN_OUT")
+        end
         local name = { box = box, text = text }
         function name.Fit(value, maxWidth)
             maxWidth = math.max(1, maxWidth) -- crowded fixed stops leave no room; a width of 0 would mean unlimited
@@ -125,12 +128,18 @@ ns.RegisterModule("flightTimer", function(module)
             text:SetWidth(0)
             text:SetText(value)
             local full = text:GetStringWidth() or 0
-            local overflow, scroll = full - maxWidth, Get("flightTimerScrollNames")
-            if overflow > 0 and not scroll then text:SetWidth(maxWidth) end
+            local overflow = full - maxWidth
+            local slides = overflow > 0 and Get("flightTimerScrollNames") == true
+            if overflow > 0 and not slides then text:SetWidth(maxWidth) end
             box:SetWidth(math.min(full, maxWidth))
-            if overflow > 0 and scroll then
-                move:SetOffset(side == "LEFT" and -overflow or overflow, 0)
-                move:SetDuration(overflow / 20)
+            -- Clipping only where a name slides: boxes nested in the stop strip's clip drew nothing.
+            box:SetClipsChildren(slides)
+            if slides then
+                local offset = side == "LEFT" and -overflow or overflow
+                there:SetOffset(offset, 0)
+                back:SetOffset(-offset, 0)
+                there:SetDuration(overflow / 20)
+                back:SetDuration(overflow / 20)
                 slide:Play()
             end
         end
@@ -149,9 +158,7 @@ ns.RegisterModule("flightTimer", function(module)
         mark.arrow:SetRotation(math.pi)
         mark.arrow:SetSize(ARROW_HEIGHT * 2, ARROW_HEIGHT * 2)
         mark.arrow:SetPoint("BOTTOM", mark.icon, "TOP", 0, -ARROW_HEIGHT / 2)
-        -- Unsnapped, the strip glides instead of stepping a pixel at a time.
-        mark.icon:SetSnapToPixelGrid(false)
-        mark.arrow:SetSnapToPixelGrid(false)
+        -- Left snapped like the name: text always snaps, so an unsnapped icon drifted 1px against it.
         return mark
     end
 
@@ -245,8 +252,9 @@ ns.RegisterModule("flightTimer", function(module)
     local stops = {} -- stops[k] is the stop at points[k + 1]
     local barHeight = BAR_HEIGHT -- of the current style
     local fade -- set by ApplyStyle, see over's OnUpdate
-    -- Set by LayoutRoute: stops fixed or scrolling, px per second of flight and px per yard.
-    local fixed, pps, ppy
+    -- Set by LayoutRoute: stops fixed or scrolling, scrolling past the centre post or the spark, px per
+    -- second of flight and px per yard.
+    local fixed, byPost, pps, ppy
 
     -- Puts the stop strip where elapsed has it and glides it on to arrival in one translation, which
     -- the client runs: smooth, and no Lua per frame. Fixed stops keep the strip at the bar's start.
@@ -257,7 +265,7 @@ ns.RegisterModule("flightTimer", function(module)
             strip:SetPoint("CENTER", content, "LEFT")
             return
         end
-        strip:SetPoint("CENTER", content, "CENTER", -elapsed * pps, 0)
+        strip:SetPoint("CENTER", content, byPost and "CENTER" or "LEFT", -elapsed * pps, 0)
         local left = flight.eta - elapsed
         if left > 0 then
             move:SetDuration(left)
@@ -268,18 +276,16 @@ ns.RegisterModule("flightTimer", function(module)
     -- A flight running past its ETA keeps the strip where the glide left it.
     glide:SetScript("OnFinished", function() if flight then PlaceStrip(flight.eta) end end)
 
-    -- Dims each stop as it crosses the spark. Fixed, that is when it is reached; scrolling, the stop
-    -- (pps * (reached - t) from the centre) meets the spark (width * t / eta - width / 2) earlier or
-    -- later. A relayout drops the timers of the one before.
+    -- Dims each stop when it is reached: under the spark, or crossing the centre post. A relayout
+    -- drops the timers of the one before.
     local dimming = 0
     local function DimStops(elapsed)
         dimming = dimming + 1
         local generation = dimming
-        local eta, lookahead = flight.eta, LOOKAHEAD * (flight.scale or 1)
+        local eta = flight.eta
         for k = 1, #flight.points - 2 do
             local reached = flight.points[k + 1].yards / flight.yards * eta
-            local crossed = fixed and reached or eta * (reached + lookahead) / (eta + 2 * lookahead)
-            local mark, at = stops[k], crossed - elapsed
+            local mark, at = stops[k], reached - elapsed
             if at <= 0 then
                 SetMarkAlpha(mark, DIMMED)
             else
@@ -321,11 +327,14 @@ ns.RegisterModule("flightTimer", function(module)
         local arrows = Get("flightTimerStopArrows")
         clip:SetShown(scroll)
         fixed = Get("flightTimerStops") == "fixed"
+        byPost = Get("flightTimerShowPost")
         if scroll then
             -- px per yard: fixed spreads the route over the bar, scrolling moves per second of flight
             -- (scaled with the clock for a fast-forward preview).
             pps = Width() / 2 / (LOOKAHEAD * (flight.scale or 1))
-            ppy = fixed and Width() / flight.yards or flight.eta * pps / flight.yards
+            -- Past the spark, a stop's spot on the bar (its share of the width) comes on top of what it
+            -- scrolls, so it meets the spark when reached.
+            ppy = (fixed and Width() or byPost and flight.eta * pps or Width() + flight.eta * pps) / flight.yards
         end
         for k = 1, math.max(n - 2, #stops) do
             local y = scroll and k <= n - 2 and points[k + 1].yards
@@ -355,7 +364,7 @@ ns.RegisterModule("flightTimer", function(module)
             PlaceStrip(elapsed)
             DimStops(elapsed)
         end
-        post:SetShown(scroll and not fixed and Get("flightTimerShowPost"))
+        post:SetShown(scroll and not fixed and byPost)
     end
 
     -- Eases a region toward an alpha; settled ones cost nothing.

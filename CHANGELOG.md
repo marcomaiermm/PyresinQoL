@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.2.0
 
 ### Added
 - **Flight Timer** (Misc): shows the remaining flight time on a route bar with your portrait, the start, the destination and the stops on the way
@@ -23,6 +23,7 @@
 
 ### Fixed
 - **Languages**: corrected the Spanish and Portuguese help text for the player frame text position and class color options
+
 ## 0.1.9
 
 ### Added
