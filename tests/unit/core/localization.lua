@@ -21,8 +21,8 @@ end
 local function Compare(english, translated, path, partial)
     for key, value in pairs(english) do
         local text = rawget(translated, key)
-        assert(partial or type(text) == "string", path .. key .. ": missing")
-        if text then assert(Placeholders(text) == Placeholders(value), path .. key .. ": placeholders differ") end
+        assert(type(text) == "string" or partial and text == nil, path .. key .. ": missing")
+        if text ~= nil then assert(Placeholders(text) == Placeholders(value), path .. key .. ": placeholders differ") end
     end
     for key in pairs(translated) do assert(english[key] ~= nil, path .. key .. ": unknown key") end
 end
