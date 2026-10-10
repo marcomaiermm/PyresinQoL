@@ -26,6 +26,11 @@ local function NativeAtlas(name)
     end
 end
 C_Texture = { GetAtlasInfo = NativeAtlas }
+TRADE_SKILLS, HEADER_COLON = "Professions", ":"
+C_TradeSkillUI = {
+    GetProfessionSkillLineID = function(profession) return profession + 170 end,
+    GetTradeSkillDisplayName = function(skillLine) return ({ [171] = "Alchemy", [173] = "Cooking" })[skillLine] end,
+}
 function GetCVar() return "0" end
 function UnitShouldDisplaySpellTargetName() return false end
 C_Secrets = { ShouldUnitSpellCastingBeSecret = function() return false end }

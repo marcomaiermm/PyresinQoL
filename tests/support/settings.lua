@@ -21,6 +21,7 @@ function GetLocale() return variant == "de" and "deDE" or "enUS" end
 function UnitGUID() return nil end
 function UnitName() return "Test character" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
+assert(loadfile("Core/Locales/deDE.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Modules.lua"))("PyresinQoL", ns)
 ns.GetModule("performance").UpdatePerformanceLayout = function() updates.performance = updates.performance + 1 end
 ns.GetModule("dungeonMaps").UpdateDungeonMaps = function() updates.dungeonMap = updates.dungeonMap + 1 end

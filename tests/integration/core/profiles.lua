@@ -16,7 +16,7 @@ function CopyTable(value)
 end
 local function Namespace()
     local ns = {}
-    for _, path in ipairs({ "Core/Localization.lua", "Core/Profiles.lua", "Core/Database.lua", "Core/Modules.lua", "Modules/CastBar/Config.lua" }) do
+    for _, path in ipairs({ "Core/Localization.lua", "Core/Locales/deDE.lua", "Core/Profiles.lua", "Core/Database.lua", "Core/Modules.lua", "Modules/CastBar/Config.lua" }) do
         assert(loadfile(path))("PyresinQoL", ns)
     end
     return ns
