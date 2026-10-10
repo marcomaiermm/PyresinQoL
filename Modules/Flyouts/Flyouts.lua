@@ -255,7 +255,11 @@ ns.RegisterModule("flyouts", function()
             local old = Entry(i, j)
             SetEntry(i, j, entry)
             ClearCursor()
-            if old then TYPES[old.type].Pickup(old.id) end
+            -- The old one goes to the cursor; if it cannot (a mount the journal's filters hide), it stays.
+            if old then
+                TYPES[old.type].Pickup(old.id)
+                if not GetCursorInfo() then SetEntry(i, j, old) end
+            end
             Layout()
             return true
         end)
@@ -266,7 +270,7 @@ ns.RegisterModule("flyouts", function()
     local function EditFlyout(i)
         module.OpenFlyoutEditor(Name(i), Menu(i).icon, function(name, icon)
             local list = List(i)
-            list.name = name ~= DefaultName(i) and name or nil
+            list.name = name:match("%S") and name ~= DefaultName(i) and name or nil
             list.icon = icon
             Refresh()
         end)

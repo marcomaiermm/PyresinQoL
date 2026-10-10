@@ -47,7 +47,7 @@ UI.Flow("flyout bar lays out like an action bar and opens one menu at a time", {
         assertEquals(1, first:GetAlpha(), "Closing the menu brings it back")
 
         -- A right-click edits the menu's name and icon instead of opening it.
-        saved.list = PyresinQoLFlyouts[1]
+        saved.menu = PyresinQoLFlyouts[1]
         PyresinQoLFlyouts[1] = nil
         securecallfunction(first.Click, first, "RightButton")
         local picker = assert(PyresinQoLFlyoutIconPicker, "A right-click opens the icon picker")
@@ -59,7 +59,11 @@ UI.Flow("flyout bar lays out like an action bar and opens one menu at a time", {
         assertFalse(picker:IsShown())
         assertEquals(136243, first.icon:GetTexture(), "The chosen icon replaces the first entry's")
         assertEquals("Portals", PyresinQoLFlyouts[1].name)
-        PyresinQoLFlyouts[1] = saved.list
+        securecallfunction(first.Click, first, "RightButton")
+        picker.BorderBox.IconSelectorEditBox:SetText("  ")
+        picker:OkayButton_OnClick()
+        assertEquals(nil, PyresinQoLFlyouts[1].name, "A blank name falls back to the default")
+        PyresinQoLFlyouts[1] = saved.menu
 
         ActionButtonUtil.SetAllQuickKeybindButtonHighlights(true)
         assertTrue(first.QuickKeybindHighlightTexture:IsShown(), "Quick Keybind Mode highlights the buttons")
@@ -82,7 +86,8 @@ UI.Flow("flyout bar lays out like an action bar and opens one menu at a time", {
         Click(first)
     end,
 }, function()
-    for key, value in pairs(saved) do Setting(key):SetValue(value) end
+    PyresinQoLFlyouts[1] = saved.menu
+    for _, key in ipairs(keys) do Setting(key):SetValue(saved[key]) end
 end)
 
 UI.Flow("a click with something on the cursor drops it instead of acting", {
