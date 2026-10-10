@@ -186,7 +186,9 @@ ns.RegisterModule("flightTimer", function(module)
             end
             pending = nil
         elseif event == "PLAYER_CONTROL_GAINED" then
-            if flight and not flight.preview and not UnitOnTaxi("player") then Land() end
+            -- UnitOnTaxi is still true at this event, so it cannot tell a landing from a stray one;
+            -- control only returns mid-flight right after takeoff.
+            if flight and not flight.preview and GetTime() - flight.start > 2 then Land() end
         end
     end)
 end)

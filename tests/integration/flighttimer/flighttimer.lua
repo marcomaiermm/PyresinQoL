@@ -144,8 +144,8 @@ local function Takeoff()
 end
 local function Land(after)
     now = now + after
+    Event("PLAYER_CONTROL_GAINED") -- the client still reports the taxi at this event
     onTaxi = false
-    Event("PLAYER_CONTROL_GAINED")
 end
 local function Approx(actual, expected) assert(math.abs(actual - expected) < 1e-6, actual .. " ~= " .. expected) end
 
