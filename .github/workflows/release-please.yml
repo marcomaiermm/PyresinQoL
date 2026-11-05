@@ -1,0 +1,33 @@
+name: Release Please
+
+# Keeps a release PR open with the next version and changelog from the Conventional Commits on main.
+# Merging it tags the commit, creates the GitHub release and starts Release on that tag: the
+# packager skips a branch push whose HEAD is already tagged, and a tag pushed with this token
+# would start no workflow.
+on:
+  push:
+    branches: [main]
+
+permissions: {}
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+      - if: steps.rp.outputs.release_created
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
+        run: gh workflow run release.yml --ref "$TAG"

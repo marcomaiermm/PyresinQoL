@@ -1,8 +1,8 @@
 name: Release
 
+# Started by Release Please on the tag it created, after the GitHub release exists.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,6 +19,7 @@ jobs:
 
   publish:
     needs: checks
+    if: github.ref_type == 'tag'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
@@ -46,9 +47,10 @@ jobs:
           [[ -n "$CF_API_KEY" ]] || { echo 'Missing CF_API_KEY'; exit 1; }
           version=$(bash tools/check-package.sh --tag "$RELEASE_TAG")
           bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$version.zip"
-          gh api "repos/$GH_REPO/releases" --paginate --jq '.[].tag_name' > "$RUNNER_TEMP/release-tags"
-          if grep -Fxq "$RELEASE_TAG" "$RUNNER_TEMP/release-tags"; then
-            echo 'Release already exists; refusing to overwrite it.'
+          # Release Please created the release; a ZIP on it means this tag was already published.
+          assets=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')
+          if [[ "$assets" != 0 ]]; then
+            echo 'Release already has its package; refusing to publish again.'
             exit 1
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
@@ -63,10 +65,10 @@ jobs:
           pandoc: 'false'
         env:
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
-      - name: Publish GitHub release
+      - name: Attach package to GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.package.outputs.version }}
         run: |
           bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$VERSION.zip"
-          gh release create "$RELEASE_TAG" "dist/PyresinQoL-$VERSION.zip" --verify-tag --generate-notes
+          gh release upload "$RELEASE_TAG" "dist/PyresinQoL-$VERSION.zip"

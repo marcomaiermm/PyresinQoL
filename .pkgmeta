@@ -19,3 +19,5 @@ ignore:
   - tests
   - tools
   - README.md
+  - release-please-config.json
+  - version.txt
