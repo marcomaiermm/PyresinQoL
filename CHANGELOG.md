@@ -1,6 +1,6 @@
 # PyresinQoL Changelog
 
-## Unreleased
+## 0.3.0
 
 ### Added
 - **Resource Bars** (Unit Frames): separate bars for your health, power and combo points
