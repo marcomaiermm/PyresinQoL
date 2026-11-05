@@ -20,6 +20,7 @@ end
 function GetLocale() return variant == "de" and "deDE" or "enUS" end
 function UnitGUID() return nil end
 function UnitName() return "Test character" end
+function UnitClass() return "Mage", "MAGE" end
 assert(loadfile("Core/Localization.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Locales/deDE.lua"))("PyresinQoL", ns)
 assert(loadfile("Core/Modules.lua"))("PyresinQoL", ns)
@@ -101,6 +102,8 @@ local function Widget(kind)
     function widget:SetAtlas(atlas, useAtlasSize) self.atlas, self.useAtlasSize = atlas, useAtlasSize end
     function widget:SetRotation(value) self.rotation = value end
     function widget:SetHighlightTexture() end
+    function widget:SetScrollChild(child) self.scrollChild = child end
+    function widget:SetHideIfUnscrollable(value) self.hideIfUnscrollable = value end
     function widget:DisableDrawLayer() end
     function widget:IsObjectType(value) return self.kind == value end
     function widget:CreateTexture() return Widget("Texture") end
@@ -155,7 +158,13 @@ local function Initializer(name, kind, setting, tooltip)
     function initializer:AddModifyPredicate(predicate) self.modifyPredicate = predicate end
     function initializer:AddShownPredicate(predicate) self.predicate = predicate end
     function initializer:ShouldShow() return not self.predicate or self.predicate() end
+    -- Blizzard searches its own panel's open layout, which fails with an addon canvas category open there.
+    function initializer:IsParentInitializerInLayout()
+        if self.parentInitializer then error("attempt to call a nil value (EnumerateInitializers)") end
+        return false
+    end
     function initializer:InitFrame(frame)
+        self:IsParentInitializerInLayout() -- as the native control templates' Init does
         if kind == "section" then
             frame.Button = Widget(); frame.Button.Text = Widget()
         else
@@ -268,7 +277,10 @@ Settings = {
         return container
     end,
     CreateDropdownInitializer = function(setting, options, tooltip)
-        local count = (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
+        local bar, option = setting.key:match("^(%a+)Bar(%u%a+)$")
+        local resourceBarChoices = ({ health = true, power = true, comboPoints = true })[bar]
+            and ({ Visibility = 5, Fill = 4, Texture = 2, Color = 3, Border = 3, TextFormat = 4, TextAlign = 3 })[option]
+        local count = resourceBarChoices or (setting.key == "tooltipAnchor" or setting.key == "tooltipCursorAnchor") and 3
             or setting.key:match("TimerPosition$") and 5
             or setting.key == "flightTimerMarker" and 5
             or (setting.key == "flightTimerStyle" or setting.key == "flightTimerFlags" or setting.key == "flightTimerOverlap") and 4
@@ -297,6 +309,7 @@ Settings = {
             or (minimum == 100 and maximum == 600 and step == 1)
             or (minimum == 50 and maximum == 200 and step == 10)
             or (minimum == 2 and maximum == 10 and step == 1)
+            or (step == 1 and (minimum == 20 and maximum == 600 or minimum == 2 and maximum == 60 or minimum == 6 and maximum == 24))
             or (minimum == -2500 and maximum == 2500 and step == 1)
             or (minimum == 0 and maximum == 1 and step == 0.01))
         return { SetLabelFormatter = function(_, label, formatter)
@@ -335,6 +348,7 @@ GameTooltip = {
     IsOwned = function(self, owner) return self.owner == owner end,
 }
 function GameTooltip_AddErrorLine(tooltip, text) tooltip.error = text end
+ScrollUtil = { InitScrollFrameWithScrollBar = function(scroll, bar) scroll.scrollBar = bar end }
 function CreateFrame(kind, name, parent, template)
     if template == "GameMenuFrameButtonTemplate" then
         assert(parent == UIParent, "The shortcut must stay outside Blizzard's layout and controller navigation")
@@ -521,6 +535,13 @@ assert(loadfile("Core/Bootstrap.lua"))("PyresinQoL", ns)
 h.events.callback(h.events, "ADDON_LOADED", "OtherAddon")
 GameMenuFrame.shown = false
 h.events.callback(h.events, "ADDON_LOADED", "PyresinQoL")
+assert(not h.canvas, "The window waits for the addons listed under PyresinQoL")
+-- The resource bar addon, enabled in the AddOns list, loads after PyresinQoL; its bars start at login.
+for _, file in ipairs({ "Module.lua", "Options.lua", "Settings.lua" }) do
+    assert(loadfile("PyresinQoL_ResourceBar/" .. file))("PyresinQoL_ResourceBar", {})
+end
+C_Timer = C_Timer or { After = function() end } -- the layout sync after login is profiles.lua's
+h.events.callback(h.events, "PLAYER_LOGIN")
 assert(settingsRegistrant, "Native settings registration remains deferred")
 settingsRegistrant()
 function h.NavigationButton(name)

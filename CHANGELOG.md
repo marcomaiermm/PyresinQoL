@@ -1,5 +1,17 @@
 # PyresinQoL Changelog
 
+## Unreleased
+
+### Added
+- **Resource Bars** (Unit Frames): separate bars for your health, power and combo points
+- Off by default; turn on **PyresinQoL Resource Bars** in the AddOns list, its options are under `/pqol`
+- Show each bar always, in combat, with a target or never, and hide it while mounted
+- Blizzard's bar art or a flat look; mana in your class color or a color of your own
+- Warlocks: preview the mana your Life Tap restores
+- Hides Blizzard's personal resource display under your character; you can keep it, and it comes back when you turn the option or the addon off
+- Move the bars in Edit Mode; click one there for all its options, in sections you can fold
+- Replaces the Pyresin Class Resource Bar addon: disable it to avoid two sets of bars. Its settings are not carried over
+
 ## 0.2.0
 
 ### Added

@@ -38,7 +38,7 @@ ns.RegisterModuleSettings("flightTimer", function(module, context)
         local parent = built[option.parent]
         if parent then
             initializer:SetParentInitializer(parent.initializer, function()
-                return module.FlightTimerOptionEnabled(option, function() return parent.setting:GetValue() end)
+                return ns.IsOptionEnabled(option, function() return parent.setting:GetValue() end)
             end)
         end
         AddControl(main, initializer)

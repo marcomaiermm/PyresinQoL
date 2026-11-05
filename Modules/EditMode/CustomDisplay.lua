@@ -193,8 +193,9 @@ end
 -- The options dialog of a custom display, built like Blizzard's system settings dialog and opened on
 -- selecting it; it goes with the mover on leaving Edit Mode and in combat. It writes through each option's
 -- registered setting (option.setting), so the settings page follows. info: name, options (see
--- FlightTimer/Options.lua), Get(key), Format(option, value) for slider values, and IsEnabled(option) for
--- options with a parent. Returns Open; the dialog is display.Dialog once built.
+-- FlightTimer/Options.lua; color = true makes a color swatch for an "AARRGGBB" value, and a section label
+-- starts a section the player can fold), Get(key), Format(option, value) for slider values, and
+-- IsEnabled(option) for options with a parent. Returns Open; the dialog is display.Dialog once built.
 function ns.CreateEditModeOptionsDialog(display, info)
     local name, Get, dialog = info.name, info.Get
 
@@ -240,9 +241,27 @@ function ns.CreateEditModeOptionsDialog(display, info)
             if display.Selection:IsShown() then display.Selection:ShowHighlighted() end
         end)
 
-        local rows, y = {}, -44
+        -- Entries in order: rows and the headers of named sections, which fold their rows away.
+        local rows, entries, section = {}, {}, nil
         for _, option in ipairs(info.options) do
-            if option.section then y = y - 10 end
+            if type(option.section) == "string" then
+                local header = CreateFrame("Button", nil, dialog)
+                header:SetSize(330, 24)
+                header.label = header:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+                header.label:SetPoint("LEFT")
+                header.label:SetText(option.section)
+                header.arrow = header:CreateTexture(nil, "ARTWORK")
+                header.arrow:SetSize(14, 14)
+                header.arrow:SetPoint("LEFT", header.label, "RIGHT", 6, 0)
+                header:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+                local folds = { collapsed = #entries > 0 } -- the first section starts open
+                section = folds
+                header:SetScript("OnClick", function()
+                    folds.collapsed = not folds.collapsed
+                    dialog:Layout()
+                end)
+                entries[#entries + 1] = { frame = header, height = 28, gap = #entries > 0 and 6 or 0, folds = folds }
+            end
             local row
             if option.choices then
                 row = Row(option)
@@ -277,19 +296,57 @@ function ns.CreateEditModeOptionsDialog(display, info)
                     slider:FormatValue(Get(option.key)) -- a new scale changes the width's text alone
                     row.refreshing = false
                 end
+            elseif option.color then
+                -- Saved as "AARRGGBB"; Blizzard's color picker edits it, Cancel restores it.
+                row = Row(option)
+                local swatch = CreateFrame("Button", nil, row, "ColorSwatchTemplate")
+                swatch:SetPoint("LEFT", row.Label, "RIGHT", 9, 0)
+                local function Hex(r, g, b, a)
+                    return ("%02X%02X%02X%02X"):format(a * 255 + 0.5, r * 255 + 0.5, g * 255 + 0.5, b * 255 + 0.5)
+                end
+                swatch:SetScript("OnClick", function()
+                    local previous = Get(option.key)
+                    local r, g, b, a = CreateColorFromHexString(previous):GetRGBA()
+                    local function Apply()
+                        local newR, newG, newB = ColorPickerFrame:GetColorRGB()
+                        SetOption(option, Hex(newR, newG, newB, ColorPickerFrame:GetColorAlpha()))
+                    end
+                    ColorPickerFrame:SetupColorPickerAndShow({ r = r, g = g, b = b, opacity = a, hasOpacity = true,
+                        swatchFunc = Apply, opacityFunc = Apply,
+                        cancelFunc = function() SetOption(option, previous) end })
+                end)
+                row.Refresh = function() swatch:SetColorRGB(CreateColorFromHexString(Get(option.key)):GetRGB()) end
+                row.SetEnabled = function(_, enabled) swatch:SetEnabled(enabled) end
             else
                 row = Row(option, "EditModeSettingCheckboxTemplate")
                 row.OnCheckButtonClick = function() SetOption(option, not Get(option.key)) end
                 row.Refresh = function() row.Button:SetChecked(Get(option.key)) end
                 row.SetEnabled = function(_, enabled) row.Button:SetEnabled(enabled) end
             end
-            row:SetPoint("TOPLEFT", 20, y)
-            row:Show()
             row.option = option
             rows[#rows + 1] = row
-            y = y - 34
+            entries[#entries + 1] = { frame = row, height = 34, section = section,
+                gap = option.section == true and 10 or 0 }
         end
-        dialog:SetSize(370, 20 - y)
+        function dialog:Layout()
+            local y = -44
+            for _, entry in ipairs(entries) do
+                local shown = not (entry.section and entry.section.collapsed)
+                entry.frame:SetShown(shown)
+                if entry.folds then
+                    entry.frame.arrow:SetAtlas(entry.folds.collapsed and "common-button-dropdown-closed"
+                        or "common-button-dropdown-open")
+                end
+                if shown then
+                    y = y - entry.gap
+                    entry.frame:ClearAllPoints()
+                    entry.frame:SetPoint("TOPLEFT", 20, y)
+                    y = y - entry.height
+                end
+            end
+            self:SetSize(370, 20 - y)
+        end
+        dialog:Layout()
         function dialog:Refresh()
             for _, row in ipairs(rows) do
                 row.Refresh()

@@ -53,6 +53,8 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           unzip -q "dist/PyresinQoL-$version.zip" -d dist
+          # Back where .pkgmeta's move-folders finds it; otherwise the repack drops the second addon.
+          mv dist/PyresinQoL_ResourceBar dist/PyresinQoL/
       - name: Publish validated package to CurseForge
         uses: BigWigsMods/packager@e50a250f8705041e40f2fa1ddcb280a686d65aa0 # v2.6.1
         with:

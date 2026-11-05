@@ -51,4 +51,15 @@ PyresinQoLDB = {}
 ns.InitializeModules()
 assert(table.concat(calls, ",") == "gameMenu,editMode,performance,dungeonMaps,experience,unitFrames,targetDebuffs,tooltips,actionBars")
 assert(PyresinQoLDB.modules.quests == false, "Quests are opt-in")
-print("PASS: module startup/reload table, registration guards and initializer ordering")
+
+-- A module in an addon listed under PyresinQoL: added after startup, on while that addon is loaded.
+local started = #calls
+assert(PyresinQoL == ns, "Listed addons reach the namespace through the PyresinQoL global")
+local addonModule = ns.AddAddonModule({ id = "addonFeature", group = "misc", name = "Addon feature" })
+assert(ns.GetModule("addonFeature") == addonModule and addonModule.pages[1].id == "main")
+ns.RegisterModule("addonFeature", function() calls[#calls + 1] = "addonFeature" end)
+PyresinQoLDB.modules.addonFeature = false -- left by an older profile
+ns.InitializeAddonModules() -- at PLAYER_LOGIN
+assert(#calls == started + 1 and calls[#calls] == "addonFeature", "Only the new module starts")
+assert(PyresinQoLDB.modules.addonFeature and not ns.ModulesNeedReload())
+print("PASS: module startup/reload table, registration guards, initializer ordering and addon modules")

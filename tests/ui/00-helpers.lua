@@ -29,8 +29,21 @@ local function SettingsParts()
     return canvas, assert(sidebar, "Missing navigation"), assert(list, "Missing settings list")
 end
 
+-- The sidebar's buttons: Profiles at its bottom, the group headers and pages in its scrolling list.
+local function NavigationButtons(sidebar)
+    local buttons = {}
+    local function Add(frame)
+        for _, child in ipairs({ frame:GetChildren() }) do
+            if child:IsObjectType("ScrollFrame") then Add(child:GetScrollChild())
+            elseif child:IsObjectType("Button") then buttons[#buttons + 1] = child end
+        end
+    end
+    Add(sidebar)
+    return buttons
+end
+
 local function PageButton(sidebar, name)
-    for _, button in ipairs({ sidebar:GetChildren() }) do
+    for _, button in ipairs(NavigationButtons(sidebar)) do
         if button.selected and button.text:GetText() == name then return button end
     end
     error("Missing page: " .. name)
@@ -123,6 +136,7 @@ end
 PyresinQoLUITest = {
     SettingsParts = SettingsParts,
     PageButton = PageButton,
+    NavigationButtons = NavigationButtons,
     PhysicalRect = PhysicalRect,
     AssertInside = AssertInside,
     Flow = UIFlow,

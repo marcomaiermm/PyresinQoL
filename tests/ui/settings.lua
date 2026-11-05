@@ -18,7 +18,7 @@ local pages = {
 }
 
 local UI = PyresinQoLUITest
-local SettingsParts, PageButton = UI.SettingsParts, UI.PageButton
+local SettingsParts, PageButton, NavigationButtons = UI.SettingsParts, UI.PageButton, UI.NavigationButtons
 local PhysicalRect, AssertInside, UIFlow = UI.PhysicalRect, UI.AssertInside, UI.Flow
 
 local function AssertSettingsLayout(canvas, sidebar, list)
@@ -43,8 +43,8 @@ local function AssertSettingsLayout(canvas, sidebar, list)
     if list.Header.DefaultsButton:IsVisible() then
         AssertInside(list.Header.DefaultsButton, list.Header, "Defaults button")
     end
-    for _, button in ipairs({ sidebar:GetChildren() }) do
-        if button:IsObjectType("Button") and button:IsVisible() then
+    for _, button in ipairs(NavigationButtons(sidebar)) do
+        if button:IsVisible() then
             AssertInside(button, sidebar, "Navigation button")
             if button.Background then
                 local atlas = C_Texture.GetAtlasInfo(button.Background:GetAtlas())
@@ -109,7 +109,7 @@ test("loads Forever and initializes all settings pages", function()
     PageButton(sidebar, "Profiles")
     PageButton(sidebar, "Flyout Bar") -- sliders and a dropdown only; flyouts.lua drives them
     local count = 0
-    for _, button in ipairs({ sidebar:GetChildren() }) do
+    for _, button in ipairs(NavigationButtons(sidebar)) do
         if button.selected then count = count + 1 end
     end
     assertEquals(#pages + 2, count)

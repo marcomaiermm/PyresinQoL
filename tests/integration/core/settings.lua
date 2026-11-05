@@ -15,16 +15,18 @@ if arg[1] == "modules-disabled" then
     for _, module in ipairs(ns.modules) do
         local button = NavigationButton(module.pages[1].name)
         button.scripts.OnClick()
-        assert(button.text.color[1] == 0.5)
+        -- A module of an addon listed under PyresinQoL stays on: the AddOns list switches it.
+        local on = module.addon == true
+        assert((button.text.color[1] == 0.5) ~= on)
         local controls = 0
         for _, initializer in ipairs(h.settingsList.initializers) do
             if initializer.modifyPredicate then
                 controls = controls + 1
-                assert(not initializer.modifyPredicate())
+                assert(initializer.modifyPredicate() == on)
             end
         end
         assert(controls > 0)
-        assert(not h.settingsList.Header.DefaultsButton.enabled)
+        assert(h.settingsList.Header.DefaultsButton.enabled == on)
     end
     NavigationButton(ns.L.profiles).scripts.OnClick()
     assert(h.profilePanel.shown and not h.settingsList.Header.DefaultsButton.shown
@@ -37,7 +39,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not h.events.registered.ADDON_LOADED)
-assert(h.canvas and #h.navigation == 17 and #h.sections == 0)
+assert(h.canvas and #h.navigation == 20 and #h.sections == 0)
 assert(#ns.GetModule("actionBars").pages == 1,
     "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
@@ -53,6 +55,25 @@ h.navigation[1].scripts.OnClick()
 assert(not h.profilePanel.shown and h.settingsList.Header.DefaultsButton.shown)
 assert(h.navigation[2].text.value == ns.L.gameMenu and h.navigation[3].text.value == ns.L.editMode and h.navigation[4].text.value == ns.L.performance)
 assert(not h.canvas.shown and h.canvas.width == 920 and h.canvas.height == 724)
+-- The resource bar addon's pages fold under one entry: closed at first, opening on its first page.
+local menuButton, healthButton = NavigationButton(ns.L.resourceBar), NavigationButton(ns.L.healthBar)
+local pageList = menuButton.parent
+assert(h.navigation[17] == menuButton and menuButton.shown and not healthButton.shown)
+assert(pageList.parent.scrollChild == pageList and pageList.parent.scrollBar.hideIfUnscrollable and NavigationButton(ns.L.profiles).parent ~= pageList,
+    "Pages scroll above Profiles, which stays at the bottom")
+local closedHeight = pageList.height
+menuButton.scripts.OnClick()
+assert(healthButton.shown and menuButton.arrow.atlas == "common-button-dropdown-open"
+    and h.settingsList.Header.Title.value == ns.L.healthBar)
+assert(healthButton.text.points[1][2] == 52 and healthButton.points[1][3] == menuButton.points[1][3] - 22)
+assert(pageList.height == closedHeight + 2 * 22, "The scroll range grows with the open sub menu")
+assert(not pcall(NavigationButton, ns.L.comboPointsBar), "A mage has no combo point page")
+menuButton.scripts.OnClick()
+assert(not healthButton.shown and pageList.height == closedHeight)
+NavigationButton(ns.L.powerBar).scripts.OnClick()
+assert(healthButton.shown, "Choosing one of its pages, also from search, opens the sub menu")
+menuButton.scripts.OnClick()
+h.navigation[1].scripts.OnClick()
 assert(UISpecialFrames[1] == "PyresinQoLSettingsFrame" and h.canvas.clamped and h.canvas.movable)
 assert(SLASH_PQOL1 == "/pqol" and SLASH_PYRESINQOL1 == nil and SLASH_PYRESINQOL2 == nil)
 assert(h.canvas.NineSlice.Text.value == "PyresinQoL")
