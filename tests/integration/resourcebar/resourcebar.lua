@@ -28,7 +28,7 @@ local function Frame(kind, parent, template)
     function frame:SetMinMaxValues(minimum, maximum) self.minimum, self.maximum = minimum, maximum end
     function frame:SetValue(value) self.value = value end
     function frame:SetStatusBarTexture(texture) self.texture = texture end
-    function frame:SetStatusBarColor(r, g, b) self.color = { r, g, b } end
+    function frame:SetStatusBarColor(r, g, b, a) self.color = { r, g, b, a } end
     function frame:SetReverseFill(value) self.reverse = value end
     function frame:SetOrientation(value) self.orientation = value end
     function frame:GetStatusBarTexture()
@@ -208,6 +208,9 @@ assert(cell.texture == "Interface\\TargetingFrame\\UI-StatusBar" and cell.color[
 Set("powerBarColor", "custom")
 Set("powerBarCustomColor", "FF336699")
 assert(math.abs(cell.color[1] - 0.2) < 0.001 and math.abs(cell.color[3] - 0.6) < 0.001)
+assert(cell.color[4] == 1)
+Set("powerBarCustomColor", "80336699")
+assert(cell.color[4] == 128 / 255, "The custom color keeps its opacity")
 Set("powerBarColor", "default")
 assert(cell.texture == "UI-HUD-UnitFrame-Player-PortraitOn-Bar-Mana")
 Set("powerBarTexture", "flat")

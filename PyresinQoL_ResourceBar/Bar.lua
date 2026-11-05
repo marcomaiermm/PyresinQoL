@@ -36,8 +36,8 @@ function module.CreateResourceBarView(id)
         return cell
     end
 
-    -- Applies the options to count cells, filled with texture (a file or atlas) in r, g, b.
-    function view:Layout(count, texture, r, g, b)
+    -- Applies the options to count cells, filled with texture (a file or atlas) in r, g, b and opacity a.
+    function view:Layout(count, texture, r, g, b, a)
         local width, height = Get(id .. "Width"), Get(id .. "Height")
         frame:SetSize(width, height)
         local orientation, reverse = unpack(FILLS[Get(id .. "Fill")] or FILLS.right)
@@ -65,7 +65,7 @@ function module.CreateResourceBarView(id)
                 cell:SetReverseFill(reverse)
                 cell:SetRotatesTexture(vertical)
                 cell:SetStatusBarTexture(texture)
-                cell:SetStatusBarColor(r, g, b)
+                cell:SetStatusBarColor(r, g, b, a or 1)
                 cell.background:SetColorTexture(background:GetRGBA())
                 cell.border:SetShown(edge > 0)
                 if edge > 0 then

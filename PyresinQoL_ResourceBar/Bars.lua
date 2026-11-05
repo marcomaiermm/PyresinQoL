@@ -65,8 +65,8 @@ ns.RegisterModule("resourceBar", function()
             local r, g, b = GetClassColor(class)
             return { r = r, g = g, b = b }
         elseif mode == "custom" then
-            local r, g, b = CreateColorFromHexString(Get(id .. "CustomColor")):GetRGB()
-            return { r = r, g = g, b = b }
+            local r, g, b, a = CreateColorFromHexString(Get(id .. "CustomColor")):GetRGBA()
+            return { r = r, g = g, b = b, a = a }
         end
         return default
     end
@@ -222,7 +222,8 @@ ns.RegisterModule("resourceBar", function()
         bar.view.frame:SetShown(shown)
         if not shown then return end
         local count, color, texture, native = bar.Style()
-        bar.view:Layout(count, texture, native and 1 or color.r, native and 1 or color.g, native and 1 or color.b)
+        bar.view:Layout(count, texture, native and 1 or color.r, native and 1 or color.g, native and 1 or color.b,
+            color.a)
         UpdateValues(bar)
     end
 
