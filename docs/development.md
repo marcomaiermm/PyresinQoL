@@ -323,26 +323,28 @@ in-game checks below before releasing changes involving visuals, taint or combat
 GitHub Actions uses the BigWigs action directly, followed by the shell package audit.
 PRs and pushes to `main` run **Tests and package** and **Forever UI (Docker)**,
 and retain an installable ZIP.
-The same checks run on release tags. Actions and the local packager are pinned;
+The same checks run before each release. Actions and the local packager are pinned;
 update the packager revision in the local build script and both workflows together.
 
-1. Update `## Version:` in both TOCs (`PyresinQoL.toc` and
-   `PyresinQoL_ResourceBar/PyresinQoL_ResourceBar.toc`) to `X.Y.Z` and rename the `Unreleased` heading in
-   `CHANGELOG.md` to that version. Keep entries short, in English, and focused on
-   player-visible changes; list the newest version first. The full file is sent to
-   CurseForge. Commit and merge the change.
-2. Run `bash tools/package.sh vX.Y.Z` and complete the in-game checklist below.
-3. Tag that tested commit and push the tag:
+Releases follow [Release Please](https://github.com/googleapis/release-please), as in DiffHarbor:
 
-```sh
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
-git push origin vX.Y.Z
-```
+- PRs are squash-merged, so the PR title becomes the commit on `main`. **PR title**
+  requires a Conventional Commit (`feat(scope): …`, `fix: …`, `chore: …`).
+- `feat` and `fix` titles become the changelog that CurseForge shows: write them for
+  players, short and without technical details. `feat` bumps the minor version
+  (before 1.0), `fix` the patch; `docs`, `test`, `ci`, `chore` and `refactor` stay out.
+- Release Please keeps a release PR open with the next version in both TOCs (between
+  their `x-release-please` markers), `version.txt` and `CHANGELOG.md`. Edit nothing in
+  it by hand; to reword a merged entry, put the new message between
+  `BEGIN_COMMIT_OVERRIDE` and `END_COMMIT_OVERRIDE` in that merged PR's description,
+  and the next push to `main` updates the release PR.
+- Before merging the release PR, run `bash tools/package.sh vX.Y.Z` with its version and
+  complete the in-game checklist below. Bot PRs start no checks: merge it as an admin.
+- Merging it tags the commit and creates the GitHub release. Release Please then starts
+  **Release** on that tag: the same checks, then BigWigs repacks the validated ZIP,
+  uploads it to CurseForge and attaches it to the release. A release that already has its
+  ZIP is rejected.
 
-Tags must exactly match the TOC version; prerelease suffixes are not supported.
-After checks pass, the workflow extracts the validated ZIP, lets BigWigs repack
-that directory and upload it to CurseForge, then creates a GitHub release with
-the resulting ZIP and generated release notes. Existing GitHub releases are rejected.
 CurseForge moderation can delay public availability after an accepted upload.
 
 GitHub configuration: `CF_API_KEY` is a repository secret; `CF_PROJECT_ID` is a
@@ -353,7 +355,7 @@ GitHub releases. Wago is not configured.
 Uploads to two services are not atomic. If CurseForge succeeds but GitHub fails,
 do not rerun the whole publication job: inspect the existing CurseForge file,
 download the checked ZIP from the run artifact and finish GitHub with
-`gh release create vX.Y.Z PyresinQoL-X.Y.Z.zip --verify-tag --generate-notes`.
+`gh release upload vX.Y.Z PyresinQoL-X.Y.Z.zip`.
 Do not replace published assets or move release tags; fixes get a new version.
 
 Require the **Tests and package** and **Forever UI (Docker)** status checks on `main`.
