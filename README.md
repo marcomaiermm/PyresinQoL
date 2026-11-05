@@ -23,7 +23,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 ## Install
 
 1. Download the addon ZIP from [Releases](https://github.com/marcomaiermm/PyresinQoL/releases).
-2. Extract it and copy the `PyresinQoL` and `PyresinQoL_ResourceBar` folders into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+2. Extract it and copy the `PyresinQoL` and `PyresinQoL_ResourceBar` folders into `World of Warcraft/_forever_/Interface/AddOns/`.
 3. Restart WoW and enable **PyresinQoL** in the AddOns list.
 
 `PyresinQoL.toc` must sit directly inside the addon folder.

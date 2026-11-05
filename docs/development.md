@@ -7,7 +7,7 @@ GNU Stow. Create a Git-ignored `.stowrc` in the repository root:
 
 ```text
 --dir=..
---target="/path/to/World of Warcraft/_classic_beta_/Interface/AddOns/PyresinQoL"
+--target="/path/to/World of Warcraft/_forever_/Interface/AddOns/PyresinQoL"
 --ignore='^(\..*|docs|tests|tools|dist|README\.md|PyresinQoL_ResourceBar)$'
 ```
 
@@ -33,7 +33,7 @@ The resource bars are a second addon next to PyresinQoL, so Stow
 leaves `PyresinQoL_ResourceBar` out. Link that folder once, beside the addon:
 
 ```sh
-ln -s "$PWD/PyresinQoL_ResourceBar" "/path/to/World of Warcraft/_classic_beta_/Interface/AddOns/PyresinQoL_ResourceBar"
+ln -s "$PWD/PyresinQoL_ResourceBar" "/path/to/World of Warcraft/_forever_/Interface/AddOns/PyresinQoL_ResourceBar"
 ```
 
 ## Checks and packaging
@@ -301,7 +301,7 @@ Without local game assets, text and controls remain available but Blizzard art
 can be missing. Use `bash tools/ui.sh preview --debug-borders` to show frame and
 control bounds while inspecting layout. For asset-backed preview, point at a
 compatible Forever install root containing `Data/` and the launcher build/product
-metadata, or its `_classic_beta_` client folder:
+metadata, or its `_forever_` client folder:
 
 ```sh
 WOW_UI_WOW_PATH='/path/to/World of Warcraft' bash tools/ui.sh preview
