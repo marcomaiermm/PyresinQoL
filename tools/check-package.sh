@@ -13,10 +13,15 @@ while (( $# )); do
 done
 
 toc=PyresinQoL.toc
+# The resource bars ship as a second addon folder next to PyresinQoL.
+lod=PyresinQoL_ResourceBar
+lodToc=$lod/$lod.toc
 [[ -f "$toc" ]] || fail "Missing $toc"
 version=$(sed -n 's/^## Version: //p' "$toc" | tr -d '\r')
 [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || fail 'TOC must contain one Version: X.Y.Z'
 [[ -z "$tag" || "$tag" == "v$version" ]] || fail "Release tag must be v$version"
+[[ -d "$lod" && ! -L "$lod" && -f "$lodToc" ]] || fail "Missing or unsafe addon: $lod"
+[[ "$(sed -n 's/^## Version: //p' "$lodToc" | tr -d '\r')" == "$version" ]] || fail "$lodToc must have Version: $version"
 
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
@@ -26,18 +31,24 @@ done
 for directory in Core Settings Modules Media; do
     [[ -d "$directory" && ! -L "$directory" ]] || fail "Missing or unsafe directory: $directory"
 done
-[[ -z $(find Core Settings Modules Media -type l -print -quit) ]] || fail 'Runtime files must not be symlinks'
+[[ -z $(find Core Settings Modules Media "$lod" -type l -print -quit) ]] || fail 'Runtime files must not be symlinks'
 {
     printf '%s\n' "$toc" LICENSE Bindings.xml
     find Core Settings Modules Media -type f
 } | LC_ALL=C sort > "$temporary/files"
+find "$lod" -type f | LC_ALL=C sort > "$temporary/lod-files"
 
-while IFS= read -r line || [[ -n "$line" ]]; do
-    line=${line%$'\r'}
-    [[ -z "$line" || "$line" == \#* ]] && continue
-    line=${line//\\//}
-    grep -Fxq -- "$line" "$temporary/files" || fail "Missing or unpackaged TOC path: $line"
-done < "$toc"
+# Every path a TOC lists ($1), relative to its folder ($2), is one of its addon's files ($3).
+check_toc() {
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        line=${line%$'\r'}
+        [[ -z "$line" || "$line" == \#* ]] && continue
+        line=$2${line//\\//}
+        grep -Fxq -- "$line" "$3" || fail "Missing or unpackaged TOC path: $line"
+    done < "$1"
+}
+check_toc "$toc" '' "$temporary/files"
+check_toc "$lodToc" "$lod/" "$temporary/lod-files"
 
 if [[ -n "$archive" ]]; then
     unzip -tq "$archive" >/dev/null || fail 'Corrupt ZIP'
@@ -49,6 +60,9 @@ if [[ -n "$archive" ]]; then
         printf '%s\n' 'PyresinQoL/'
         sed 's|^|PyresinQoL/|' "$temporary/files"
         find Core Settings Modules Media -type d | sed 's|^|PyresinQoL/|; s|$|/|'
+        cat "$temporary/lod-files"
+        find "$lod" -type d | sed 's|$|/|'
+        printf '%s\n' "$lod/LICENSE" # the packager's license-output, in every addon folder
         if grep -Fxq 'PyresinQoL/CHANGELOG.md' "$temporary/entries"; then
             printf '%s\n' 'PyresinQoL/CHANGELOG.md'
         fi
@@ -58,5 +72,9 @@ if [[ -n "$archive" ]]; then
     while IFS= read -r path; do
         unzip -p "$archive" "PyresinQoL/$path" | cmp -s - "$path" || fail "ZIP differs from tested source: $path"
     done < "$temporary/files"
+    while IFS= read -r path; do
+        unzip -p "$archive" "$path" | cmp -s - "$path" || fail "ZIP differs from tested source: $path"
+    done < "$temporary/lod-files"
+    unzip -p "$archive" "$lod/LICENSE" | cmp -s - LICENSE || fail "ZIP differs from tested source: $lod/LICENSE"
 fi
 printf '%s\n' "$version"

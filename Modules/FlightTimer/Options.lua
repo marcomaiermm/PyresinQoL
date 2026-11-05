@@ -33,13 +33,6 @@ module.flightTimerOptions = {
     { key = "flightTimerScale", label = L.flightTimerScale, default = 100, min = 50, max = 200, step = 10, format = "%d%%" },
 }
 
--- Whether option's parent leaves it enabled, with get reading a saved value.
-function module.FlightTimerOptionEnabled(option, get)
-    local value = get(option.parent)
-    if option.parentValue then return value == option.parentValue end
-    return value ~= false and value ~= "off"
-end
-
 -- A slider's value text, also for the settings page of a disabled module; a scaled one reads what it
 -- measures on screen.
 function module.FormatFlightTimerOption(option, value)

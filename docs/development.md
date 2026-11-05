@@ -7,8 +7,8 @@ GNU Stow. Create a Git-ignored `.stowrc` in the repository root:
 
 ```text
 --dir=..
---target="/path/to/World of Warcraft/_classic_beta_/Interface/AddOns/PyresinQoL"
---ignore='^(\..*|docs|tests|tools|dist|README\.md)$'
+--target="/path/to/World of Warcraft/_forever_/Interface/AddOns/PyresinQoL"
+--ignore='^(\..*|docs|tests|tools|dist|README\.md|PyresinQoL_ResourceBar)$'
 ```
 
 Set `--target` to your local addon directory and create it before running Stow.
@@ -28,6 +28,13 @@ or removing top-level files. Restart WoW for newly installed addons or changed
 textures. Exclude this development installation from addon-manager updates:
 writes through its symlinks would modify the source checkout. To remove the
 links, run `stow --delete PyresinQoL`. Releases remain normal ZIPs.
+
+The resource bars are a second addon next to PyresinQoL, so Stow
+leaves `PyresinQoL_ResourceBar` out. Link that folder once, beside the addon:
+
+```sh
+ln -s "$PWD/PyresinQoL_ResourceBar" "/path/to/World of Warcraft/_forever_/Interface/AddOns/PyresinQoL_ResourceBar"
+```
 
 ## Checks and packaging
 
@@ -294,7 +301,7 @@ Without local game assets, text and controls remain available but Blizzard art
 can be missing. Use `bash tools/ui.sh preview --debug-borders` to show frame and
 control bounds while inspecting layout. For asset-backed preview, point at a
 compatible Forever install root containing `Data/` and the launcher build/product
-metadata, or its `_classic_beta_` client folder:
+metadata, or its `_forever_` client folder:
 
 ```sh
 WOW_UI_WOW_PATH='/path/to/World of Warcraft' bash tools/ui.sh preview
@@ -996,6 +1003,31 @@ hop missing from the data shows no timer. `Bar.lua` is the view, `FlightTimer.lu
 the flight state and events, `EditMode.lua` the preview and options dialog. The Edit
 Mode mover comes from `ns.CreateEditModeDisplay` in
 `Modules/EditMode/CustomDisplay.lua`, shared with FPS / MS.
+
+### Resource bars
+
+The health, power and combo point bars are their own addon, `PyresinQoL_ResourceBar`,
+listed under PyresinQoL in the AddOns list (`## Group`) and disabled by default
+(`## DefaultState`). Players switch it there, so a disabled addon loads none of its
+code. It reaches PyresinQoL's namespace through the `PyresinQoL` global and adds its
+module with `ns.AddAddonModule`: on while the addon is loaded, without a switch on the
+Modules page. Because such addons load after PyresinQoL's `ADDON_LOADED`, their modules
+start and the settings window is built at `PLAYER_LOGIN` (`ns.InitializeAddonModules`,
+`ns.InitializeSettings`). With `subMenu`, a module's pages fold under one sidebar entry
+with its name; the sidebar scrolls above Profiles once its entries no longer fit. The
+options, a page per bar and saved values live in `PyresinQoLDB`, so profiles include them. Pages and
+options for other classes (combo points, mana color, Life Tap) are hidden on a character,
+but keep their values for the profile's other characters. `Bar.lua` is the view,
+`Bars.lua` the values, visibility, Life Tap preview and Blizzard's personal resource
+display (`nameplateShowSelf`), `EditMode.lua` the movers and dialogs from
+`ns.CreateEditModeDisplay`. Values may be restricted; they only reach native status
+bars and `SetFormattedText`. Combo points use one native segment per point, as the
+nameplate combo points do. `.pkgmeta`'s `move-folders` ships the folder as a second
+top-level addon; the release workflow moves it back into the package folder before
+repacking, and `tools/check-package.sh` validates both folders. The addon started as
+the standalone Pyresin Class Resource Bar (based on SenseiClassResourceBar);
+LibEQOL, LibSharedMedia, import/export and Retail-only resources were not carried
+over, and its saved settings are not migrated.
 
 ## Settings migration
 

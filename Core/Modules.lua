@@ -33,9 +33,22 @@ ns.settingsGroups = {
     { id = "misc", name = L.misc },
     { id = "actionBars", name = L.actionBars },
 }
-for _, module in ipairs(ns.modules) do
+local function Normalize(module)
     module.pages = module.pages or { { id = "main", name = module.name } }
     module.enabledByDefault = module.enabledByDefault ~= false
+end
+for _, module in ipairs(ns.modules) do Normalize(module) end
+
+-- The addons listed under PyresinQoL in the AddOns list reach this namespace through the PyresinQoL global.
+PyresinQoL = ns
+
+-- A module in its own addon, switched on and off in the AddOns list instead of the Modules page: while that
+-- addon is loaded, the module is on. It starts at PLAYER_LOGIN, after every addon has loaded.
+function ns.AddAddonModule(module)
+    module.addon = true
+    Normalize(module)
+    table.insert(ns.modules, module)
+    return module
 end
 
 -- The ordered list owns metadata and startup order; callers share these objects.
@@ -58,14 +71,34 @@ function ns.RegisterModuleSettings(id, build)
     module.buildSettings = build
 end
 
+local function Start(module)
+    if module.addon or PyresinQoLDB.modules[module.id] == nil then
+        PyresinQoLDB.modules[module.id] = module.enabledByDefault
+    end
+    module.active = PyresinQoLDB.modules[module.id]
+    if module.active then
+        for _, initialize in ipairs(module.initializers or {}) do initialize(module) end
+    end
+end
+
 function ns.InitializeModules()
     PyresinQoLDB.modules = PyresinQoLDB.modules or {}
+    for _, module in ipairs(ns.modules) do Start(module) end
+end
+
+-- At PLAYER_LOGIN: the modules of the addons that loaded after this one.
+function ns.InitializeAddonModules()
+    local resourceBars = false
     for _, module in ipairs(ns.modules) do
-        if PyresinQoLDB.modules[module.id] == nil then PyresinQoLDB.modules[module.id] = module.enabledByDefault end
-        module.active = PyresinQoLDB.modules[module.id]
-        if module.active then
-            for _, initialize in ipairs(module.initializers or {}) do initialize(module) end
-        end
+        if module.active == nil then Start(module) end
+        if module.id == "resourceBar" then resourceBars = true end
+    end
+    -- Disabled in the AddOns list, the resource bars give back the personal resource display they hid.
+    local store = PyresinQoLDB.profileStore
+    local saved = store and store.personalDisplay
+    if not resourceBars and type(saved) == "string" and not InCombatLockdown() then
+        C_CVar.SetCVar("nameplateShowSelf", saved)
+        store.personalDisplay = nil
     end
 end
 

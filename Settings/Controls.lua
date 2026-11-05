@@ -1,5 +1,12 @@
 local _, ns = ...
 
+-- Whether an option's parent (see FlightTimer/Options.lua) leaves it enabled, with get reading a saved value.
+function ns.IsOptionEnabled(option, get)
+    local value = get(option.parent)
+    if option.parentValue then return value == option.parentValue end
+    return value ~= false and value ~= "off"
+end
+
 function ns.CreateSettingsControls(category)
     local function Register(page, variable, key, valueType, name, default, callback)
         local setting = Settings.RegisterAddOnSetting(category, "PyresinQoL_" .. variable,
@@ -18,6 +25,9 @@ function ns.CreateSettingsControls(category)
             end)
         end
         function initializer:GetExtent() return 44 end
+        -- Blizzard looks for the parent in its own panel's open layout, never this window's list, and fails
+        -- when that is our canvas category. It found no parent there before either: keep that look.
+        function initializer:IsParentInitializerInLayout() return false end
         local initialize = initializer.InitFrame
         function initializer:InitFrame(frame)
             initialize(self, frame)

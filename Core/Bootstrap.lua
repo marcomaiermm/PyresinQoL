@@ -1,9 +1,15 @@
 local addonName, ns = ...
 
 local events = CreateFrame("Frame")
-local syncQueued = false
+local syncQueued, loggedIn = false, false
 events:RegisterEvent("ADDON_LOADED")
 events:SetScript("OnEvent", function(self, event, loadedAddon)
+    if event == "PLAYER_LOGIN" and not loggedIn then
+        loggedIn = true
+        -- Every addon listed under PyresinQoL has loaded and added its module by now.
+        ns.InitializeAddonModules()
+        ns.InitializeSettings()
+    end
     if event ~= "ADDON_LOADED" then
         if event == "EDIT_MODE_LAYOUTS_UPDATED" then ns.RecordLayoutCatalog() end
         if not syncQueued then
@@ -22,7 +28,6 @@ events:SetScript("OnEvent", function(self, event, loadedAddon)
     ns.InitializeDatabase()
 
     ns.InitializeModules()
-    ns.InitializeSettings()
     self:RegisterEvent("PLAYER_LOGIN")
     self:RegisterEvent("EDIT_MODE_LAYOUTS_UPDATED")
     self:RegisterEvent("PLAYER_SPECIALIZATION_CHANGED")

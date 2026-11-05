@@ -9,6 +9,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 ## Features
 
 - **Unit frames & threat:** class colors, health/resource text, druid mana, debuff timers, threat displays and combo points per enemy nameplate.
+- **Resource bars:** separate, movable bars for health, power and combo points, with a Life Tap preview for warlocks; enable **PyresinQoL Resource Bars** in the AddOns list.
 - **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
 - **XP & quests:** experience text, completed-quest XP preview, quest levels and persistent sparkles on lootable quest items.
@@ -22,7 +23,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 ## Install
 
 1. Download the addon ZIP from [Releases](https://github.com/marcomaiermm/PyresinQoL/releases).
-2. Extract it and copy the `PyresinQoL` folder into `World of Warcraft/_classic_beta_/Interface/AddOns/`.
+2. Extract it and copy the `PyresinQoL` and `PyresinQoL_ResourceBar` folders into `World of Warcraft/_forever_/Interface/AddOns/`.
 3. Restart WoW and enable **PyresinQoL** in the AddOns list.
 
 `PyresinQoL.toc` must sit directly inside the addon folder.

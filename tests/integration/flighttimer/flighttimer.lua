@@ -114,6 +114,7 @@ end, GetTaxiNodesForMap = function(mapID)
 end }
 
 assert(loadfile("Modules/EditMode/CustomDisplay.lua"))("PyresinQoL", ns)
+assert(loadfile("Settings/Controls.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/FlightTimer/Data.lua"))("PyresinQoL", ns)
 -- 3040 yards per hop: 100 s each at the default 30.4 yards/s.
 ns.flightTimerRoutes[10 * 10000 + 20] = 3040

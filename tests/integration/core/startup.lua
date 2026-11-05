@@ -66,14 +66,20 @@ PyresinQoLDB = nil -- SavedVariables become available only after the files are l
 for line in io.lines("PyresinQoL.toc") do
     if line:match("%.lua$") then assert(loadfile(line))("PyresinQoL", ns) end
 end
-local configured = false
-ns.InitializeSettings = function() configured = true end
+local configured = 0
+ns.InitializeSettings = function() configured = configured + 1 end
 PyresinQoLDB = { modules = {}, showPerformance = false, performancePosition = { x = 12, y = 34 } }
 for id in pairs(files) do PyresinQoLDB.modules[id] = false end
 core.callback(core, "ADDON_LOADED", "OtherAddon")
-assert(not configured)
+assert(configured == 0)
 core.callback(core, "ADDON_LOADED", "PyresinQoL")
-assert(configured and frameCount == 1 and not core.events.ADDON_LOADED)
+assert(configured == 0 and frameCount == 1 and not core.events.ADDON_LOADED and core.events.PLAYER_LOGIN,
+    "Settings wait for the addons listed under PyresinQoL")
+local timers = 0
+C_Timer = { After = function() timers = timers + 1 end }
+core.callback(core, "PLAYER_LOGIN")
+core.callback(core, "PLAYER_LOGIN")
+assert(configured == 1 and frameCount == 1 and timers == 1, "One window, however often the event fires")
 assert(not PyresinQoLDB.showFPS and not PyresinQoLDB.showLatency and PyresinQoLDB.showPerformance == nil)
 assert(PyresinQoLDB.performancePosition.x == 12 and not ns.ModulesNeedReload())
 assert(not ns.GetModule("unitFrames").UpdateTargetThreat and not ns.GetModule("tooltips").UpdateTooltips and not ns.GetModule("performance").performanceDisplay)

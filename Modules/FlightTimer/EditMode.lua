@@ -23,7 +23,7 @@ ns.RegisterModule("flightTimer", function(module)
     })
     OpenDialog = ns.CreateEditModeOptionsDialog(display, {
         name = name, options = module.flightTimerOptions, Get = Get, Format = module.FormatFlightTimerOption,
-        IsEnabled = function(option) return module.FlightTimerOptionEnabled(option, Get) end,
+        IsEnabled = function(option) return ns.IsOptionEnabled(option, Get) end,
     })
     entry.Restore()
 end)

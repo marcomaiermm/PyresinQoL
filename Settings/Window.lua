@@ -72,6 +72,19 @@ function ns.InitializeSettings()
     sidebar:SetPoint("TOPLEFT", 18, -76)
     sidebar:SetPoint("BOTTOMLEFT", 18, 46)
     sidebar:SetWidth(199)
+    -- The pages scroll above Profiles, which stays at the bottom; Blizzard's thin scroll bar shows once
+    -- they no longer fit.
+    local navigation = CreateFrame("ScrollFrame", nil, sidebar)
+    navigation:SetPoint("TOPLEFT")
+    navigation:SetPoint("BOTTOMRIGHT", 0, 20)
+    local pageList = CreateFrame("Frame", nil, navigation)
+    pageList:SetWidth(199)
+    navigation:SetScrollChild(pageList)
+    local scrollBar = CreateFrame("EventFrame", nil, sidebar, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", navigation, "TOPRIGHT", 4, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", navigation, "BOTTOMRIGHT", 4, 0)
+    scrollBar:SetHideIfUnscrollable(true)
+    ScrollUtil.InitScrollFrameWithScrollBar(navigation, scrollBar)
 
     local list = CreateFrame("Frame", nil, canvas, "SettingsListTemplate")
     list:SetPoint("TOPLEFT", sidebar, "TOPRIGHT", 16, 0)
@@ -80,7 +93,7 @@ function ns.InitializeSettings()
     local pages = {
         { name = L.modules, description = L.overviewDescription, initializers = {}, settings = {} },
     }
-    local groups, groupsByID, modulePages = {}, {}, {}
+    local groups, groupsByID, modulePages, menus = {}, {}, {}, {}
     for _, definition in ipairs(ns.settingsGroups) do
         local group = { name = definition.name, pages = {} }
         groups[#groups + 1] = group
@@ -92,9 +105,14 @@ function ns.InitializeSettings()
         local featurePages = {}
         modulePages[module.id] = featurePages
         local group = assert(groupsByID[module.group], "Unknown settings group: " .. module.group)
+        -- subMenu: the module's pages fold under one entry with its name.
+        local menu = module.subMenu and { name = module.name, description = module.description, module = module,
+            pages = {}, collapsed = true }
+        if menu then menus[#menus + 1] = menu end
         for _, definition in ipairs(module.pages) do
             local page = { name = definition.name, description = module.description,
-                module = module, group = group, initializers = {}, settings = {} }
+                module = module, group = group, menu = menu, initializers = {}, settings = {} }
+            if menu then menu.pages[#menu.pages + 1] = page end
             pages[#pages + 1] = page
             group.pages[#group.pages + 1] = page
             featurePages[definition.id] = page
@@ -138,6 +156,11 @@ function ns.InitializeSettings()
             if not enabled then page.button.text:SetTextColor(0.5, 0.5, 0.5)
             elseif selected then page.button.text:SetTextColor(1, 1, 1)
             else page.button.text:SetTextColor(1, 0.82, 0) end
+        end
+        for _, menu in ipairs(menus) do
+            local enabled = PyresinQoLDB.modules[menu.module.id]
+            menu.button.text:SetText(menu.name .. (enabled ~= menu.module.active and " *" or ""))
+            if enabled then menu.button.text:SetTextColor(1, 0.82, 0) else menu.button.text:SetTextColor(0.5, 0.5, 0.5) end
         end
         local pending = ns.ModulesNeedReload()
         local module = not searching and currentPage.module
@@ -193,23 +216,18 @@ function ns.InitializeSettings()
     local function SelectPage(page)
         currentPage = page
         search:ClearFocus()
-        if page.group and page.group.collapsed then
-            page.group.collapsed = false
+        if page.group and page.group.collapsed or page.menu and page.menu.collapsed then
+            if page.group then page.group.collapsed = false end
+            if page.menu then page.menu.collapsed = false end
             LayoutNavigation()
         end
         -- Clearing a nonempty query refreshes synchronously through OnTextChanged.
         if search:GetText() == "" then RefreshView()
         else search:SetText("") end
     end
-    for _, page in ipairs(pages) do
-        local header = Settings.CreateElementInitializer("SettingsListSearchCategoryTemplate", {})
-        header:AddSearchTags(page.name, page.group and page.group.name, page.module and page.module.name)
-        function header:InitFrame(frame)
-            frame.Title:SetText(page.group and (page.group.name .. " > " .. page.name) or page.name)
-            frame:SetScript("OnClick", function() SelectPage(page) end)
-        end
-        page.searchHeader = header
-        local button = CreateFrame("Button", nil, sidebar)
+    -- A sidebar entry: a page, or a sub menu's entry, with its tooltip and module state.
+    local function NavigationButton(entry, indent, OnClick)
+        local button = CreateFrame("Button", nil, entry == profilePage and sidebar or pageList)
         button:SetHeight(20)
         local highlight = button:CreateTexture(nil, "HIGHLIGHT")
         highlight:SetAtlas("Options_List_Hover", true)
@@ -218,48 +236,81 @@ function ns.InitializeSettings()
         button.selected = button:CreateTexture(nil, "BACKGROUND")
         button.selected:SetAtlas("Options_List_Active", true)
         button.selected:SetPoint("CENTER")
+        button.selected:Hide()
         button.text = button:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-        button.text:SetPoint("LEFT", page == profilePage and 16 or 36, 1)
+        button.text:SetPoint("LEFT", indent, 1)
         button.text:SetPoint("RIGHT", -8, 0)
         button.text:SetJustifyH("LEFT")
-        button.text:SetText(page.name)
-        button:SetScript("OnClick", function() SelectPage(page) end)
+        button.text:SetText(entry.name)
+        button:SetScript("OnClick", OnClick)
         button:SetScript("OnEnter", function()
             GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
-            GameTooltip:SetText(page.name)
-            GameTooltip:AddLine(page.description, 1, 1, 1, true)
-            if page.module then
-                local enabled = PyresinQoLDB.modules[page.module.id]
-                GameTooltip:AddLine(enabled ~= page.module.active and L.modulePending
+            GameTooltip:SetText(entry.name)
+            GameTooltip:AddLine(entry.description, 1, 1, 1, true)
+            if entry.module then
+                local enabled = PyresinQoLDB.modules[entry.module.id]
+                GameTooltip:AddLine(enabled ~= entry.module.active and L.modulePending
                     or enabled and L.moduleActive or L.moduleInactive, 1, 0.82, 0, true)
             end
             GameTooltip:Show()
         end)
         button:SetScript("OnLeave", function() GameTooltip:Hide() end)
-        page.button = button
+        return button
+    end
+    for _, page in ipairs(pages) do
+        local header = Settings.CreateElementInitializer("SettingsListSearchCategoryTemplate", {})
+        header:AddSearchTags(page.name, page.group and page.group.name, page.module and page.module.name)
+        local path = page.group and (page.group.name .. " > " .. (page.menu and page.menu.name .. " > " or "")) or ""
+        function header:InitFrame(frame)
+            frame.Title:SetText(path .. page.name)
+            frame:SetScript("OnClick", function() SelectPage(page) end)
+        end
+        page.searchHeader = header
+        local menu = page.menu
+        if menu and menu.pages[1] == page then
+            menu.button = NavigationButton(menu, 36, function()
+                menu.collapsed = not menu.collapsed
+                LayoutNavigation()
+                if not menu.collapsed and currentPage.menu ~= menu then SelectPage(menu.pages[1]) end
+            end)
+            menu.button.arrow = menu.button:CreateTexture(nil, "OVERLAY")
+            menu.button.arrow:SetSize(14, 14)
+            menu.button.arrow:SetPoint("RIGHT", -8, 0)
+        end
+        page.button = NavigationButton(page, page == profilePage and 16 or page.menu and 52 or 36,
+            function() SelectPage(page) end)
     end
     profilePage.button:SetPoint("BOTTOMLEFT", 0, 0)
     profilePage.button:SetPoint("BOTTOMRIGHT", 0, 0)
     LayoutNavigation = function()
         local y = 0
-        for _, group in ipairs(groups) do
+        local function Place(button, shown)
+            button:SetShown(shown)
+            button:ClearAllPoints()
+            button:SetPoint("TOPLEFT", 0, -y)
+            button:SetPoint("TOPRIGHT", 0, -y)
+            if shown then y = y + 22 end
+        end
+        for index, group in ipairs(groups) do
+            if index > 1 then y = y + 20 end
             group.button:ClearAllPoints()
             group.button:SetPoint("TOPLEFT", 0, -y)
             group.button:SetPoint("TOPRIGHT", 0, -y)
             group.button.arrow:SetAtlas(group.collapsed and "common-button-dropdown-closed" or "common-button-dropdown-open")
             y = y + 32
             for _, page in ipairs(group.pages) do
-                page.button:SetShown(not group.collapsed)
-                page.button:ClearAllPoints()
-                page.button:SetPoint("TOPLEFT", 0, -y)
-                page.button:SetPoint("TOPRIGHT", 0, -y)
-                if not group.collapsed then y = y + 22 end
+                local menu = page.menu
+                if menu and menu.pages[1] == page then
+                    menu.button.arrow:SetAtlas(menu.collapsed and "common-button-dropdown-closed" or "common-button-dropdown-open")
+                    Place(menu.button, not group.collapsed)
+                end
+                Place(page.button, not group.collapsed and not (menu and menu.collapsed))
             end
-            y = y + 20
         end
+        pageList:SetHeight(y)
     end
     for _, group in ipairs(groups) do
-        local button = CreateFrame("Button", nil, sidebar, "SettingsCategoryListHeaderTemplate")
+        local button = CreateFrame("Button", nil, pageList, "SettingsCategoryListHeaderTemplate")
         -- The atlas includes the fading background below the 30px header.
         button.Background:SetAtlas("Options_CategoryHeader_1", true)
         button.Label:SetText(group.name)
@@ -283,11 +334,13 @@ function ns.InitializeSettings()
 
     local overview = pages[1]
     for _, module in ipairs(ns.modules) do
-        local setting = Settings.RegisterAddOnSetting(category, "PyresinQoL_Module_" .. module.id,
-            module.id, PyresinQoLDB.modules, Settings.VarType.Boolean, module.name, module.enabledByDefault)
-        setting:SetValueChangedCallback(RefreshView)
-        table.insert(overview.settings, { setting = setting, default = module.enabledByDefault })
-        AddControl(overview, Settings.CreateCheckboxInitializer(setting, nil, module.description .. "\n\n" .. L.moduleHelp))
+        if not module.addon then -- switched in the AddOns list instead
+            local setting = Settings.RegisterAddOnSetting(category, "PyresinQoL_Module_" .. module.id,
+                module.id, PyresinQoLDB.modules, Settings.VarType.Boolean, module.name, module.enabledByDefault)
+            setting:SetValueChangedCallback(RefreshView)
+            table.insert(overview.settings, { setting = setting, default = module.enabledByDefault })
+            AddControl(overview, Settings.CreateCheckboxInitializer(setting, nil, module.description .. "\n\n" .. L.moduleHelp))
+        end
     end
 
     for _, module in ipairs(ns.modules) do

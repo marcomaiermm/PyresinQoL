@@ -1,6 +1,9 @@
 package-as: PyresinQoL
 license-output: LICENSE
 
+move-folders:
+  PyresinQoL/PyresinQoL_ResourceBar: PyresinQoL_ResourceBar
+
 manual-changelog:
   filename: CHANGELOG.md
   markup-type: markdown
