@@ -2,7 +2,7 @@
 ## Title: PyresinQoL Resource Bars
 ## IconTexture: Interface\AddOns\PyresinQoL\Media\AddonIcon
 ## Notes: Separate, movable bars for your health, power and combo points.
-## Version: 0.2.0
+## Version: 0.3.0
 ## X-License: MIT
 ## Dependencies: PyresinQoL
 ## DefaultState: disabled

@@ -326,7 +326,8 @@ and retain an installable ZIP.
 The same checks run on release tags. Actions and the local packager are pinned;
 update the packager revision in the local build script and both workflows together.
 
-1. Update `## Version:` in the TOC to `X.Y.Z` and rename the `Unreleased` heading in
+1. Update `## Version:` in both TOCs (`PyresinQoL.toc` and
+   `PyresinQoL_ResourceBar/PyresinQoL_ResourceBar.toc`) to `X.Y.Z` and rename the `Unreleased` heading in
    `CHANGELOG.md` to that version. Keep entries short, in English, and focused on
    player-visible changes; list the newest version first. The full file is sent to
    CurseForge. Commit and merge the change.
