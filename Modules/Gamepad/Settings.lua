@@ -12,7 +12,7 @@ ns.RegisterModuleSettings("gamepad", function(module, context)
     Checkbox("gamepadLootTooltips", true)
 
     local range = Settings.CreateSliderOptions(20, 40, 1)
-    range:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value) return ("%.0f yd"):format(value) end)
+    range:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value) return ("%.0f"):format(value) end)
     local setting = Register(page, "GamepadInteractRange", "gamepadInteractRange", Settings.VarType.Number, L.gamepadInteractRange, 30, module.UpdateGamepad)
     AddControl(page, Settings.CreateSliderInitializer(setting, range, L.gamepadInteractRangeHelp))
 

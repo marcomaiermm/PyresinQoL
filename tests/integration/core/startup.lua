@@ -22,8 +22,12 @@ local files = {
 function CreateFrame() error("A disabled module created a frame") end
 function hooksecurefunc() error("A disabled module installed a hook") end
 -- The one exception: a disabled gamepad module listens through Blizzard's EventRegistry, without a frame, to take back its button swap.
-EventRegistry = { RegisterFrameEventAndCallback = function() end }
+local testing
+EventRegistry = { RegisterFrameEventAndCallback = function(_, event)
+    assert((testing == "gamepad" or testing == nil) and (event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED"), "A disabled module registered an event")
+end }
 for id, paths in pairs(files) do
+    testing = id
     local ns = Registry()
     PyresinQoLDB = { modules = { [id] = false }, showFPS = false }
     for _, path in ipairs(paths) do assert(loadfile(path))("PyresinQoL", ns) end
@@ -64,6 +68,7 @@ function CreateFrame()
     function core:SetScript(_, callback) self.callback = callback end
     return core
 end
+testing = nil
 PyresinQoLDB = nil -- SavedVariables become available only after the files are loaded.
 for line in io.lines("PyresinQoL.toc") do
     if line:match("%.lua$") then assert(loadfile(line))("PyresinQoL", ns) end

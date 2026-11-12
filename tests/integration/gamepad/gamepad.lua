@@ -9,7 +9,8 @@ end
 -- Client state that outlives a "reload": CVars, stored device configs.
 local gamepadUI, combat, timers = true, false, {}
 local cvars, temp, cvarWrites = { GamepadDisableTooltips = "0" }, {}, 0
-local configs, setConfigCalls, applyCalls, setConfigFails = {}, 0, 0, false
+local configs, setConfigCalls, applyCalls, setConfigFails, setConfigSilent = {}, 0, 0, false, false
+local function Id(id) return tostring(id.vendorID) .. ":" .. tostring(id.productID) end
 local device = { vendorID = 1, productID = 2 }
 local function Config(buttons)
     local mappings = {}
@@ -40,11 +41,12 @@ C_GamePad = {
         for _, config in pairs(configs) do ids[#ids + 1] = config.configID end
         return ids
     end,
-    GetConfig = function(id) return configs[id.vendorID .. ":" .. id.productID] and CopyTable(configs[id.vendorID .. ":" .. id.productID]) end,
+    GetConfig = function(id) return configs[Id(id)] and CopyTable(configs[Id(id)]) end,
     SetConfig = function(config)
         setConfigCalls = setConfigCalls + 1
         if setConfigFails then error("restricted") end
-        configs[config.configID.vendorID .. ":" .. config.configID.productID] = CopyTable(config)
+        if setConfigSilent then return end -- HasRestrictions returns nothing
+        configs[Id(config.configID)] = CopyTable(config)
     end,
     ApplyConfigs = function() applyCalls = applyCalls + 1 end,
 }
@@ -128,6 +130,11 @@ temp = {}
 Boot({ modules = { gamepad = false }, gamepadInteractRange = 30 }).Fire("PLAYER_LOGIN")
 assert(temp.SoftTargetInteractRange == nil, "A disabled module leaves Blizzard's value alone")
 
+-- The login path of a player already in gamepad mode.
+temp = { SoftTargetInteractRange = "20" }
+Boot({ modules = {}, gamepadInteractRange = 30 }).Fire("PLAYER_LOGIN")
+assert(temp.SoftTargetInteractRange == "30", "Applied at login")
+
 -- Face buttons: swapped once, kept across reloads, reverted, and never destructive.
 ResetConfig()
 db = { modules = {}, gamepadSwapAB = true }
@@ -161,9 +168,65 @@ combat = false
 session.Fire("PLAYER_REGEN_ENABLED")
 assert(Buttons("1:2") == "PAD2,PAD1,PAD3,PAD4,PADLSHOULDER")
 
--- Disabling the module takes the swap back at the next load, without a frame.
-Boot({ modules = { gamepad = false }, profileStore = db.profileStore }).Fire("PLAYER_LOGIN")
+-- Disabling the module takes the swap back at the next load, without a frame, with the setting still on.
+local store = db.profileStore
+Boot({ modules = { gamepad = false }, gamepadSwapAB = true, profileStore = store }).Fire("PLAYER_LOGIN")
 assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER" and #frames == 0)
+assert(next(store.gamepadSwaps) == nil, "Record cleared")
+
+-- Config IDs without vendor or product ID do not abort the reconcile.
+ResetConfig()
+configs["nil:nil"] = { configID = {}, rawButtonMappings = {}, rawAxisMappings = {} }
+configs["9:nil"] = { configID = { vendorID = 9 }, rawButtonMappings = {}, rawAxisMappings = {} }
+db = { modules = {}, gamepadSwapAB = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(Buttons("1:2") == "PAD2,PAD1,PAD3,PAD4,PADLSHOULDER", "Swapped despite partial config IDs")
+db.gamepadSwapAB = false
+session.module.UpdateGamepad()
+assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER", "Reverted despite partial config IDs")
+configs["nil:nil"], configs["9:nil"] = nil, nil
+
+-- Mouse and keyboard mode never starts a swap, a transition to gamepad mode does, switching off still reverts.
+gamepadUI = false
+calls = setConfigCalls
+db = { modules = {}, gamepadSwapAB = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+session.module.UpdateGamepad()
+assert(setConfigCalls == calls, "No swap in mouse and keyboard mode")
+gamepadUI = true
+session.Fire("INPUT_DEVICE_INTERFACE_TRANSITION")
+assert(Buttons("1:2") == "PAD2,PAD1,PAD3,PAD4,PADLSHOULDER", "Swapped once gamepad mode starts")
+gamepadUI = false
+db.gamepadSwapAB = false
+session.module.UpdateGamepad()
+assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER", "Reverts in mouse and keyboard mode")
+gamepadUI = true
+
+-- A pad that connects after login gets the swap.
+local saved = device
+device = nil
+db = { modules = {}, gamepadSwapAB = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER", "No pad, no swap")
+device = saved
+session.Fire("GAME_PAD_CONNECTED")
+assert(Buttons("1:2") == "PAD2,PAD1,PAD3,PAD4,PADLSHOULDER", "Swapped when the pad connects")
+db.gamepadSwapAB = false
+session.module.UpdateGamepad()
+
+-- A restricted SetConfig that returns silently records nothing and cannot invert the layout later.
+setConfigSilent = true
+db = { modules = {}, gamepadSwapAB = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(next(db.profileStore.gamepadSwaps) == nil and Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER")
+setConfigSilent = false
+db.gamepadSwapAB = false
+session.module.UpdateGamepad()
+assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER", "Switching off after a silent reject keeps the layout")
 
 -- No stored config, or a rejected SetConfig: nothing happens and nothing is recorded.
 configs = {}

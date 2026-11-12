@@ -315,7 +315,7 @@ Settings = {
         return { SetLabelFormatter = function(_, label, formatter)
             assert(label == MinimalSliderWithSteppersMixin.Label.Right)
             assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
-                or maximum ~= 1 and (formatter(12) == "12 px" or minimum == 20 and maximum == 40 and formatter(25) == "25 yd" or formatter(12) == "12" or minimum == 50 and maximum == 200 and formatter(12) == "12%"))
+                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12" or minimum == 50 and maximum == 200 and formatter(12) == "12%"))
         end }
     end,
     CreateSliderInitializer = function(setting, options, tooltip)

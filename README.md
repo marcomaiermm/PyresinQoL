@@ -12,7 +12,7 @@ Quality-of-life improvements for the native **WoW Forever 1.60.1** interface.
 - **Resource bars:** separate, movable bars for health, power and combo points, with a Life Tap preview for warlocks; enable **PyresinQoL Resource Bars** in the AddOns list.
 - **Buffs & debuffs:** own-aura grouping, sorting, growth directions, row limits, spacing and timer presentation; target aura sizes and row widths.
 - **Tooltips:** health values, guild ranks and cursor anchoring for world objects.
-- **Gamepad:** item tooltips on loot rolls, a longer interaction range for far fishing bobbers and optional A/B and X/Y button swaps in gamepad mode.
+- **Gamepad:** item tooltips on loot rolls, a longer interaction range for far fishing bobbers and optional A/B and X/Y button swaps in gamepad mode. The client stores the button swaps, so switch them off before disabling or removing the addon.
 - **XP & quests:** experience text, completed-quest XP preview, quest levels and persistent sparkles on lootable quest items.
 - **Flight timer:** remaining flight time with a route bar, your portrait riding it and the stops on the way for flight master flights; movable and customizable in Edit Mode.
 - **Dungeon maps:** 50 illustrated map views across 18 original Vanilla dungeon complexes, embedded in Blizzard's world map with native zoom, pan and floor controls. Sunken Temple and original Upper Blackrock Spire are documented gaps; new WoW Forever dungeons are outside this module's scope. Player positions stay hidden until a matching WoW Forever coordinate source is verified.

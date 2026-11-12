@@ -2,7 +2,7 @@ local _, ns = ...
 
 local RANGE_CVAR, BLIZZARD_RANGE, MAX_RANGE = "SoftTargetInteractRange", 20, 40
 local PAIRS = { { "gamepadSwapAB", "PAD1", "PAD2" }, { "gamepadSwapXY", "PAD3", "PAD4" } }
-local active, pendingSwap = false, false
+local active, pendingSwap, reconciling = false, false, false
 
 local function GamepadMode()
     return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled()
@@ -22,7 +22,8 @@ local function ApplyRange()
     pcall(C_CVar.SetTempCVar, RANGE_CVAR, tostring(range))
 end
 
-local function Key(id) return id.vendorID .. ":" .. id.productID end
+-- vendorID and productID are both optional in a config ID.
+local function Key(id) return tostring(id.vendorID) .. ":" .. tostring(id.productID) end
 
 local function ActiveConfigID()
     local raw = C_GamePad.GetDeviceRawState(C_GamePad.GetActiveDeviceID())
@@ -39,40 +40,53 @@ local function Swap(config, first, second)
     return found
 end
 
+local function SameButtons(a, b)
+    if not a or #a.rawButtonMappings ~= #b.rawButtonMappings then return false end
+    for index, mapping in ipairs(b.rawButtonMappings) do
+        if a.rawButtonMappings[index].button ~= mapping.button then return false end
+    end
+    return true
+end
+
 -- The client stores the swapped config, so remember per device what was exchanged and only ever
 -- exchange the difference between that and the settings. Account-wide, outside the profiles.
+-- A new swap needs gamepad mode; taking one back does not.
 local function Reconcile()
     if InCombatLockdown() then pendingSwap = true; return end
     pendingSwap = false
     local store = PyresinQoLDB.profileStore
-    if not store or not C_GamePad or not C_GamePad.GetAllConfigIDs then return end
+    if reconciling or not store or not C_GamePad or not C_GamePad.GetAllConfigIDs then return end
     if type(store.gamepadSwaps) ~= "table" then store.gamepadSwaps = {} end
+    reconciling = true -- GAME_PAD_* events are synchronous and may fire from inside SetConfig
     pcall(function()
         local ids = {}
         local current = active and ActiveConfigID()
         if current then ids[Key(current)] = current end
         for _, id in ipairs(C_GamePad.GetAllConfigIDs()) do
-            if store.gamepadSwaps[Key(id)] then ids[Key(id)] = id end
+            if type(store.gamepadSwaps[Key(id)]) == "table" then ids[Key(id)] = id end
         end
         local changed = false
         for key, id in pairs(ids) do
             local config = C_GamePad.GetConfig(id)
-            local applied = CopyTable(store.gamepadSwaps[key] or {})
+            local applied = CopyTable(type(store.gamepadSwaps[key]) == "table" and store.gamepadSwaps[key] or {})
             local dirty = false
             for _, pair in ipairs(PAIRS) do
                 local wanted = active and PyresinQoLDB[pair[1]] == true
-                if config and wanted ~= (applied[pair[1]] == true) and Swap(config, pair[2], pair[3]) then
+                if config and wanted ~= (applied[pair[1]] == true) and (not wanted or GamepadMode())
+                    and Swap(config, pair[2], pair[3]) then
                     applied[pair[1]], dirty = wanted or nil, true
                 end
             end
-            -- Recorded only once the client has taken the config.
+            -- A restricted SetConfig returns without error, so the record waits for the stored config to match.
             if dirty and pcall(C_GamePad.SetConfig, config) then
-                store.gamepadSwaps[key] = next(applied) and applied or nil
-                changed = true
+                pcall(C_GamePad.ApplyConfigs)
+                if SameButtons(C_GamePad.GetConfig(id), config) then
+                    store.gamepadSwaps[key] = next(applied) and applied or nil
+                end
             end
         end
-        if changed then pcall(C_GamePad.ApplyConfigs) end
     end)
+    reconciling = false
 end
 
 local function Handle(event)
@@ -80,12 +94,13 @@ local function Handle(event)
         ResetLootTooltips()
     elseif event == "INPUT_DEVICE_INTERFACE_TRANSITION" then
         -- Blizzard's own transition handler sets its CVars first; ours must not depend on who listens first.
-        C_Timer.After(0, ApplyRange)
+        C_Timer.After(0, function() ApplyRange(); Reconcile() end)
     elseif event == "PLAYER_LOGIN" then
         C_Timer.After(0, ApplyRange)
         Reconcile()
-    elseif event ~= "PLAYER_REGEN_ENABLED" or pendingSwap then
-        Reconcile()
+    else
+        if event == "PLAYER_REGEN_ENABLED" then ApplyRange() end -- a secure CVar rejects the write in combat
+        if event ~= "PLAYER_REGEN_ENABLED" or pendingSwap then Reconcile() end
     end
 end
 

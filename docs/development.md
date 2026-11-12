@@ -384,7 +384,7 @@ do not enable branch protection.
 ## Module conventions
 
 `Core/Modules.lua` declares ordered module metadata and settings pages. Runtime
-files only register initializers with `ns.RegisterModule`; frames, hooks and events
+files only register initializers with `ns.RegisterModule` (a module may also set `module.onInactive`, run instead when it is disabled); frames, hooks and events
 are created inside the enabled module's initializer. Settings use
 `ns.RegisterModuleSettings` and the shared controls. Export feature callbacks on
 the module object; cross-module callbacks can be absent when a module is disabled.
@@ -1007,16 +1007,16 @@ Mode mover comes from `ns.CreateEditModeDisplay` in
 
 ### Gamepad
 
-`Modules/Gamepad/Gamepad.lua` is a no-op outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`)
-and uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
+`Modules/Gamepad/Gamepad.lua` is a no-op outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`);
+only taking back an applied face-button swap works there too. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
 config writes wait for `PLAYER_REGEN_ENABLED` in combat.
 
 - **Loot-roll tooltips.** R3 toggles the persisted `GamepadDisableTooltips`, and while it is set
   `GameTooltip_OnShow` hides every tooltip over a gamepad-managed frame. `START_LOOT_ROLL` sets it
   back to `0`; R3 stays Blizzard's toggle.
 - **Interaction range.** Blizzard's gamepad init sets the temp CVar `SoftTargetInteractRange` to 20 and
-  removes it when leaving gamepad mode. On `INPUT_DEVICE_INTERFACE_TRANSITION` and `PLAYER_LOGIN` the
-  module applies its value with `C_CVar.SetTempCVar` one frame later (`C_Timer.After(0)`), so the order
+  removes it when leaving gamepad mode. On `INPUT_DEVICE_INTERFACE_TRANSITION`, `PLAYER_LOGIN` and `PLAYER_REGEN_ENABLED` the
+  module applies its value with `C_CVar.SetTempCVar` (one frame later for the first two, `C_Timer.After(0)`), so the order
   of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
   Slider 20-40 yards, default 30; 20 is Blizzard's value.
 - **Face buttons.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` exchange the `button` names
@@ -1024,8 +1024,9 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   `GetDeviceRawState`), in menus and in the game. The client stores the config, so
   `PyresinQoLDB.profileStore.gamepadSwaps[vendor:product]` records what is applied, account-wide and
   outside the profiles, and only the difference to the settings is exchanged: on login, on a setting
-  change, when a gamepad connects or becomes active, and after combat. The record is written only after
-  `SetConfig` succeeded. Devices without a stored config and a missing or restricted API do nothing.
+  change, when a gamepad connects or becomes active, when gamepad mode starts, and after combat. A new
+  swap needs gamepad mode, a revert does not. `SetConfig` is `HasRestrictions` and returns silently when
+  restricted, so the record is written only when `GetConfig` reads back the written button names. Devices without a stored config and a missing or restricted API do nothing.
   Axes, sticks and other mappings are untouched and no config is deleted. A disabled module takes its
   swap back at the next load through `EventRegistry`, without creating a frame (`module.onInactive`).
 
