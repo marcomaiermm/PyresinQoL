@@ -1,4 +1,5 @@
 -- luajit tests/integration/gamepad/gamepad.lua
+function geterrorhandler() return error end
 function GetLocale() return "enUS" end
 function CopyTable(source)
     local copy = {}
@@ -200,20 +201,15 @@ session.module.UpdateGamepad()
 assert(configs["1:2"].labelStyle == nil)
 configs["nil:nil"], configs["9:nil"] = nil, nil
 
--- Mouse and keyboard mode never applies, a transition to gamepad mode does, switching off still takes back.
+-- The style only shows in gamepad mode, so mouse and keyboard mode writes it too.
 gamepadUI = false
 db = { modules = {}, gamepadSwitchLabels = true }
 session = Boot(db)
 session.Fire("PLAYER_LOGIN")
-session.module.UpdateGamepad()
-assert(configs["1:2"].labelStyle == nil, "Nothing in mouse and keyboard mode")
-gamepadUI = true
-session.Fire("INPUT_DEVICE_INTERFACE_TRANSITION")
-assert(configs["1:2"].labelStyle == "Reverse", "Applied once gamepad mode starts")
-gamepadUI = false
+assert(configs["1:2"].labelStyle == "Reverse", "Written at login whatever the mode")
 db.gamepadSwitchLabels = false
 session.module.UpdateGamepad()
-assert(configs["1:2"].labelStyle == nil, "Taken back in mouse and keyboard mode")
+assert(configs["1:2"].labelStyle == nil)
 gamepadUI = true
 
 -- A pad that connects after login gets the labels.

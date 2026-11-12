@@ -1007,8 +1007,8 @@ Mode mover comes from `ns.CreateEditModeDisplay` in
 
 ### Gamepad
 
-`Modules/Gamepad/Gamepad.lua` is a no-op outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`);
-only taking back applied button labels works there too. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
+In `Modules/Gamepad/Gamepad.lua` tooltips and range are no-ops outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`);
+the button labels are written in any mode. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
 config writes wait for `PLAYER_REGEN_ENABLED` in combat.
 
 - **Loot-roll tooltips.** R3 toggles the persisted `GamepadDisableTooltips`, and while it is set
@@ -1027,7 +1027,7 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   `PyresinQoLDB.profileStore.gamepadLabels[vendor:product]` records what was written, account-wide and outside the
   profiles: `true` for a created config, which is deleted again, else the replaced style (`false` for none), which is
   restored. It runs on login, on a setting change, when a gamepad connects or becomes active, when gamepad mode starts,
-  and after combat. Applying needs gamepad mode, taking back does not. `SetConfig` is `HasRestrictions` and returns
+  and after combat. The style only shows in gamepad mode, so it is written in any mode. `SetConfig` is `HasRestrictions` and returns
   silently when restricted, so the record follows what `GetConfig` reads back. A disabled module takes its labels back at
   the next load through `EventRegistry`, without creating a frame (`module.onInactive`). Blizzard re-reads the icon set
   only on load, on an interface transition and when a pad connects, so a change sets `module.needsReload` and the settings window offers its Reload UI button.

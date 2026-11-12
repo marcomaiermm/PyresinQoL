@@ -38,7 +38,7 @@ end
 
 -- The client stores the config, so remember per device what this module wrote: true for a config it created
 -- (the client keeps none for most pads and fills an empty one from its defaults), else the style it replaced
--- (false for none). Account-wide, outside the profiles. Applying needs gamepad mode; taking it back does not.
+-- (false for none). Account-wide, outside the profiles. The style only shows in gamepad mode, so it is written in any mode.
 local function Reconcile()
     if InCombatLockdown() then pendingLabels = true; return end
     pendingLabels = false
@@ -46,7 +46,7 @@ local function Reconcile()
     if reconciling or not store or not C_GamePad or not C_GamePad.GetAllConfigIDs then return end
     if type(store.gamepadLabels) ~= "table" then store.gamepadLabels = {} end
     reconciling = true -- GAME_PAD_* events are synchronous and may fire from inside SetConfig
-    pcall(function()
+    local ok, err = pcall(function()
         local ids = {}
         if active then AddConnected(ids) end
         for _, id in ipairs(C_GamePad.GetAllConfigIDs()) do
@@ -68,7 +68,7 @@ local function Reconcile()
                 local stored = C_GamePad.GetConfig(id)
                 return stored and stored.labelStyle == LABELS
             end
-            if wanted and applied == nil and GamepadMode() and not (config and config.labelStyle == LABELS) then
+            if wanted and applied == nil and not (config and config.labelStyle == LABELS) then
                 local replaced = not config or config.labelStyle or false
                 config = config or { configID = id, rawButtonMappings = {}, rawAxisMappings = {}, axisConfigs = {}, stickConfigs = {} }
                 config.labelStyle = LABELS
@@ -87,6 +87,7 @@ local function Reconcile()
         end
     end)
     reconciling = false
+    if not ok then geterrorhandler()(err) end
 end
 
 local function Handle(event)
