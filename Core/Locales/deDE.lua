@@ -498,4 +498,5 @@ ns.L = setmetatable({
     gamepadInteractRangeHelp = "Wie weit das Gamepad Objekte zum Interagieren anvisieren kann, etwa einen weit entfernten Schwimmer. 20 Meter sind Blizzards Standard.",
     gamepadSwitchLabels = "Nintendo-Tastenbeschriftung verwenden",
     gamepadSwitchLabelsHelp = "Zeigt die Tasten so, wie ein Nintendo-Controller sie beschriftet: A rechts, B unten. Gilt für das verbundene Gamepad.",
+    gamepadMissing = "Verbinde ein Gamepad, um diese Optionen zu ändern.",
 }, { __index = ns.L })

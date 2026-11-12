@@ -27,7 +27,7 @@ local function Key(id) return tostring(id.vendorID) .. ":" .. tostring(id.produc
 
 -- The active device can be the combined one, which has no raw state, so every connected pad counts.
 local function AddConnected(ids)
-    for _, device in ipairs(C_GamePad.GetAllDeviceIDs()) do
+    for _, device in ipairs(C_GamePad.GetAllDeviceIDs() or {}) do
         local raw = C_GamePad.GetDeviceRawState(device)
         if raw then
             local id = { vendorID = raw.vendorID, productID = raw.productID }
@@ -49,7 +49,7 @@ local function Reconcile()
     local ok, err = pcall(function()
         local ids = {}
         if active then AddConnected(ids) end
-        for _, id in ipairs(C_GamePad.GetAllConfigIDs()) do
+        for _, id in ipairs(C_GamePad.GetAllConfigIDs() or {}) do
             if store.gamepadLabels[Key(id)] ~= nil then ids[Key(id)] = id end
         end
         local wanted = active and PyresinQoLDB.gamepadSwitchLabels == true
@@ -113,6 +113,12 @@ ns.RegisterModule("gamepad", function(module)
         events:RegisterEvent(event)
     end
     events:SetScript("OnEvent", function(_, event) Handle(event) end)
+    -- Without a connected pad there is no device to label; the settings window greys the page out and says so.
+    function module.Unavailable()
+        local ids = {}
+        AddConnected(ids)
+        return not next(ids) and ns.L.gamepadMissing
+    end
     function module.UpdateGamepad()
         ApplyRange()
         Reconcile()

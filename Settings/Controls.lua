@@ -22,6 +22,7 @@ function ns.CreateSettingsControls(category)
         if page.module then
             initializer:AddModifyPredicate(function()
                 return page.module.active and PyresinQoLDB.modules[page.module.id]
+                    and not (page.module.Unavailable and page.module.Unavailable())
             end)
         end
         function initializer:GetExtent() return 44 end

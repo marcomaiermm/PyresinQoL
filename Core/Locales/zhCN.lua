@@ -498,4 +498,5 @@ ns.L = setmetatable({
     gamepadInteractRangeHelp = "手柄可以锁定并交互的物体距离，例如较远的鱼漂。20码为暴雪默认值。",
     gamepadSwitchLabels = "使用任天堂按键标识",
     gamepadSwitchLabelsHelp = "按任天堂手柄的方式显示按键：A在右，B在下。对已连接的手柄生效。",
+    gamepadMissing = "连接手柄后即可调整这些选项。",
 }, { __index = ns.L })

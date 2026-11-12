@@ -20,6 +20,10 @@ local pages = {
 
 local UI = PyresinQoLUITest
 local SettingsParts, PageButton, NavigationButtons = UI.SettingsParts, UI.PageButton, UI.NavigationButtons
+
+-- The simulator has no gamepad, and without one the Gamepad page is greyed out.
+C_GamePad.GetAllDeviceIDs = function() return { 1 } end
+C_GamePad.GetDeviceRawState = function() return { vendorID = 1, productID = 2 } end
 local PhysicalRect, AssertInside, UIFlow = UI.PhysicalRect, UI.AssertInside, UI.Flow
 
 local function AssertSettingsLayout(canvas, sidebar, list)

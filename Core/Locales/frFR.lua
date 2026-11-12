@@ -498,4 +498,5 @@ ns.L = setmetatable({
     gamepadInteractRangeHelp = "Distance à laquelle la manette peut cibler des objets pour interagir, comme un flotteur de pêche lointain. 20 mètres est la valeur par défaut de Blizzard.",
     gamepadSwitchLabels = "Utiliser les libellés de boutons Nintendo",
     gamepadSwitchLabelsHelp = "Affiche les boutons comme sur une manette Nintendo : A à droite, B en bas. S'applique à la manette connectée.",
+    gamepadMissing = "Connectez une manette pour régler ces options.",
 }, { __index = ns.L })

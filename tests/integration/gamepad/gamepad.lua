@@ -13,6 +13,7 @@ local cvars, temp, cvarWrites = { GamepadDisableTooltips = "0" }, {}, 0
 local configs, setConfigCalls, applyCalls, setConfigFails, setConfigSilent = {}, 0, 0, false, false
 local function Id(id) return tostring(id.vendorID) .. ":" .. tostring(id.productID) end
 local device = { vendorID = 1, productID = 2 }
+local padOn = true
 local function Config(buttons)
     local mappings = {}
     for index, name in ipairs(buttons) do mappings[index] = { rawIndex = index, button = name } end
@@ -36,7 +37,7 @@ C_CVar = {
 }
 C_GamePad = {
     GetAllDeviceIDs = function() return { 3, 7 } end, -- 3 is the combined device without a raw state
-    GetDeviceRawState = function(id) return id == 7 and device or nil end,
+    GetDeviceRawState = function(id) return id == 7 and padOn and device or nil end,
     GetAllConfigIDs = function()
         local ids = {}
         for _, config in pairs(configs) do ids[#ids + 1] = config.configID end
@@ -147,6 +148,10 @@ session = Boot(db)
 session.Fire("PLAYER_LOGIN")
 assert(configs["1:2"].labelStyle == "Reverse" and db.profileStore.gamepadLabels["1:2"] == false and applyCalls == 1)
 assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER" and configs["1:2"].rawAxisMappings[1].axis == "LeftX")
+assert(not session.module.Unavailable(), "A connected pad leaves the settings page usable")
+padOn = false
+assert(session.module.Unavailable() == session.ns.L.gamepadMissing, "Without a pad the settings page is greyed out with a hint")
+padOn = true
 assert(session.module.needsReload and session.ns.ModulesNeedReload(), "The icons change after a reload, so the window offers one")
 session.Fire("GAME_PAD_CONNECTED")
 session.Fire("GAME_PAD_ACTIVE_CHANGED")

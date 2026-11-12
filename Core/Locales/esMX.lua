@@ -45,4 +45,5 @@ ns.L = setmetatable({
     gamepadInteractRangeHelp = "A qué distancia puede el control fijar objetos para interactuar, como un flotador de pesca lejano. 20 metros es el valor predeterminado de Blizzard.",
     gamepadSwitchLabels = "Usar rótulos de botones de Nintendo",
     gamepadSwitchLabelsHelp = "Muestra los botones como los rotula un control de Nintendo: A a la derecha, B abajo. Se aplica al control conectado.",
+    gamepadMissing = "Conecta un control para ajustar estas opciones.",
 }, { __index = ns.L })

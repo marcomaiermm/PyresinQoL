@@ -498,4 +498,5 @@ ns.L = setmetatable({
     gamepadInteractRangeHelp = "A que distância o controle pode mirar objetos para interagir, como uma boia de pesca distante. 20 metros é o padrão da Blizzard.",
     gamepadSwitchLabels = "Usar rótulos de botões da Nintendo",
     gamepadSwitchLabelsHelp = "Mostra os botões como em um controle da Nintendo: A à direita, B embaixo. Vale para o controle conectado.",
+    gamepadMissing = "Conecte um controle para ajustar estas opções.",
 }, { __index = ns.L })
