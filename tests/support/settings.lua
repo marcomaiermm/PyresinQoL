@@ -6,7 +6,7 @@ local h = {
     updates = {
         performance = 0, dungeonMap = 0, experience = 0, quest = 0, sparkle = 0, pixelPerfect = 0,
         statusText = 0, player = 0, druidMana = 0, threat = 0, nameplate = 0, combo = 0,
-        debuff = 0, aura = 0, tooltip = 0, actionBar = 0,
+        debuff = 0, aura = 0, tooltip = 0, actionBar = 0, gamepad = 0,
     },
 }
 local ns, settings, updates = h.ns, h.settings, h.updates
@@ -40,6 +40,7 @@ ns.GetModule("unitFrames").UpdateNameplateComboPoints = function() updates.combo
 ns.GetModule("unitFrames").UpdateTargetDebuffs = function() updates.debuff = updates.debuff + 1 end
 ns.GetModule("unitFrames").UpdatePlayerAuras = function() updates.aura = updates.aura + 1 end
 ns.GetModule("tooltips").UpdateTooltips = function() updates.tooltip = updates.tooltip + 1 end
+ns.GetModule("gamepad").UpdateGamepad = function() updates.gamepad = updates.gamepad + 1 end
 ns.GetModule("actionBars").UpdateActionBars = function() updates.actionBar = updates.actionBar + 1 end
 PyresinQoLDB = variant == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
 PyresinQoLDB.modules = { quests = true } -- Opt-in; the quest page tests need it running.

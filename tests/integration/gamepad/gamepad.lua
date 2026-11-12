@@ -79,7 +79,10 @@ local function Boot(db)
     ns.InitializeModules()
     local session = { ns = ns, module = ns.GetModule("gamepad") }
     function session.Fire(event)
-        if frames[1] then frames[1].onEvent(frames[1], event) elseif registered[event] then registered[event]() end
+        if frames[1] then
+            assert(frames[1].events[event], event .. " is not registered")
+            frames[1].onEvent(frames[1], event)
+        elseif registered[event] then registered[event]() end
         if event == "INPUT_DEVICE_INTERFACE_TRANSITION" then
             if gamepadUI then temp.SoftTargetInteractRange = "20" else temp.SoftTargetInteractRange = nil end
         end

@@ -315,6 +315,19 @@ assert(updates.tooltip == 43, "All tooltip controls apply live")
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(updates.tooltip == 73)
 for key, value in pairs(defaults) do assert(PyresinQoLDB[key] == value, key) end
+h.navigation[15].scripts.OnClick()
+assert(h.settingsList.Header.Title.value == ns.L.gamepad and #h.settingsList.rendered == 4)
+local gamepadDefaults = {
+    gamepadLootTooltips = true, gamepadInteractRange = 30, gamepadSwapAB = false, gamepadSwapXY = false,
+}
+for key, value in pairs(gamepadDefaults) do assert(PyresinQoLDB[key] == value, key) end
+settings.gamepadLootTooltips:SetValue(false)
+settings.gamepadInteractRange:SetValue(25)
+settings.gamepadSwapAB:SetValue(true)
+settings.gamepadSwapXY:SetValue(true)
+assert(updates.gamepad == 4, "All gamepad controls apply live")
+h.settingsList.Header.DefaultsButton.scripts.OnClick()
+for key, value in pairs(gamepadDefaults) do assert(PyresinQoLDB[key] == value, key) end
 h.navigation[6].scripts.OnClick()
 settings.xpTextFormat:SetValue("percent")
 settings.xpAlwaysShow:SetValue(false)
