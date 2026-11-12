@@ -42,6 +42,8 @@ end
 
 local function SameButtons(a, b)
     if not a or #a.rawButtonMappings ~= #b.rawButtonMappings then return false end
+    -- Only a written style is compared; the client may hand back a cleared one in its own form.
+    if b.labelStyle ~= nil and a.labelStyle ~= b.labelStyle then return false end
     for index, mapping in ipairs(b.rawButtonMappings) do
         if a.rawButtonMappings[index].button ~= mapping.button then return false end
     end
@@ -76,6 +78,13 @@ local function Reconcile()
                     and Swap(config, pair[2], pair[3]) then
                     applied[pair[1]], dirty = wanted or nil, true
                 end
+            end
+            -- "Reverse" is Blizzard's Nintendo icon set; the record keeps the style it replaced (false for none).
+            local labels = active and PyresinQoLDB.gamepadSwitchLabels == true
+            if config and labels ~= (applied.labels ~= nil) and (not labels or GamepadMode()) then
+                if labels then applied.labels, config.labelStyle = config.labelStyle or false, "Reverse"
+                else config.labelStyle, applied.labels = applied.labels or nil, nil end
+                dirty = true
             end
             -- A restricted SetConfig returns without error, so the record waits for the stored config to match.
             if dirty and pcall(C_GamePad.SetConfig, config) then

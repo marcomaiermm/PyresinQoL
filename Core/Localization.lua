@@ -500,4 +500,6 @@ ns.L = {
     gamepadSwapABHelp = "Exchanges the two buttons everywhere, in menus and in the game. Takes effect for the connected gamepad.",
     gamepadSwapXY = "Swap X and Y buttons",
     gamepadSwapXYHelp = "Exchanges the two buttons everywhere, in menus and in the game. Takes effect for the connected gamepad.",
+    gamepadSwitchLabels = "Use Nintendo button labels",
+    gamepadSwitchLabelsHelp = "Shows the face buttons the way a Nintendo controller labels them: A on the right, B at the bottom. Takes effect for the connected gamepad.",
 }

@@ -47,4 +47,6 @@ ns.L = setmetatable({
     gamepadSwapABHelp = "Intercambia los dos botones en todas partes, en los menús y en el juego. Se aplica al control conectado.",
     gamepadSwapXY = "Intercambiar botones X y Y",
     gamepadSwapXYHelp = "Intercambia los dos botones en todas partes, en los menús y en el juego. Se aplica al control conectado.",
+    gamepadSwitchLabels = "Usar rótulos de botones de Nintendo",
+    gamepadSwitchLabelsHelp = "Muestra los botones como los rotula un control de Nintendo: A a la derecha, B abajo. Se aplica al control conectado.",
 }, { __index = ns.L })

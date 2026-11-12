@@ -500,4 +500,6 @@ ns.L = setmetatable({
     gamepadSwapABHelp = "Troca os dois botões em todo lugar, nos menus e no jogo. Vale para o controle conectado.",
     gamepadSwapXY = "Trocar botões X e Y",
     gamepadSwapXYHelp = "Troca os dois botões em todo lugar, nos menus e no jogo. Vale para o controle conectado.",
+    gamepadSwitchLabels = "Usar rótulos de botões da Nintendo",
+    gamepadSwitchLabelsHelp = "Mostra os botões como em um controle da Nintendo: A à direita, B embaixo. Vale para o controle conectado.",
 }, { __index = ns.L })

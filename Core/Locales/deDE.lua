@@ -500,4 +500,6 @@ ns.L = setmetatable({
     gamepadSwapABHelp = "Tauscht die beiden Tasten überall, in Menüs und im Spiel. Gilt für das verbundene Gamepad.",
     gamepadSwapXY = "X- und Y-Taste tauschen",
     gamepadSwapXYHelp = "Tauscht die beiden Tasten überall, in Menüs und im Spiel. Gilt für das verbundene Gamepad.",
+    gamepadSwitchLabels = "Nintendo-Tastenbeschriftung verwenden",
+    gamepadSwitchLabelsHelp = "Zeigt die Tasten so, wie ein Nintendo-Controller sie beschriftet: A rechts, B unten. Gilt für das verbundene Gamepad.",
 }, { __index = ns.L })

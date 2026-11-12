@@ -1029,12 +1029,16 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   restricted, so the record is written only when `GetConfig` reads back the written button names. Devices without a stored config and a missing or restricted API do nothing.
   Axes, sticks and other mappings are untouched and no config is deleted. A disabled module takes its
   swap back at the next load through `EventRegistry`, without creating a frame (`module.onInactive`).
+- **Nintendo labels.** The same path sets `labelStyle = "Reverse"` on the config, Blizzard's own icon set
+  with A on the right and B at the bottom, and records the style it replaced under `labels` (`false` for none)
+  to restore it. Icons and slots belong to the `PAD` names, so the labels match a Nintendo pad only with both swaps off.
 
 In Forever with a gamepad connected, check:
 
 - Roll on an item, press R3 beforehand so tooltips are off, hover Need/Greed with pad and mouse: stats show; R3 still toggles tooltips afterwards.
 - Cast a fishing line far out: the bobber can be reeled in with the default 30 yards; at 20 it cannot. Switch to mouse and keyboard, then run `/dump C_CVar.GetCVar("SoftTargetInteractRange")`: not the raised value. Back on the pad it is the slider value; lowering the slider takes effect at once.
 - Swap A/B: confirm and back are exchanged in menus and in game, and `/reload` does not swap them back; switching it off restores them. The same for X/Y, and both together.
+- Nintendo labels on, swaps off: the action bar shows A right, B bottom, X top, Y left (after `/reload` if not at once); off restores the old icons.
 - Disable the module, `/reload`: the original layout is back. Unplug and replug the gamepad: nothing swaps twice.
 - Change a setting in combat: nothing happens until combat ends; no taint or Lua errors in any case.
 

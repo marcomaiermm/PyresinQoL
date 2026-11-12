@@ -500,4 +500,6 @@ ns.L = setmetatable({
     gamepadSwapABHelp = "在菜单和游戏中全面交换这两个按键，对已连接的手柄生效。",
     gamepadSwapXY = "交换X键和Y键",
     gamepadSwapXYHelp = "在菜单和游戏中全面交换这两个按键，对已连接的手柄生效。",
+    gamepadSwitchLabels = "使用任天堂按键标识",
+    gamepadSwitchLabelsHelp = "按任天堂手柄的方式显示按键：A在右，B在下。对已连接的手柄生效。",
 }, { __index = ns.L })

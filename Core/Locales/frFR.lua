@@ -500,4 +500,6 @@ ns.L = setmetatable({
     gamepadSwapABHelp = "Inverse les deux boutons partout, dans les menus et en jeu. S'applique à la manette connectée.",
     gamepadSwapXY = "Inverser les boutons X et Y",
     gamepadSwapXYHelp = "Inverse les deux boutons partout, dans les menus et en jeu. S'applique à la manette connectée.",
+    gamepadSwitchLabels = "Utiliser les libellés de boutons Nintendo",
+    gamepadSwitchLabelsHelp = "Affiche les boutons comme sur une manette Nintendo : A à droite, B en bas. S'applique à la manette connectée.",
 }, { __index = ns.L })

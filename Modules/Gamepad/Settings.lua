@@ -18,4 +18,5 @@ ns.RegisterModuleSettings("gamepad", function(module, context)
 
     Checkbox("gamepadSwapAB", false)
     Checkbox("gamepadSwapXY", false)
+    Checkbox("gamepadSwitchLabels", false)
 end)

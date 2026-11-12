@@ -242,6 +242,27 @@ setConfigCalls, setConfigFails = 0, true
 session.Fire("PLAYER_LOGIN")
 assert(setConfigCalls == 1 and next(db.profileStore.gamepadSwaps) == nil and Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER")
 setConfigFails = false
+
+-- Nintendo labels: the config gets Blizzard's "Reverse" style once, and switching off restores what was there.
+db = { modules = {}, gamepadSwitchLabels = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(configs["1:2"].labelStyle == "Reverse" and db.profileStore.gamepadSwaps["1:2"].labels == false)
+assert(Buttons("1:2") == "PAD1,PAD2,PAD3,PAD4,PADLSHOULDER", "Labels leave the buttons alone")
+setConfigCalls = 0
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(setConfigCalls == 0, "A reload writes nothing again")
+db.gamepadSwitchLabels = false
+session.module.UpdateGamepad()
+assert(configs["1:2"].labelStyle == nil and next(db.profileStore.gamepadSwaps) == nil)
+configs["1:2"].labelStyle = "Shapes"
+db.gamepadSwitchLabels = true
+session.module.UpdateGamepad()
+db.modules.gamepad = false
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(configs["1:2"].labelStyle == "Shapes", "A disabled module restores the style it replaced")
 C_GamePad = nil
 session.Fire("PLAYER_LOGIN")
-print("PASS: loot-roll tooltips, interaction range ordering and restore, idempotent reversible face-button swap")
+print("PASS: loot-roll tooltips, interaction range ordering and restore, idempotent reversible face-button swap and Nintendo labels")
