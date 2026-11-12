@@ -16,7 +16,5 @@ ns.RegisterModuleSettings("gamepad", function(module, context)
     local setting = Register(page, "GamepadInteractRange", "gamepadInteractRange", Settings.VarType.Number, L.gamepadInteractRange, 30, module.UpdateGamepad)
     AddControl(page, Settings.CreateSliderInitializer(setting, range, L.gamepadInteractRangeHelp))
 
-    Checkbox("gamepadSwapAB", false)
-    Checkbox("gamepadSwapXY", false)
     Checkbox("gamepadSwitchLabels", false)
 end)

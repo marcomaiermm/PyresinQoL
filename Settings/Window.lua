@@ -328,6 +328,7 @@ function ns.InitializeSettings()
     canvas:RegisterEvent("PLAYER_REGEN_DISABLED")
     canvas:RegisterEvent("PLAYER_REGEN_ENABLED")
     canvas:SetScript("OnEvent", UpdateModuleState)
+    ns.UpdateReloadState = UpdateModuleState
 
     local controls = ns.CreateSettingsControls(category)
     local AddControl = controls.AddControl

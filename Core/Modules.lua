@@ -107,7 +107,7 @@ end
 
 function ns.ModulesNeedReload()
     for _, module in ipairs(ns.modules) do
-        if module.active ~= PyresinQoLDB.modules[module.id] then return true end
+        if module.needsReload or module.active ~= PyresinQoLDB.modules[module.id] then return true end
     end
     return false
 end

@@ -21,7 +21,7 @@ local files = {
 -- Loading files or initializing a disabled module must not touch game APIs.
 function CreateFrame() error("A disabled module created a frame") end
 function hooksecurefunc() error("A disabled module installed a hook") end
--- The one exception: a disabled gamepad module listens through Blizzard's EventRegistry, without a frame, to take back its button swap.
+-- The one exception: a disabled gamepad module listens through Blizzard's EventRegistry, without a frame, to take back its button labels.
 local testing
 EventRegistry = { RegisterFrameEventAndCallback = function(_, event)
     assert((testing == "gamepad" or testing == nil) and (event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED"), "A disabled module registered an event")

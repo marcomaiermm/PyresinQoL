@@ -13,7 +13,7 @@ local pages = {
     { "Status Text", "petHideStatusText", "petHideStatusText", false },
     { "Buffs & Debuffs", "buffLayout", "buffLayout", false },
     { "Tooltips", "TooltipAnchorCombat", "tooltipAnchorCombat", false },
-    { "Gamepad", "GamepadSwapAB", "gamepadSwapAB", false },
+    { "Gamepad", "GamepadSwitchLabels", "gamepadSwitchLabels", false },
     { "Dungeon Maps", "DungeonMapsEnabled", "dungeonMapsEnabled", true },
     { "Flight Timer", "FlightTimerZones", "flightTimerZones", true },
 }

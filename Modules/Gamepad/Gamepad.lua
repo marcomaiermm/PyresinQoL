@@ -1,8 +1,8 @@
 local _, ns = ...
 
 local RANGE_CVAR, BLIZZARD_RANGE, MAX_RANGE = "SoftTargetInteractRange", 20, 40
-local PAIRS = { { "gamepadSwapAB", "PAD1", "PAD2" }, { "gamepadSwapXY", "PAD3", "PAD4" } }
-local active, pendingSwap, reconciling = false, false, false
+local LABELS = "Reverse" -- Blizzard's Nintendo icon set: A on the right, B at the bottom
+local active, pendingLabels, reconciling = false, false, false
 
 local function GamepadMode()
     return InputUtil and InputUtil.IsGamepadUIEnabled and InputUtil.IsGamepadUIEnabled()
@@ -36,78 +36,53 @@ local function AddConnected(ids)
     end
 end
 
--- Swaps the two button names of one pair in place; false when the device maps neither.
-local function Swap(config, first, second)
-    local found = false
-    for _, mapping in ipairs(config.rawButtonMappings) do
-        if mapping.button == first then mapping.button, found = second, true
-        elseif mapping.button == second then mapping.button, found = first, true end
-    end
-    return found
-end
-
-local function SameButtons(a, b)
-    -- A config this module created has no mappings of its own; the client may hand it back filled.
-    if not a or (#b.rawButtonMappings > 0 and #a.rawButtonMappings ~= #b.rawButtonMappings) then return false end
-    -- Only a written style is compared; the client may hand back a cleared one in its own form.
-    if b.labelStyle ~= nil and a.labelStyle ~= b.labelStyle then return false end
-    for index, mapping in ipairs(b.rawButtonMappings) do
-        if a.rawButtonMappings[index].button ~= mapping.button then return false end
-    end
-    return true
-end
-
--- The client stores the swapped config, so remember per device what was exchanged and only ever
--- exchange the difference between that and the settings. Account-wide, outside the profiles.
--- A new swap needs gamepad mode; taking one back does not.
+-- The client stores the config, so remember per device what this module wrote: true for a config it created
+-- (the client keeps none for most pads and fills an empty one from its defaults), else the style it replaced
+-- (false for none). Account-wide, outside the profiles. Applying needs gamepad mode; taking it back does not.
 local function Reconcile()
-    if InCombatLockdown() then pendingSwap = true; return end
-    pendingSwap = false
+    if InCombatLockdown() then pendingLabels = true; return end
+    pendingLabels = false
     local store = PyresinQoLDB.profileStore
     if reconciling or not store or not C_GamePad or not C_GamePad.GetAllConfigIDs then return end
-    if type(store.gamepadSwaps) ~= "table" then store.gamepadSwaps = {} end
+    if type(store.gamepadLabels) ~= "table" then store.gamepadLabels = {} end
     reconciling = true -- GAME_PAD_* events are synchronous and may fire from inside SetConfig
     pcall(function()
         local ids = {}
         if active then AddConnected(ids) end
         for _, id in ipairs(C_GamePad.GetAllConfigIDs()) do
-            if type(store.gamepadSwaps[Key(id)]) == "table" then ids[Key(id)] = id end
+            if store.gamepadLabels[Key(id)] ~= nil then ids[Key(id)] = id end
         end
-        local changed = false
+        local wanted = active and PyresinQoLDB.gamepadSwitchLabels == true
         for key, id in pairs(ids) do
-            local config = C_GamePad.GetConfig(id)
-            local applied = CopyTable(type(store.gamepadSwaps[key]) == "table" and store.gamepadSwaps[key] or {})
-            local dirty = false
-            for _, pair in ipairs(PAIRS) do
-                local wanted = active and PyresinQoLDB[pair[1]] == true
-                if config and wanted ~= (applied[pair[1]] == true) and (not wanted or GamepadMode())
-                    and Swap(config, pair[2], pair[3]) then
-                    applied[pair[1]], dirty = wanted or nil, true
-                end
+            local config, applied = C_GamePad.GetConfig(id), store.gamepadLabels[key]
+            -- Blizzard re-reads the icon set only on load, so a change asks for the settings window's reload.
+            local function Record(value)
+                store.gamepadLabels[key] = value
+                ns.GetModule("gamepad").needsReload = true
+                if ns.UpdateReloadState then ns.UpdateReloadState() end
             end
-            -- "Reverse" is Blizzard's Nintendo icon set. The client keeps no config for most pads and fills an
-            -- empty one from its defaults, so the record is true for a config created here, else the style it
-            -- replaced (false for none).
-            local labels = active and PyresinQoLDB.gamepadSwitchLabels == true
-            if labels ~= (applied.labels ~= nil) and (not labels or GamepadMode()) then
-                if labels then
-                    applied.labels = not config or config.labelStyle or false
-                    config = config or { configID = id, rawButtonMappings = {}, rawAxisMappings = {}, axisConfigs = {}, stickConfigs = {} }
-                    config.labelStyle, dirty = "Reverse", true
-                elseif applied.labels == true and not (applied.gamepadSwapAB or applied.gamepadSwapXY) then
-                    if config then pcall(C_GamePad.DeleteConfig, id); pcall(C_GamePad.ApplyConfigs) end
-                    if not C_GamePad.GetConfig(id) then store.gamepadSwaps[key] = nil end
-                    dirty = false
-                elseif config then
-                    config.labelStyle, applied.labels, dirty = applied.labels ~= true and applied.labels or nil, nil, true
-                end
-            end
-            -- A restricted SetConfig returns without error, so the record waits for the stored config to match.
-            if dirty and pcall(C_GamePad.SetConfig, config) then
+            -- A restricted SetConfig returns without error, so the record follows what the client reads back.
+            local function Write()
+                if not pcall(C_GamePad.SetConfig, config) then return end
                 pcall(C_GamePad.ApplyConfigs)
-                if SameButtons(C_GamePad.GetConfig(id), config) then
-                    store.gamepadSwaps[key] = next(applied) and applied or nil
+                local stored = C_GamePad.GetConfig(id)
+                return stored and stored.labelStyle == LABELS
+            end
+            if wanted and applied == nil and GamepadMode() and not (config and config.labelStyle == LABELS) then
+                local replaced = not config or config.labelStyle or false
+                config = config or { configID = id, rawButtonMappings = {}, rawAxisMappings = {}, axisConfigs = {}, stickConfigs = {} }
+                config.labelStyle = LABELS
+                if Write() then Record(replaced) end
+            elseif not wanted and applied ~= nil then
+                if applied == true and config then
+                    pcall(C_GamePad.DeleteConfig, id)
+                    pcall(C_GamePad.ApplyConfigs)
+                    config = C_GamePad.GetConfig(id)
+                elseif config then
+                    config.labelStyle = applied or nil
+                    if Write() == false then config = nil end
                 end
+                if not config then Record(nil) end
             end
         end
     end)
@@ -125,7 +100,7 @@ local function Handle(event)
         Reconcile()
     else
         if event == "PLAYER_REGEN_ENABLED" then ApplyRange() end -- a secure CVar rejects the write in combat
-        if event ~= "PLAYER_REGEN_ENABLED" or pendingSwap then Reconcile() end
+        if event ~= "PLAYER_REGEN_ENABLED" or pendingLabels then Reconcile() end
     end
 end
 
@@ -143,7 +118,7 @@ ns.RegisterModule("gamepad", function(module)
     end
 end)
 
--- A disabled module still takes back the button swap it applied while it was on, without a frame of its own.
+-- A disabled module still takes back the button labels it applied while it was on, without a frame of its own.
 ns.GetModule("gamepad").onInactive = function(module)
     for _, event in ipairs({ "PLAYER_LOGIN", "PLAYER_REGEN_ENABLED" }) do
         EventRegistry:RegisterFrameEventAndCallback(event, function() Handle(event) end, module)

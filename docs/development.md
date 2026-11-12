@@ -1008,7 +1008,7 @@ Mode mover comes from `ns.CreateEditModeDisplay` in
 ### Gamepad
 
 `Modules/Gamepad/Gamepad.lua` is a no-op outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`);
-only taking back an applied face-button swap works there too. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
+only taking back applied button labels works there too. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
 config writes wait for `PLAYER_REGEN_ENABLED` in combat.
 
 - **Loot-roll tooltips.** R3 toggles the persisted `GamepadDisableTooltips`, and while it is set
@@ -1019,28 +1019,26 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   module applies its value with `C_CVar.SetTempCVar` (one frame later for the first two, `C_Timer.After(0)`), so the order
   of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
   Slider 20-40 yards, default 30; 20 is Blizzard's value.
-- **Face buttons.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` exchange the `button` names
-  `PAD1`/`PAD2` and `PAD3`/`PAD4` in `rawButtonMappings` of every connected pad's config (found through
-  `GetAllDeviceIDs` and `GetDeviceRawState`; the active device can be the combined one without a raw state), in menus and in the game. The client stores the config, so
-  `PyresinQoLDB.profileStore.gamepadSwaps[vendor:product]` records what is applied, account-wide and
-  outside the profiles, and only the difference to the settings is exchanged: on login, on a setting
-  change, when a gamepad connects or becomes active, when gamepad mode starts, and after combat. A new
-  swap needs gamepad mode, a revert does not. `SetConfig` is `HasRestrictions` and returns silently when
-  restricted, so the record is written only when `GetConfig` reads back the written button names. Devices without a stored config and a missing or restricted API do nothing.
-  Axes, sticks and other mappings are untouched and no config is deleted. A disabled module takes its
-  swap back at the next load through `EventRegistry`, without creating a frame (`module.onInactive`).
-- **Nintendo labels.** The same path sets `labelStyle = "Reverse"` on the config, Blizzard's own icon set
-  with A on the right and B at the bottom, and records the style it replaced under `labels` (`false` for none)
-  to restore it. The client keeps no config for most pads (`GetAllConfigIDs` is empty) and fills an empty one from its
-  defaults, so for such a pad the module creates a config that only carries the style (`labels = true`) and deletes it again. Icons and slots belong to the `PAD` names, so the labels match a Nintendo pad only with both swaps off.
+- **Nintendo labels.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` set `labelStyle = "Reverse"`, Blizzard's own
+  icon set with A on the right and B at the bottom, on the config of every connected pad (found through `GetAllDeviceIDs`
+  and `GetDeviceRawState`; the active device can be the combined one without a raw state). The client keeps no config for
+  most pads (`GetAllConfigIDs` is empty, `GetConfig` returns nothing) and fills an empty one from its defaults, so for
+  such a pad the module creates a config that only carries the style. The client stores the config, so
+  `PyresinQoLDB.profileStore.gamepadLabels[vendor:product]` records what was written, account-wide and outside the
+  profiles: `true` for a created config, which is deleted again, else the replaced style (`false` for none), which is
+  restored. It runs on login, on a setting change, when a gamepad connects or becomes active, when gamepad mode starts,
+  and after combat. Applying needs gamepad mode, taking back does not. `SetConfig` is `HasRestrictions` and returns
+  silently when restricted, so the record follows what `GetConfig` reads back. A disabled module takes its labels back at
+  the next load through `EventRegistry`, without creating a frame (`module.onInactive`). Blizzard re-reads the icon set
+  only on load, on an interface transition and when a pad connects, so a change sets `module.needsReload` and the settings window offers its Reload UI button.
+  A face-button swap is not possible: the client does not expose its built-in button mapping, so there is nothing to exchange.
 
 In Forever with a gamepad connected, check:
 
 - Roll on an item, press R3 beforehand so tooltips are off, hover Need/Greed with pad and mouse: stats show; R3 still toggles tooltips afterwards.
 - Cast a fishing line far out: the bobber can be reeled in with the default 30 yards; at 20 it cannot. Switch to mouse and keyboard, then run `/dump C_CVar.GetCVar("SoftTargetInteractRange")`: not the raised value. Back on the pad it is the slider value; lowering the slider takes effect at once.
-- Swap A/B: confirm and back are exchanged in menus and in game, and `/reload` does not swap them back; switching it off restores them. The same for X/Y, and both together.
-- Nintendo labels on, swaps off: the action bar shows A right, B bottom, X top, Y left (after `/reload` if not at once); off restores the old icons.
-- Disable the module, `/reload`: the original layout is back. Unplug and replug the gamepad: nothing swaps twice.
+- Nintendo labels on, `/reload`: the action bar shows A right, B bottom, X top, Y left and the pad works as before; off and `/reload` restores the old icons.
+- Disable the module, `/reload` twice: the original icons are back and `/dump C_GamePad.GetAllConfigIDs()` is as before.
 - Change a setting in combat: nothing happens until combat ends; no taint or Lua errors in any case.
 
 ### Resource bars

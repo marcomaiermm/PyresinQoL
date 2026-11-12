@@ -316,18 +316,15 @@ h.settingsList.Header.DefaultsButton.scripts.OnClick()
 assert(updates.tooltip == 73)
 for key, value in pairs(defaults) do assert(PyresinQoLDB[key] == value, key) end
 h.navigation[15].scripts.OnClick()
-assert(h.settingsList.Header.Title.value == ns.L.gamepad and #h.settingsList.rendered == 5)
+assert(h.settingsList.Header.Title.value == ns.L.gamepad and #h.settingsList.rendered == 3)
 local gamepadDefaults = {
-    gamepadLootTooltips = true, gamepadInteractRange = 30, gamepadSwapAB = false, gamepadSwapXY = false,
-    gamepadSwitchLabels = false,
+    gamepadLootTooltips = true, gamepadInteractRange = 30, gamepadSwitchLabels = false,
 }
 for key, value in pairs(gamepadDefaults) do assert(PyresinQoLDB[key] == value, key) end
 settings.gamepadLootTooltips:SetValue(false)
 settings.gamepadInteractRange:SetValue(25)
-settings.gamepadSwapAB:SetValue(true)
-settings.gamepadSwapXY:SetValue(true)
 settings.gamepadSwitchLabels:SetValue(true)
-assert(updates.gamepad == 5, "All gamepad controls apply live")
+assert(updates.gamepad == 3, "All gamepad controls apply live")
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 for key, value in pairs(gamepadDefaults) do assert(PyresinQoLDB[key] == value, key) end
 h.navigation[6].scripts.OnClick()
