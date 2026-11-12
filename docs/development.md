@@ -1031,7 +1031,8 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   swap back at the next load through `EventRegistry`, without creating a frame (`module.onInactive`).
 - **Nintendo labels.** The same path sets `labelStyle = "Reverse"` on the config, Blizzard's own icon set
   with A on the right and B at the bottom, and records the style it replaced under `labels` (`false` for none)
-  to restore it. Icons and slots belong to the `PAD` names, so the labels match a Nintendo pad only with both swaps off.
+  to restore it. The client keeps no config for most pads (`GetAllConfigIDs` is empty) and fills an empty one from its
+  defaults, so for such a pad the module creates a config that only carries the style (`labels = true`) and deletes it again. Icons and slots belong to the `PAD` names, so the labels match a Nintendo pad only with both swaps off.
 
 In Forever with a gamepad connected, check:
 

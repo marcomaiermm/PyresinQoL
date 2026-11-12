@@ -47,7 +47,8 @@ local function Swap(config, first, second)
 end
 
 local function SameButtons(a, b)
-    if not a or #a.rawButtonMappings ~= #b.rawButtonMappings then return false end
+    -- A config this module created has no mappings of its own; the client may hand it back filled.
+    if not a or (#b.rawButtonMappings > 0 and #a.rawButtonMappings ~= #b.rawButtonMappings) then return false end
     -- Only a written style is compared; the client may hand back a cleared one in its own form.
     if b.labelStyle ~= nil and a.labelStyle ~= b.labelStyle then return false end
     for index, mapping in ipairs(b.rawButtonMappings) do
@@ -84,12 +85,22 @@ local function Reconcile()
                     applied[pair[1]], dirty = wanted or nil, true
                 end
             end
-            -- "Reverse" is Blizzard's Nintendo icon set; the record keeps the style it replaced (false for none).
+            -- "Reverse" is Blizzard's Nintendo icon set. The client keeps no config for most pads and fills an
+            -- empty one from its defaults, so the record is true for a config created here, else the style it
+            -- replaced (false for none).
             local labels = active and PyresinQoLDB.gamepadSwitchLabels == true
-            if config and labels ~= (applied.labels ~= nil) and (not labels or GamepadMode()) then
-                if labels then applied.labels, config.labelStyle = config.labelStyle or false, "Reverse"
-                else config.labelStyle, applied.labels = applied.labels or nil, nil end
-                dirty = true
+            if labels ~= (applied.labels ~= nil) and (not labels or GamepadMode()) then
+                if labels then
+                    applied.labels = not config or config.labelStyle or false
+                    config = config or { configID = id, rawButtonMappings = {}, rawAxisMappings = {}, axisConfigs = {}, stickConfigs = {} }
+                    config.labelStyle, dirty = "Reverse", true
+                elseif applied.labels == true and not (applied.gamepadSwapAB or applied.gamepadSwapXY) then
+                    if config then pcall(C_GamePad.DeleteConfig, id); pcall(C_GamePad.ApplyConfigs) end
+                    if not C_GamePad.GetConfig(id) then store.gamepadSwaps[key] = nil end
+                    dirty = false
+                elseif config then
+                    config.labelStyle, applied.labels, dirty = applied.labels ~= true and applied.labels or nil, nil, true
+                end
             end
             -- A restricted SetConfig returns without error, so the record waits for the stored config to match.
             if dirty and pcall(C_GamePad.SetConfig, config) then

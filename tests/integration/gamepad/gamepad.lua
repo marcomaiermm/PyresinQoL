@@ -48,6 +48,7 @@ C_GamePad = {
         if setConfigSilent then return end -- HasRestrictions returns nothing
         configs[Id(config.configID)] = CopyTable(config)
     end,
+    DeleteConfig = function(id) configs[Id(id)] = nil end,
     ApplyConfigs = function() applyCalls = applyCalls + 1 end,
 }
 local registered = {}
@@ -263,6 +264,22 @@ db.modules.gamepad = false
 session = Boot(db)
 session.Fire("PLAYER_LOGIN")
 assert(configs["1:2"].labelStyle == "Shapes", "A disabled module restores the style it replaced")
+
+-- A pad without a stored config gets one that only carries the style, and switching off deletes it again.
+configs = {}
+db = { modules = {}, gamepadSwitchLabels = true, gamepadSwapAB = true }
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(configs["1:2"].labelStyle == "Reverse" and #configs["1:2"].rawButtonMappings == 0)
+assert(db.profileStore.gamepadSwaps["1:2"].labels == true and not db.profileStore.gamepadSwaps["1:2"].gamepadSwapAB)
+setConfigCalls = 0
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(setConfigCalls == 0, "A reload writes nothing again")
+db.modules.gamepad = false
+session = Boot(db)
+session.Fire("PLAYER_LOGIN")
+assert(configs["1:2"] == nil and next(db.profileStore.gamepadSwaps) == nil, "A disabled module deletes the config it created")
 C_GamePad = nil
 session.Fire("PLAYER_LOGIN")
 print("PASS: loot-roll tooltips, interaction range ordering and restore, idempotent reversible face-button swap and Nintendo labels")
