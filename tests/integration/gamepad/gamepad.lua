@@ -34,8 +34,8 @@ C_CVar = {
     SetTempCVar = function(name, value) temp[name] = value end,
 }
 C_GamePad = {
-    GetActiveDeviceID = function() return 7 end,
-    GetDeviceRawState = function(id) assert(id == 7); return device end,
+    GetAllDeviceIDs = function() return { 3, 7 } end, -- 3 is the combined device without a raw state
+    GetDeviceRawState = function(id) return id == 7 and device or nil end,
     GetAllConfigIDs = function()
         local ids = {}
         for _, config in pairs(configs) do ids[#ids + 1] = config.configID end

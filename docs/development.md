@@ -1020,8 +1020,8 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
   Slider 20-40 yards, default 30; 20 is Blizzard's value.
 - **Face buttons.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` exchange the `button` names
-  `PAD1`/`PAD2` and `PAD3`/`PAD4` in `rawButtonMappings` of the active device's config (found through
-  `GetDeviceRawState`), in menus and in the game. The client stores the config, so
+  `PAD1`/`PAD2` and `PAD3`/`PAD4` in `rawButtonMappings` of every connected pad's config (found through
+  `GetAllDeviceIDs` and `GetDeviceRawState`; the active device can be the combined one without a raw state), in menus and in the game. The client stores the config, so
   `PyresinQoLDB.profileStore.gamepadSwaps[vendor:product]` records what is applied, account-wide and
   outside the profiles, and only the difference to the settings is exchanged: on login, on a setting
   change, when a gamepad connects or becomes active, when gamepad mode starts, and after combat. A new

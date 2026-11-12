@@ -25,9 +25,15 @@ end
 -- vendorID and productID are both optional in a config ID.
 local function Key(id) return tostring(id.vendorID) .. ":" .. tostring(id.productID) end
 
-local function ActiveConfigID()
-    local raw = C_GamePad.GetDeviceRawState(C_GamePad.GetActiveDeviceID())
-    return raw and { vendorID = raw.vendorID, productID = raw.productID }
+-- The active device can be the combined one, which has no raw state, so every connected pad counts.
+local function AddConnected(ids)
+    for _, device in ipairs(C_GamePad.GetAllDeviceIDs()) do
+        local raw = C_GamePad.GetDeviceRawState(device)
+        if raw then
+            local id = { vendorID = raw.vendorID, productID = raw.productID }
+            ids[Key(id)] = id
+        end
+    end
 end
 
 -- Swaps the two button names of one pair in place; false when the device maps neither.
@@ -62,8 +68,7 @@ local function Reconcile()
     reconciling = true -- GAME_PAD_* events are synchronous and may fire from inside SetConfig
     pcall(function()
         local ids = {}
-        local current = active and ActiveConfigID()
-        if current then ids[Key(current)] = current end
+        if active then AddConnected(ids) end
         for _, id in ipairs(C_GamePad.GetAllConfigIDs()) do
             if type(store.gamepadSwaps[Key(id)]) == "table" then ids[Key(id)] = id end
         end
