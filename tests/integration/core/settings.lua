@@ -39,7 +39,7 @@ if arg[1] == "modules-disabled" then
     return
 end
 assert(not h.events.registered.ADDON_LOADED)
-assert(h.canvas and #h.navigation == 20 and #h.sections == 0)
+assert(h.canvas and #h.navigation == 21 and #h.sections == 0)
 assert(#ns.GetModule("actionBars").pages == 1,
     "Per-bar visibility controls live in Edit Mode rather than a second addon settings page")
 local profileButton = NavigationButton(ns.L.profiles)
@@ -58,7 +58,7 @@ assert(not h.canvas.shown and h.canvas.width == 920 and h.canvas.height == 724)
 -- The resource bar addon's pages fold under one entry: closed at first, opening on its first page.
 local menuButton, healthButton = NavigationButton(ns.L.resourceBar), NavigationButton(ns.L.healthBar)
 local pageList = menuButton.parent
-assert(h.navigation[17] == menuButton and menuButton.shown and not healthButton.shown)
+assert(h.navigation[18] == menuButton and menuButton.shown and not healthButton.shown)
 assert(pageList.parent.scrollChild == pageList and pageList.parent.scrollBar.hideIfUnscrollable and NavigationButton(ns.L.profiles).parent ~= pageList,
     "Pages scroll above Profiles, which stays at the bottom")
 local closedHeight = pageList.height
@@ -112,7 +112,7 @@ assert(h.navigation[4].shown and h.navigation[7].shown)
 h.groupButtons[1].scripts.OnClick()
 assert(h.navigation[1].shown and h.navigation[2].shown and h.navigation[3].shown)
 h.canvas.scripts.OnShow()
-assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 11)
+assert(h.settingsList.Header.Title.value == ns.L.modules and #h.settingsList.rendered == 12)
 assert(h.navigation[1].selected.shown and not h.reloadButton.enabled)
 assert(h.navigation[1].text.color[2] == 1 and h.navigation[1].text.color[3] == 1,
     "The selected page uses Blizzard's white label")

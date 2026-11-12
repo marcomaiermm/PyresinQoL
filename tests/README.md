@@ -18,7 +18,7 @@ bash tests/run-ui.sh --locale-scale     # Addon German labels with UIParent scal
 ```
 
 `run.sh` accepts one selector: `all`, `unit`, `integration`, `core`, `actionbars`,
-`castbar`, `dungeonmaps`, `editmode`, `flighttimer`, `resourcebar`, `unitframes`, `experience`, `quests` or `tooltips`. Unknown
+`castbar`, `dungeonmaps`, `editmode`, `flighttimer`, `resourcebar`, `unitframes`, `experience`, `quests`, `tooltips` or `gamepad`. Unknown
 selectors fail with exit code 2. Any failed Lua scenario makes the run fail, but
 remaining selected scenarios still run and the final summary lists every failure.
 Discovery failure aborts before any scenario runs, even if another layer was readable.
@@ -54,6 +54,7 @@ domain's doubles narrow; do not grow a second general-purpose WoW implementation
 | Resource bars | Visibility rules, colors and Blizzard atlases, layout, restricted values reaching only native bars and text, combo-point segments, Edit Mode movers and dialogs, Blizzard's personal resource display with combat deferral, the Life Tap formula and preview, loaded through the actual `PyresinQoL_ResourceBar` TOC and started as at login; the settings scenarios add its pages, sub menu and scrolling sidebar | No simulator flow yet; the bars' visuals and taint need the game client |
 | Experience | Formats, tooltip ownership, quest preview boundaries, resize, coalescing and invalidation | English and German; both native bars' text/visibility checkbox and percent-format dropdown in `ui/experience.lua`; quest reward/overflow cases stay local because the pinned simulator cannot seed meaningful quest rewards |
 | Quests | Difficulty levels/colors, both dialogs, wrapping, row reuse and live level changes; sparkle login/preset timing (including normal/raid quality events before delayed outline resets), unchanged/unavailable CVars, visible write failures, incomplete-reset retries through real registered-setting callbacks, read-back failures, error-handler exceptions and subsequent recovery, event storms, timer cancellation, combat deferral, disabled startup and profile refreshes | Native gossip quest-row level decoration in `ui/quests.lua`; sparkle checkbox, CVar values, opt-in Defaults and post-close restart dialog (including cancellation and no repeat) in `ui/quest-sparkles.lua`. Full NPC dialog paths are blocked by simulator gaps; 3D sparkles, graphics presets and restart behavior require the game client |
+| Gamepad | Loot-roll tooltip reset, interaction range after Blizzard's init and restore, idempotent reversible face-button swap, absent/rejected config APIs | English only; in-game behaviour is the checklist in `docs/development.md` |
 | Tooltips | Restricted HP, ranks/factions, metadata, target changes, anchors, live refresh limits | English and German; native tooltip health text/configured height and visible fixed-screen anchor in `ui/tooltips.lua`; visible status-bar rendering is a simulator gap, metadata/target cases stay local |
 | Tooling | Image immutability, cached builds, rejected tags/images, failure propagation and temporary resource cleanup; archive/source consistency | Python UI-command checks and Bash package checks remain separate from simulator assertions |
 

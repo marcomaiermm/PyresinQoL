@@ -304,7 +304,7 @@ Settings = {
         return Initializer(setting.name, "ColorSwatch", setting)
     end,
     CreateSliderOptions = function(minimum, maximum, step)
-        assert((minimum == 0 and maximum == 40 and step == 1)
+        assert((minimum == 0 and maximum == 40 and step == 1) or (minimum == 20 and maximum == 40 and step == 1)
             or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and (maximum == 16 or maximum == 24)))
             or (minimum == 100 and maximum == 600 and step == 1)
             or (minimum == 50 and maximum == 200 and step == 10)
@@ -315,7 +315,7 @@ Settings = {
         return { SetLabelFormatter = function(_, label, formatter)
             assert(label == MinimalSliderWithSteppersMixin.Label.Right)
             assert(minimum == 0 and maximum == 1 and formatter(0.12) == "12%"
-                or maximum ~= 1 and (formatter(12) == "12 px" or formatter(12) == "12" or minimum == 50 and maximum == 200 and formatter(12) == "12%"))
+                or maximum ~= 1 and (formatter(12) == "12 px" or minimum == 20 and maximum == 40 and formatter(25) == "25 yd" or formatter(12) == "12" or minimum == 50 and maximum == 200 and formatter(12) == "12%"))
         end }
     end,
     CreateSliderInitializer = function(setting, options, tooltip)
@@ -512,6 +512,7 @@ assert(loadfile("Modules/FlightTimer/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Quests/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/Gamepad/Settings.lua"))("PyresinQoL", ns)
 -- Blizzard's action bar labels, which the flyout bar's options reuse.
 for key, label in pairs({ ORIENTATION = "Orientation", ORIENTATION_HORIZONTAL = "Horizontal", ORIENTATION_VERTICAL = "Vertical",
     NUM_ROWS = "# of Rows", NUM_ICONS = "# of Icons", ICON_SIZE = "Icon Size", ICON_PADDING = "Icon Padding",

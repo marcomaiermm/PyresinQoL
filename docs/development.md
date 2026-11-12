@@ -1005,6 +1005,38 @@ the flight state and events, `EditMode.lua` the preview and options dialog. The 
 Mode mover comes from `ns.CreateEditModeDisplay` in
 `Modules/EditMode/CustomDisplay.lua`, shared with FPS / MS.
 
+### Gamepad
+
+`Modules/Gamepad/Gamepad.lua` is a no-op outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`)
+and uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
+config writes wait for `PLAYER_REGEN_ENABLED` in combat.
+
+- **Loot-roll tooltips.** R3 toggles the persisted `GamepadDisableTooltips`, and while it is set
+  `GameTooltip_OnShow` hides every tooltip over a gamepad-managed frame. `START_LOOT_ROLL` sets it
+  back to `0`; R3 stays Blizzard's toggle.
+- **Interaction range.** Blizzard's gamepad init sets the temp CVar `SoftTargetInteractRange` to 20 and
+  removes it when leaving gamepad mode. On `INPUT_DEVICE_INTERFACE_TRANSITION` and `PLAYER_LOGIN` the
+  module applies its value with `C_CVar.SetTempCVar` one frame later (`C_Timer.After(0)`), so the order
+  of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
+  Slider 20-40 yards, default 30; 20 is Blizzard's value.
+- **Face buttons.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` exchange the `button` names
+  `PAD1`/`PAD2` and `PAD3`/`PAD4` in `rawButtonMappings` of the active device's config (found through
+  `GetDeviceRawState`), in menus and in the game. The client stores the config, so
+  `PyresinQoLDB.profileStore.gamepadSwaps[vendor:product]` records what is applied, account-wide and
+  outside the profiles, and only the difference to the settings is exchanged: on login, on a setting
+  change, when a gamepad connects or becomes active, and after combat. The record is written only after
+  `SetConfig` succeeded. Devices without a stored config and a missing or restricted API do nothing.
+  Axes, sticks and other mappings are untouched and no config is deleted. A disabled module takes its
+  swap back at the next load through `EventRegistry`, without creating a frame (`module.onInactive`).
+
+In Forever with a gamepad connected, check:
+
+- Roll on an item, press R3 beforehand so tooltips are off, hover Need/Greed with pad and mouse: stats show; R3 still toggles tooltips afterwards.
+- Cast a fishing line far out: the bobber can be reeled in with the default 30 yards; at 20 it cannot. Switch to mouse and keyboard, then run `/dump C_CVar.GetCVar("SoftTargetInteractRange")`: not the raised value. Back on the pad it is the slider value; lowering the slider takes effect at once.
+- Swap A/B: confirm and back are exchanged in menus and in game, and `/reload` does not swap them back; switching it off restores them. The same for X/Y, and both together.
+- Disable the module, `/reload`: the original layout is back. Unplug and replug the gamepad: nothing swaps twice.
+- Change a setting in combat: nothing happens until combat ends; no taint or Lua errors in any case.
+
 ### Resource bars
 
 The health, power and combo point bars are their own addon, `PyresinQoL_ResourceBar`,
