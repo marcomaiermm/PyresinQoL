@@ -8,6 +8,8 @@ if (( $# > 1 )); then
     exit 1
 fi
 if (( $# == 1 )); then tag_args=(--tag "$1"); fi
+# The packager only recognises a .git directory; from a worktree it would package the parent checkout.
+[[ -d .git ]] || { echo "Run tools/package.sh from the main checkout, not a git worktree." >&2; exit 1; }
 version=$(bash tools/check-package.sh "${tag_args[@]}")
 
 # BigWigs v2.6.1 includes WoW Forever support. Pin the local build too.
