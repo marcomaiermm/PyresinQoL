@@ -133,20 +133,26 @@ local entries = {
     { questID = 5, isHidden = true, ready = true, xp = 9999 },
 }
 local scans = 0
+-- Like the client, a collapsed header hides its quests from the log entries.
+local function Visible() return entries[1].isCollapsed and { entries[1] } or entries end
 C_QuestLog = {
-    GetNumQuestLogEntries = function() return #entries, 5 end,
-    GetInfo = function(index) scans = scans + 1; return entries[index] end,
+    GetNumQuestLogEntries = function() return #Visible(), 5 end,
+    GetInfo = function(index) scans = scans + 1; return Visible()[index] end,
+    IsOnQuest = function(id) return entries[id + 1] ~= nil and not entries[id + 1].removed end,
     ReadyForTurnIn = function(id) return entries[id + 1].ready end,
     SetSelectedQuest = function() error("Do not change quest selection") end,
 }
 function GetQuestLogRewardXP(id) return entries[id + 1].xp end
+-- Header changes fire QUEST_LOG_UPDATE inside the call and taint the world map pins.
 function ExpandQuestHeader() error("Do not change collapsed headers") end
 function CollapseQuestHeader() error("Do not change collapsed headers") end
+PyresinQoLQuests = { [1] = true, [2] = true, [3] = true, [4] = true } -- Seen in an earlier session.
 ns.RegisterModule = function(id, initialize) assert(id == "experience"); initialize(module) end
 assert(loadfile("Modules/Experience/Experience.lua"))("PyresinQoL", ns)
 module.UpdateExperience() -- Settings can fire before login.
 events.scripts.OnEvent(events, "PLAYER_LOGIN")
 assert(not events.events.PLAYER_LOGIN)
+entries[1].isCollapsed = false -- The world map expanded the zone.
 assert(bar.OverlayFrame.Text.text == "7040 / 10100 (69.7%)" and bar.OverlayFrame.Text.shown)
 assert(second.OverlayFrame.Text.text == bar.OverlayFrame.Text.text)
 assert(bar.PyresinQuestPreview.shown and second.PyresinQuestPreview.shown)
@@ -271,3 +277,20 @@ FlushTimers()
 assert(scans - before == #entries and GameTooltip.owner == "another tooltip",
     "A queued refresh must not steal a tooltip that changed owners")
 print("PASS: shared quest summary, burst coalescing, invalidation and tooltip ownership")
+
+-- The world map collapses headers off the current map; their quests must still count.
+entries[1].isCollapsed = true
+entries[2].ready = true
+bar.scripts.OnEnter(bar)
+Emit("QUEST_LOG_UPDATE")
+assert(GameTooltip.lines[ns.L.xpCompletedQuests] == "3 / 4" and GameTooltip.lines[ns.L.xpQuestXP] == "3770 (31.4%)",
+    "Quests under collapsed headers must keep counting")
+entries[4].removed = true
+Emit("QUEST_LOG_UPDATE")
+assert(GameTooltip.lines[ns.L.xpCompletedQuests] == "2 / 3" and GameTooltip.lines[ns.L.xpQuestXP] == "170 (1.4%)",
+    "Turned-in quests must drop out of the summary")
+entries[4].removed = nil
+events.scripts.OnEvent(events, "QUEST_ACCEPTED", 3)
+FlushTimers()
+assert(GameTooltip.lines[ns.L.xpCompletedQuests] == "3 / 4", "Quests accepted under a collapsed header must count")
+print("PASS: collapsed quest headers, turn-ins and accepted quests")
