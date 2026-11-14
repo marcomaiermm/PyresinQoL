@@ -19,6 +19,7 @@ ns.modules = {
         },
     },
     { id = "tooltips", group = "misc", name = L.tooltips, description = L.tooltipsDescription },
+    { id = "gamepad", group = "misc", name = L.gamepad, description = L.gamepadDescription },
     { id = "actionBars", group = "actionBars", name = L.actionBars, description = L.actionBarsDescription },
     { id = "flyouts", group = "actionBars", name = L.flyouts, description = L.flyoutsDescription, enabledByDefault = false },
 }
@@ -78,6 +79,8 @@ local function Start(module)
     module.active = PyresinQoLDB.modules[module.id]
     if module.active then
         for _, initialize in ipairs(module.initializers or {}) do initialize(module) end
+    elseif module.onInactive then
+        module.onInactive(module)
     end
 end
 
@@ -104,7 +107,7 @@ end
 
 function ns.ModulesNeedReload()
     for _, module in ipairs(ns.modules) do
-        if module.active ~= PyresinQoLDB.modules[module.id] then return true end
+        if module.needsReload or module.active ~= PyresinQoLDB.modules[module.id] then return true end
     end
     return false
 end

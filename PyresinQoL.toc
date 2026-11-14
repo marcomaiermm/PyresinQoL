@@ -7,7 +7,7 @@
 # x-release-please-end
 ## X-License: MIT
 ## SavedVariables: PyresinQoLDB, PyresinQoLFlightSpeed
-## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts
+## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts, PyresinQoLQuests
 
 Core/Localization.lua
 Core/Locales/deDE.lua
@@ -63,6 +63,7 @@ Modules/UnitFrames/NameplateComboPoints.lua
 Modules/UnitFrames/ThreatMenu.xml
 Modules/UnitFrames/ThreatMeter.lua
 Modules/Tooltips/Tooltip.lua
+Modules/Gamepad/Gamepad.lua
 Modules/GameMenu/Settings.lua
 Modules/EditMode/Settings.lua
 Modules/Performance/Settings.lua
@@ -72,5 +73,6 @@ Modules/FlightTimer/Settings.lua
 Modules/Quests/Settings.lua
 Modules/UnitFrames/Settings.lua
 Modules/Tooltips/Settings.lua
+Modules/Gamepad/Settings.lua
 Modules/ActionBars/Settings.lua
 Modules/Flyouts/Settings.lua

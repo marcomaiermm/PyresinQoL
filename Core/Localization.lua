@@ -490,4 +490,13 @@ ns.L = {
     resourceBarSectionText = "Text",
     resourceBarSectionOther = "More",
     resourceBarLifeTapHelp = "Warlocks: shows the mana your highest Life Tap rank restores, based on your Spirit and Improved Life Tap.",
+    gamepad = "Gamepad",
+    gamepadDescription = "Fixes for gamepad mode: loot-roll tooltips, interaction range and reverse button labels.",
+    gamepadLootTooltips = "Show item tooltips on loot rolls",
+    gamepadLootTooltipsHelp = "Turns item tooltips back on when a loot roll starts, even if you switched them off with the right stick button.",
+    gamepadInteractRange = "Interaction range",
+    gamepadInteractRangeHelp = "How far away the gamepad can target objects to interact with, such as a distant fishing bobber. 20 yards is Blizzard's default.",
+    gamepadSwitchLabels = "Use reverse button labels",
+    gamepadSwitchLabelsHelp = "Swaps the face button labels: A on the right, B at the bottom. Takes effect for all connected gamepads.",
+    gamepadMissing = "Connect a gamepad to adjust these options.",
 }

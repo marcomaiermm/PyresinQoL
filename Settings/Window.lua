@@ -166,7 +166,7 @@ function ns.InitializeSettings()
         local module = not searching and currentPage.module
         local enabled = not module or (module.active and PyresinQoLDB.modules[module.id])
         footer:SetText(pending and (InCombatLockdown() and L.combat or L.reloadHint)
-            or not enabled and L.disabledHint or L.savedHint)
+            or not enabled and L.disabledHint or module and module.Unavailable and module.Unavailable() or L.savedHint)
         footer:SetTextColor(pending and 1 or 0.7, pending and 0.82 or 0.7, pending and 0.3 or 0.7)
         reload:SetShown(pending)
         reload:SetEnabled(pending and not InCombatLockdown())
@@ -327,7 +327,13 @@ function ns.InitializeSettings()
     LayoutNavigation()
     canvas:RegisterEvent("PLAYER_REGEN_DISABLED")
     canvas:RegisterEvent("PLAYER_REGEN_ENABLED")
-    canvas:SetScript("OnEvent", UpdateModuleState)
+    canvas:RegisterEvent("GAME_PAD_CONNECTED")
+    canvas:RegisterEvent("GAME_PAD_DISCONNECTED")
+    -- A pad coming or going enables or greys out the gamepad page, so the list is drawn again.
+    canvas:SetScript("OnEvent", function(_, event)
+        if (event == "GAME_PAD_CONNECTED" or event == "GAME_PAD_DISCONNECTED") and canvas:IsVisible() then RefreshView() else UpdateModuleState() end
+    end)
+    ns.UpdateReloadState = UpdateModuleState
 
     local controls = ns.CreateSettingsControls(category)
     local AddControl = controls.AddControl

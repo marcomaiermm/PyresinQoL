@@ -6,7 +6,7 @@ local h = {
     updates = {
         performance = 0, dungeonMap = 0, experience = 0, quest = 0, sparkle = 0, pixelPerfect = 0,
         statusText = 0, player = 0, druidMana = 0, threat = 0, nameplate = 0, combo = 0,
-        debuff = 0, aura = 0, tooltip = 0, actionBar = 0,
+        debuff = 0, aura = 0, tooltip = 0, actionBar = 0, gamepad = 0,
     },
 }
 local ns, settings, updates = h.ns, h.settings, h.updates
@@ -40,6 +40,7 @@ ns.GetModule("unitFrames").UpdateNameplateComboPoints = function() updates.combo
 ns.GetModule("unitFrames").UpdateTargetDebuffs = function() updates.debuff = updates.debuff + 1 end
 ns.GetModule("unitFrames").UpdatePlayerAuras = function() updates.aura = updates.aura + 1 end
 ns.GetModule("tooltips").UpdateTooltips = function() updates.tooltip = updates.tooltip + 1 end
+ns.GetModule("gamepad").UpdateGamepad = function() updates.gamepad = updates.gamepad + 1 end
 ns.GetModule("actionBars").UpdateActionBars = function() updates.actionBar = updates.actionBar + 1 end
 PyresinQoLDB = variant == "disabled" and { cooldownShortcut = false, showPerformance = false } or {}
 PyresinQoLDB.modules = { quests = true } -- Opt-in; the quest page tests need it running.
@@ -304,7 +305,7 @@ Settings = {
         return Initializer(setting.name, "ColorSwatch", setting)
     end,
     CreateSliderOptions = function(minimum, maximum, step)
-        assert((minimum == 0 and maximum == 40 and step == 1)
+        assert((minimum == 0 and maximum == 40 and step == 1) or (minimum == 20 and maximum == 40 and step == 1)
             or (step == 1 and (minimum == 1 or minimum == 8 or minimum == 16 or minimum == 32 or minimum == 0 and (maximum == 16 or maximum == 24)))
             or (minimum == 100 and maximum == 600 and step == 1)
             or (minimum == 50 and maximum == 200 and step == 10)
@@ -512,6 +513,7 @@ assert(loadfile("Modules/FlightTimer/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Quests/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/UnitFrames/Settings.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Tooltips/Settings.lua"))("PyresinQoL", ns)
+assert(loadfile("Modules/Gamepad/Settings.lua"))("PyresinQoL", ns)
 -- Blizzard's action bar labels, which the flyout bar's options reuse.
 for key, label in pairs({ ORIENTATION = "Orientation", ORIENTATION_HORIZONTAL = "Horizontal", ORIENTATION_VERTICAL = "Vertical",
     NUM_ROWS = "# of Rows", NUM_ICONS = "# of Icons", ICON_SIZE = "Icon Size", ICON_PADDING = "Icon Padding",

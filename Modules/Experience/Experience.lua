@@ -28,14 +28,24 @@ ns.RegisterModule("experience", function(module)
 
     local function RefreshQuestSummary()
         if not questsDirty or not PyresinQoLDB.xpQuestRewards then return end
-        local completed, total, xp = 0, 0, 0
+        -- Collapsed headers drop their quests from the log entries, and the world map
+        -- collapses every header off the current map, so remember quest IDs per character.
+        -- Never expand headers: that fires QUEST_LOG_UPDATE inside our call and taints the map.
+        PyresinQoLQuests = PyresinQoLQuests or {}
+        local questIDs = PyresinQoLQuests
         for index = 1, C_QuestLog.GetNumQuestLogEntries() do
             local info = C_QuestLog.GetInfo(index)
-            if info and not info.isHeader and not info.isHidden then
+            if info and not info.isHeader then questIDs[info.questID] = not info.isHidden or nil end
+        end
+        local completed, total, xp = 0, 0, 0
+        for questID in pairs(questIDs) do
+            if not C_QuestLog.IsOnQuest(questID) then
+                questIDs[questID] = nil
+            else
                 total = total + 1
-                if C_QuestLog.ReadyForTurnIn(info.questID) then
+                if C_QuestLog.ReadyForTurnIn(questID) then
                     completed = completed + 1
-                    xp = xp + (GetQuestLogRewardXP(info.questID) or 0)
+                    xp = xp + (GetQuestLogRewardXP(questID) or 0)
                 end
             end
         end
@@ -114,9 +124,14 @@ ns.RegisterModule("experience", function(module)
 
     local events = CreateFrame("Frame")
     events:RegisterEvent("PLAYER_LOGIN")
-    events:SetScript("OnEvent", function(self, event)
+    events:SetScript("OnEvent", function(self, event, questID)
         if event ~= "PLAYER_LOGIN" then
-            if event == "QUEST_LOG_UPDATE" or event == "PLAYER_LEVEL_UP" then questsDirty = true end
+            -- A quest accepted under a collapsed header never shows up in the entries.
+            if event == "QUEST_ACCEPTED" then
+                PyresinQoLQuests = PyresinQoLQuests or {}
+                PyresinQoLQuests[questID] = true
+            end
+            if event ~= "PLAYER_XP_UPDATE" and event ~= "UPDATE_EXHAUSTION" then questsDirty = true end
             if not updatePending then
                 updatePending = true
                 C_Timer.After(0, RefreshDisplays)
@@ -155,7 +170,7 @@ ns.RegisterModule("experience", function(module)
                 end
             end)
         end
-        for _, name in ipairs({ "QUEST_LOG_UPDATE", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION" }) do
+        for _, name in ipairs({ "QUEST_LOG_UPDATE", "QUEST_ACCEPTED", "PLAYER_LEVEL_UP", "PLAYER_XP_UPDATE", "UPDATE_EXHAUSTION" }) do
             self:RegisterEvent(name)
         end
         module.UpdateExperience()
