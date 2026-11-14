@@ -339,7 +339,8 @@ Releases follow [Release Please](https://github.com/googleapis/release-please), 
   `BEGIN_COMMIT_OVERRIDE` and `END_COMMIT_OVERRIDE` in that merged PR's description,
   and the next push to `main` updates the release PR.
 - Before merging the release PR, run `bash tools/package.sh vX.Y.Z` with its version and
-  complete the in-game checklist below. Bot PRs start no checks: merge it as an admin.
+  complete the in-game checklist below. Its checks wait for approval: select
+  **Approve workflows to run** on the PR and merge once the required checks pass.
   CodeRabbit (`.coderabbit.yaml`) and cubic (`cubic.yaml`) skip it.
 - Merging it tags the commit and creates the GitHub release. Release Please then starts
   **Release** on that tag: the same checks, then BigWigs repacks the validated ZIP,
