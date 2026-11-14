@@ -497,6 +497,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "Portée d'interaction",
     gamepadInteractRangeHelp = "Distance à laquelle la manette peut cibler des objets pour interagir, comme un flotteur de pêche lointain. 20 mètres est la valeur par défaut de Blizzard.",
     gamepadSwitchLabels = "Utiliser les libellés de boutons inversés",
-    gamepadSwitchLabelsHelp = "Inverse les libellés des boutons d'action : A à droite, B en bas. S'applique à la manette connectée.",
+    gamepadSwitchLabelsHelp = "Inverse les libellés des boutons d'action : A à droite, B en bas. S'applique à toutes les manettes connectées.",
     gamepadMissing = "Connectez une manette pour régler ces options.",
 }, { __index = ns.L })

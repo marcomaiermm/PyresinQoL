@@ -497,6 +497,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "Raggio di interazione",
     gamepadInteractRangeHelp = "A che distanza il gamepad può puntare gli oggetti per interagire, come un galleggiante di pesca lontano. 20 metri è il valore predefinito di Blizzard.",
     gamepadSwitchLabels = "Usa etichette dei tasti invertite",
-    gamepadSwitchLabelsHelp = "Inverte le etichette dei tasti frontali: A a destra, B in basso. Vale per il gamepad collegato.",
+    gamepadSwitchLabelsHelp = "Inverte le etichette dei tasti frontali: A a destra, B in basso. Vale per tutti i gamepad collegati.",
     gamepadMissing = "Collega un gamepad per regolare queste opzioni.",
 }, { __index = ns.L })

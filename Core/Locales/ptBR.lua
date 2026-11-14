@@ -497,6 +497,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "Alcance de interação",
     gamepadInteractRangeHelp = "A que distância o controle pode mirar objetos para interagir, como uma boia de pesca distante. 20 metros é o padrão da Blizzard.",
     gamepadSwitchLabels = "Usar rótulos de botões invertidos",
-    gamepadSwitchLabelsHelp = "Inverte os rótulos dos botões frontais: A à direita, B embaixo. Vale para o controle conectado.",
+    gamepadSwitchLabelsHelp = "Inverte os rótulos dos botões frontais: A à direita, B embaixo. Vale para todos os controles conectados.",
     gamepadMissing = "Conecte um controle para ajustar estas opções.",
 }, { __index = ns.L })

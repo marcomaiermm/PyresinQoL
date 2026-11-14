@@ -327,6 +327,13 @@ settings.gamepadSwitchLabels:SetValue(true)
 assert(updates.gamepad == 3, "All gamepad controls apply live")
 h.settingsList.Header.DefaultsButton.scripts.OnClick()
 for key, value in pairs(gamepadDefaults) do assert(PyresinQoLDB[key] == value, key) end
+local gamepadModule = ns.GetModule("gamepad")
+assert(h.settingsList.initializers[1].modifyPredicate(), "A connected pad leaves the gamepad options usable")
+gamepadModule.Unavailable = function() return ns.L.gamepadMissing end
+for _, initializer in ipairs(h.settingsList.initializers) do
+    assert(not initializer.modifyPredicate(), "Without a pad the gamepad options are locked")
+end
+gamepadModule.Unavailable = nil
 h.navigation[6].scripts.OnClick()
 settings.xpTextFormat:SetValue("percent")
 settings.xpAlwaysShow:SetValue(false)

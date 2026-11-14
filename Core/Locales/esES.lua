@@ -499,6 +499,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "Alcance de interacción",
     gamepadInteractRangeHelp = "A qué distancia puede el mando fijar objetos para interactuar, como un flotador de pesca lejano. 20 metros es el valor predeterminado de Blizzard.",
     gamepadSwitchLabels = "Usar rótulos de botones invertidos",
-    gamepadSwitchLabelsHelp = "Invierte los rótulos de los botones frontales: A a la derecha, B abajo. Se aplica al mando conectado.",
+    gamepadSwitchLabelsHelp = "Invierte los rótulos de los botones frontales: A a la derecha, B abajo. Se aplica a todos los mandos conectados.",
     gamepadMissing = "Conecta un mando para ajustar estas opciones.",
 }, { __index = ns.L })

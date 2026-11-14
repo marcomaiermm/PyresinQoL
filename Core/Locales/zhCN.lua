@@ -497,6 +497,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "交互距离",
     gamepadInteractRangeHelp = "手柄可以锁定并交互的物体距离，例如较远的鱼漂。20码为暴雪默认值。",
     gamepadSwitchLabels = "使用反转按键标识",
-    gamepadSwitchLabelsHelp = "交换正面按键标识：A在右，B在下。对已连接的手柄生效。",
+    gamepadSwitchLabelsHelp = "交换正面按键标识：A在右，B在下。对所有已连接的手柄生效。",
     gamepadMissing = "连接手柄后即可调整这些选项。",
 }, { __index = ns.L })

@@ -497,6 +497,6 @@ ns.L = {
     gamepadInteractRange = "Interaction range",
     gamepadInteractRangeHelp = "How far away the gamepad can target objects to interact with, such as a distant fishing bobber. 20 yards is Blizzard's default.",
     gamepadSwitchLabels = "Use reverse button labels",
-    gamepadSwitchLabelsHelp = "Swaps the face button labels: A on the right, B at the bottom. Takes effect for the connected gamepad.",
+    gamepadSwitchLabelsHelp = "Swaps the face button labels: A on the right, B at the bottom. Takes effect for all connected gamepads.",
     gamepadMissing = "Connect a gamepad to adjust these options.",
 }

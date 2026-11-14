@@ -497,6 +497,6 @@ ns.L = setmetatable({
     gamepadInteractRange = "Interaktionsreichweite",
     gamepadInteractRangeHelp = "Wie weit das Gamepad Objekte zum Interagieren anvisieren kann, etwa einen weit entfernten Schwimmer. 20 Meter sind Blizzards Standard.",
     gamepadSwitchLabels = "Umgekehrte Tastenbeschriftung verwenden",
-    gamepadSwitchLabelsHelp = "Vertauscht die Beschriftung der Aktionstasten: A rechts, B unten. Gilt für das verbundene Gamepad.",
+    gamepadSwitchLabelsHelp = "Vertauscht die Beschriftung der Aktionstasten: A rechts, B unten. Gilt für alle verbundenen Gamepads.",
     gamepadMissing = "Verbinde ein Gamepad, um diese Optionen zu ändern.",
 }, { __index = ns.L })
