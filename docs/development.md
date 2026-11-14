@@ -1019,7 +1019,7 @@ config writes wait for `PLAYER_REGEN_ENABLED` in combat.
   module applies its value with `C_CVar.SetTempCVar` (one frame later for the first two, `C_Timer.After(0)`), so the order
   of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
   Slider 20-40 yards, default 30; 20 is Blizzard's value.
-- **Nintendo labels.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` set `labelStyle = "Reverse"`, Blizzard's own
+- **Reverse labels.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` set `labelStyle = "Reverse"`, Blizzard's own
   icon set with A on the right and B at the bottom, on the config of every connected pad (found through `GetAllDeviceIDs`
   and `GetDeviceRawState`; the active device can be the combined one without a raw state). The client keeps no config for
   most pads (`GetAllConfigIDs` is empty, `GetConfig` returns nothing) and fills an empty one from its defaults, so for
@@ -1037,7 +1037,7 @@ In Forever with a gamepad connected, check:
 
 - Roll on an item, press R3 beforehand so tooltips are off, hover Need/Greed with pad and mouse: stats show; R3 still toggles tooltips afterwards.
 - Cast a fishing line far out: the bobber can be reeled in with the default 30 yards; at 20 it cannot. Switch to mouse and keyboard, then run `/dump C_CVar.GetCVar("SoftTargetInteractRange")`: not the raised value. Back on the pad it is the slider value; lowering the slider takes effect at once.
-- Nintendo labels on, `/reload`: the action bar shows A right, B bottom, X top, Y left and the pad works as before; off and `/reload` restores the old icons.
+- Reverse labels on, `/reload`: the action bar shows A right, B bottom, X top, Y left and the pad works as before; off and `/reload` restores the old icons.
 - Disable the module, `/reload` twice: the original icons are back and `/dump C_GamePad.GetAllConfigIDs()` is as before.
 - Change a setting in combat: nothing happens until combat ends; no taint or Lua errors in any case.
 

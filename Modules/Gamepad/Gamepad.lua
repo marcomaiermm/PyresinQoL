@@ -1,7 +1,7 @@
 local _, ns = ...
 
 local RANGE_CVAR, BLIZZARD_RANGE, MAX_RANGE = "SoftTargetInteractRange", 20, 40
-local LABELS = "Reverse" -- Blizzard's Nintendo icon set: A on the right, B at the bottom
+local LABELS = "Reverse" -- Blizzard's reverse icon set: A on the right, B at the bottom
 local active, pendingLabels, reconciling = false, false, false
 
 local function GamepadMode()

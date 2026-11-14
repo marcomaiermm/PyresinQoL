@@ -141,7 +141,7 @@ temp = { SoftTargetInteractRange = "20" }
 Boot({ modules = {}, gamepadInteractRange = 30 }).Fire("PLAYER_LOGIN")
 assert(temp.SoftTargetInteractRange == "30", "Applied at login")
 
--- Nintendo labels on a stored config: written once, kept across reloads, restored, buttons untouched.
+-- Reverse labels on a stored config: written once, kept across reloads, restored, buttons untouched.
 ResetConfig()
 db = { modules = {}, gamepadSwitchLabels = true }
 session = Boot(db)
@@ -178,7 +178,7 @@ local store = db.profileStore
 Boot({ modules = { gamepad = false }, gamepadSwitchLabels = true, profileStore = store }).Fire("PLAYER_LOGIN")
 assert(configs["1:2"].labelStyle == nil and #frames == 0 and next(store.gamepadLabels) == nil)
 
--- A replaced style comes back, and a pad that already shows Nintendo labels is left alone.
+-- A replaced style comes back, and a pad that already shows reverse labels is left alone.
 configs["1:2"].labelStyle = "Shapes"
 db = { modules = {}, gamepadSwitchLabels = true }
 session = Boot(db)
@@ -257,4 +257,4 @@ session.Fire("PLAYER_LOGIN")
 assert(configs["1:2"] == nil and next(db.profileStore.gamepadLabels) == nil, "A disabled module deletes the config it created")
 C_GamePad = nil
 session.Fire("PLAYER_LOGIN")
-print("PASS: loot-roll tooltips, interaction range ordering and restore, idempotent reversible Nintendo labels")
+print("PASS: loot-roll tooltips, interaction range ordering and restore, idempotent reversible reverse labels")
