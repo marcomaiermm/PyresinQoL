@@ -34,7 +34,7 @@ end
 ns.RegisterModuleSettings("gameMenu", function() end)
 assert(not pcall(ns.RegisterModuleSettings, "gameMenu", function() end), "Reject duplicate settings")
 
-local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "quests", "unitFrames", "tooltips", "actionBars" }
+local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "quests", "unitFrames", "tooltips", "gamepad", "actionBars" }
 local calls = {}
 for _, id in ipairs(order) do
     ns.RegisterModule(id, function(module)
@@ -49,7 +49,7 @@ ns.RegisterModule("unitFrames", function(module)
 end)
 PyresinQoLDB = {}
 ns.InitializeModules()
-assert(table.concat(calls, ",") == "gameMenu,editMode,performance,dungeonMaps,experience,unitFrames,targetDebuffs,tooltips,actionBars")
+assert(table.concat(calls, ",") == "gameMenu,editMode,performance,dungeonMaps,experience,unitFrames,targetDebuffs,tooltips,gamepad,actionBars")
 assert(PyresinQoLDB.modules.quests == false, "Quests are opt-in")
 
 -- A module in an addon listed under PyresinQoL: added after startup, on while that addon is loaded.

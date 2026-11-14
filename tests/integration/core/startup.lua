@@ -14,14 +14,20 @@ local files = {
     experience = { "Modules/Experience/Experience.lua" },
     flightTimer = { "Modules/FlightTimer/Data.lua", "Modules/FlightTimer/Options.lua", "Modules/FlightTimer/Bar.lua", "Modules/FlightTimer/FlightTimer.lua", "Modules/FlightTimer/EditMode.lua" },
     quests = { "Modules/Quests/Quests.lua", "Modules/Quests/Sparkles.lua" }, unitFrames = { "Modules/UnitFrames/UnitFrames.lua", "Modules/UnitFrames/TargetThreat.lua", "Modules/UnitFrames/DruidMana.lua", "Modules/UnitFrames/PlayerAuras.lua", "Modules/UnitFrames/TargetDebuffs.lua", "Modules/UnitFrames/NameplateThreat.lua", "Modules/UnitFrames/NameplateComboPoints.lua", "Modules/UnitFrames/ThreatMeter.lua" },
-    tooltips = { "Modules/Tooltips/Tooltip.lua" },
+    tooltips = { "Modules/Tooltips/Tooltip.lua" }, gamepad = { "Modules/Gamepad/Gamepad.lua" },
     actionBars = { "Modules/ActionBars/Config.lua", "Modules/ActionBars/ActionBars.lua", "Modules/ActionBars/Visibility.lua", "Modules/ActionBars/EditMode.lua" },
     flyouts = { "Modules/EditMode/CustomDisplay.lua", "Modules/Flyouts/Options.lua", "Modules/Flyouts/Flyouts.lua" },
 }
 -- Loading files or initializing a disabled module must not touch game APIs.
 function CreateFrame() error("A disabled module created a frame") end
 function hooksecurefunc() error("A disabled module installed a hook") end
+-- The one exception: a disabled gamepad module listens through Blizzard's EventRegistry, without a frame, to take back its button labels.
+local testing
+EventRegistry = { RegisterFrameEventAndCallback = function(_, event)
+    assert((testing == "gamepad" or testing == nil) and (event == "PLAYER_LOGIN" or event == "PLAYER_REGEN_ENABLED"), "A disabled module registered an event")
+end }
 for id, paths in pairs(files) do
+    testing = id
     local ns = Registry()
     PyresinQoLDB = { modules = { [id] = false }, showFPS = false }
     for _, path in ipairs(paths) do assert(loadfile(path))("PyresinQoL", ns) end
@@ -62,6 +68,7 @@ function CreateFrame()
     function core:SetScript(_, callback) self.callback = callback end
     return core
 end
+testing = nil
 PyresinQoLDB = nil -- SavedVariables become available only after the files are loaded.
 for line in io.lines("PyresinQoL.toc") do
     if line:match("%.lua$") then assert(loadfile(line))("PyresinQoL", ns) end
@@ -98,7 +105,7 @@ for line in io.lines("PyresinQoL.toc") do
 end
 assert(title == "PyresinQoL" and savedVariables == "PyresinQoLDB")
 assert(_G[savedVariables] == PyresinQoLDB, "The runtime database must match the saved variable in the TOC")
-local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "flightTimer", "quests", "unitFrames", "tooltips", "actionBars", "flyouts" }
+local order = { "gameMenu", "editMode", "performance", "dungeonMaps", "experience", "flightTimer", "quests", "unitFrames", "tooltips", "gamepad", "actionBars", "flyouts" }
 assert(#ns.modules == #order)
 for index, id in ipairs(order) do
     local module = ns.GetModule(id)

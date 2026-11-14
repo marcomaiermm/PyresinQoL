@@ -384,7 +384,7 @@ do not enable branch protection.
 ## Module conventions
 
 `Core/Modules.lua` declares ordered module metadata and settings pages. Runtime
-files only register initializers with `ns.RegisterModule`; frames, hooks and events
+files only register initializers with `ns.RegisterModule` (a module may also set `module.onInactive`, run instead when it is disabled); frames, hooks and events
 are created inside the enabled module's initializer. Settings use
 `ns.RegisterModuleSettings` and the shared controls. Export feature callbacks on
 the module object; cross-module callbacks can be absent when a module is disabled.
@@ -1004,6 +1004,42 @@ hop missing from the data shows no timer. `Bar.lua` is the view, `FlightTimer.lu
 the flight state and events, `EditMode.lua` the preview and options dialog. The Edit
 Mode mover comes from `ns.CreateEditModeDisplay` in
 `Modules/EditMode/CustomDisplay.lua`, shared with FPS / MS.
+
+### Gamepad
+
+In `Modules/Gamepad/Gamepad.lua` tooltips and range are no-ops outside gamepad mode (`InputUtil.IsGamepadUIEnabled()`);
+the button labels are written in any mode. It uses only events, CVars and `C_` APIs; it never writes to a Blizzard table or frame, and
+config writes wait for `PLAYER_REGEN_ENABLED` in combat.
+
+- **Loot-roll tooltips.** R3 toggles the persisted `GamepadDisableTooltips`, and while it is set
+  `GameTooltip_OnShow` hides every tooltip over a gamepad-managed frame. `START_LOOT_ROLL` sets it
+  back to `0`; R3 stays Blizzard's toggle.
+- **Interaction range.** Blizzard's gamepad init sets the temp CVar `SoftTargetInteractRange` to 20 and
+  removes it when leaving gamepad mode. On `INPUT_DEVICE_INTERFACE_TRANSITION`, `PLAYER_LOGIN` and `PLAYER_REGEN_ENABLED` the
+  module applies its value with `C_CVar.SetTempCVar` (one frame later for the first two, `C_Timer.After(0)`), so the order
+  of the listeners does not matter, and not at all outside gamepad mode. A rejected call is caught.
+  Slider 20-40 yards, default 30; 20 is Blizzard's value.
+- **Reverse labels.** `C_GamePad.GetConfig` / `SetConfig` / `ApplyConfigs` set `labelStyle = "Reverse"`, Blizzard's own
+  icon set with A on the right and B at the bottom, on the config of every connected pad (found through `GetAllDeviceIDs`
+  and `GetDeviceRawState`; the active device can be the combined one without a raw state). The client keeps no config for
+  most pads (`GetAllConfigIDs` is empty, `GetConfig` returns nothing) and fills an empty one from its defaults, so for
+  such a pad the module creates a config that only carries the style. The client stores the config, so
+  `PyresinQoLDB.profileStore.gamepadLabels[vendor:product]` records what was written, account-wide and outside the
+  profiles: `true` for a created config, which is deleted again, else the replaced style (`false` for none), which is
+  restored. It runs on login, on a setting change, when a gamepad connects or becomes active, when gamepad mode starts,
+  and after combat. The style only shows in gamepad mode, so it is written in any mode. `SetConfig` is `HasRestrictions` and returns
+  silently when restricted, so the record follows what `GetConfig` reads back. A disabled module takes its labels back at
+  the next load through `EventRegistry`, without creating a frame (`module.onInactive`). Blizzard re-reads the icon set
+  only on load, on an interface transition and when a pad connects, so a change sets `module.needsReload` and the settings window offers its Reload UI button.
+  A face-button swap is not possible: the client does not expose its built-in button mapping, so there is nothing to exchange.
+
+In Forever with a gamepad connected, check:
+
+- Roll on an item, press R3 beforehand so tooltips are off, hover Need/Greed with pad and mouse: stats show; R3 still toggles tooltips afterwards.
+- Cast a fishing line far out: the bobber can be reeled in with the default 30 yards; at 20 it cannot. Switch to mouse and keyboard, then run `/dump C_CVar.GetCVar("SoftTargetInteractRange")`: not the raised value. Back on the pad it is the slider value; lowering the slider takes effect at once.
+- Reverse labels on, `/reload`: the action bar shows A right, B bottom, X top, Y left and the pad works as before; off and `/reload` restores the old icons.
+- Disable the module, `/reload` twice: the original icons are back and `/dump C_GamePad.GetAllConfigIDs()` is as before.
+- Change a setting in combat: nothing happens until combat ends; no taint or Lua errors in any case.
 
 ### Resource bars
 
