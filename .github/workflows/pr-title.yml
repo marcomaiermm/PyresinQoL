@@ -16,7 +16,7 @@ jobs:
       - env:
           TITLE: ${{ github.event.pull_request.title }}
         run: |
-          re='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([a-z0-9/_-]+\))?!?: .+'
+          re='^(feat|fix|perf|refactor|docs|test|build|ci|chore|style|revert)(\([^()]+\))?!?: .+'
           if [[ ! "$TITLE" =~ $re ]]; then
             echo "::error::PR title must be a Conventional Commit, e.g. 'feat(resourcebar): bars for health, power and combo points'. Got: $TITLE"
             exit 1

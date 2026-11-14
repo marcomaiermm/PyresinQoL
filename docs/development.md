@@ -358,7 +358,7 @@ download the checked ZIP from the run artifact and finish GitHub with
 `gh release upload vX.Y.Z PyresinQoL-X.Y.Z.zip`.
 Do not replace published assets or move release tags; fixes get a new version.
 
-Require the **Tests and package** and **Forever UI (Docker)** status checks on `main`.
+Require the **Tests and package**, **Forever UI (Docker)** and **PR title** status checks on `main`.
 Repository administration access is needed to configure this; local tests alone
 do not enable branch protection.
 

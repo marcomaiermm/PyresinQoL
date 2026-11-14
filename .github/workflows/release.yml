@@ -47,8 +47,9 @@ jobs:
           [[ -n "$CF_API_KEY" ]] || { echo 'Missing CF_API_KEY'; exit 1; }
           version=$(bash tools/check-package.sh --tag "$RELEASE_TAG")
           bash tools/check-package.sh --tag "$RELEASE_TAG" --archive "dist/PyresinQoL-$version.zip"
-          # Release Please created the release; a ZIP on it means this tag was already published.
-          assets=$(gh release view "$RELEASE_TAG" --json assets --jq '.assets | length')
+          # Release Please created the release; its ZIP on it means this tag was already published.
+          assets=$(gh release view "$RELEASE_TAG" --json assets \
+            --jq "[.assets[] | select(.name == \"PyresinQoL-$version.zip\")] | length")
           if [[ "$assets" != 0 ]]; then
             echo 'Release already has its package; refusing to publish again.'
             exit 1
