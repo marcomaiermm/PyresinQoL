@@ -3,7 +3,7 @@
 ## IconTexture: Interface\AddOns\PyresinQoL\Media\AddonIcon
 ## Notes: Separate, movable bars for your health, power and combo points.
 # x-release-please-start-version
-## Version: 0.3.0
+## Version: 0.4.0
 # x-release-please-end
 ## X-License: MIT
 ## Dependencies: PyresinQoL

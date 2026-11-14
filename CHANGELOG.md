@@ -1,5 +1,17 @@
 # PyresinQoL Changelog
 
+## [0.4.0](https://github.com/marcomaiermm/PyresinQoL/compare/v0.3.0...v0.4.0) (2026-11-14)
+
+
+### Features
+
+* **gamepad:** loot-roll tooltips, longer fishing range and reverse button labels ([d10d64b](https://github.com/marcomaiermm/PyresinQoL/commit/d10d64bf25babfb3162e75936c33d46353b668bb))
+
+
+### Bug Fixes
+
+* **experience:** XP bar quest summary counts quests in collapsed quest log zones ([647581d](https://github.com/marcomaiermm/PyresinQoL/commit/647581d886799028aae089f5d6cdf8023547a9ab))
+
 ## 0.3.0
 
 ### Added
