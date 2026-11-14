@@ -5,24 +5,12 @@
 
 ### Features
 
-* add gamepad fixes for loot-roll tooltips, fishing range and face-button layout ([6e06e23](https://github.com/marcomaiermm/PyresinQoL/commit/6e06e23a450ab41a796e569d13960ecae765d1fa))
-* add Nintendo button labels for gamepads ([9fac599](https://github.com/marcomaiermm/PyresinQoL/commit/9fac5995963cbc1c245a80c98d9908a692590ba7))
 * **gamepad:** loot-roll tooltips, longer fishing range and reverse button labels ([d10d64b](https://github.com/marcomaiermm/PyresinQoL/commit/d10d64bf25babfb3162e75936c33d46353b668bb))
 
 
 ### Bug Fixes
 
-* apply the gamepad button swap and labels when the active device is the combined one ([d7c9a06](https://github.com/marcomaiermm/PyresinQoL/commit/d7c9a0652291393ca261cd29fd3d2b73ef2b21ef))
-* cover gamepad event wiring and settings page in tests ([5951056](https://github.com/marcomaiermm/PyresinQoL/commit/5951056a13748c11c012a4e41a68d77cea1799bf))
-* drop the gamepad button swap the client cannot apply and offer a reload for the button labels ([c499013](https://github.com/marcomaiermm/PyresinQoL/commit/c49901388c4ae569b5ece4f4d18acdd33d2464b2))
-* **experience:** count quests under collapsed quest log headers ([a17475e](https://github.com/marcomaiermm/PyresinQoL/commit/a17475eedd0098b75dabef41fdcb777e61798163))
 * **experience:** XP bar quest summary counts quests in collapsed quest log zones ([647581d](https://github.com/marcomaiermm/PyresinQoL/commit/647581d886799028aae089f5d6cdf8023547a9ab))
-* **gamepad:** call the button label option "reverse" instead of Nintendo ([828586e](https://github.com/marcomaiermm/PyresinQoL/commit/828586e0748ceec6142f0bc102a2f13e8dbee4b3))
-* **gamepad:** say the button labels apply to all connected gamepads ([b8e58bc](https://github.com/marcomaiermm/PyresinQoL/commit/b8e58bc609c492291a6fc9544554a38b7a6b8d0b))
-* grey out the gamepad options with a hint while no gamepad is connected ([3653528](https://github.com/marcomaiermm/PyresinQoL/commit/365352820a33ed7e0f46bc7d4f3ea8aa14d55bfd))
-* keep the gamepad button swap in gamepad mode and verify the client took it ([ee7f876](https://github.com/marcomaiermm/PyresinQoL/commit/ee7f87651b6e4dcaf3e3d3273d60ea40f8949ebc))
-* show Nintendo button labels on gamepads the client keeps no config for ([cde43a5](https://github.com/marcomaiermm/PyresinQoL/commit/cde43a5c1f4eb36982a39537574f642abe8e9833))
-* write the gamepad button labels at login in any input mode ([62dd4db](https://github.com/marcomaiermm/PyresinQoL/commit/62dd4dbe4d57e8c09ff15a9a08822ff8cb473ed9))
 
 ## 0.3.0
 
