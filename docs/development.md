@@ -340,6 +340,7 @@ Releases follow [Release Please](https://github.com/googleapis/release-please), 
   and the next push to `main` updates the release PR.
 - Before merging the release PR, run `bash tools/package.sh vX.Y.Z` with its version and
   complete the in-game checklist below. Bot PRs start no checks: merge it as an admin.
+  CodeRabbit (`.coderabbit.yaml`) and cubic (`cubic.yaml`) skip it.
 - Merging it tags the commit and creates the GitHub release. Release Please then starts
   **Release** on that tag: the same checks, then BigWigs repacks the validated ZIP,
   uploads it to CurseForge and attaches it to the release. A release that already has its
