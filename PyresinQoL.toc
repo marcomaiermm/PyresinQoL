@@ -5,7 +5,7 @@
 ## Version: 0.3.0
 ## X-License: MIT
 ## SavedVariables: PyresinQoLDB, PyresinQoLFlightSpeed
-## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts
+## SavedVariablesPerCharacter: PyresinQoLFlight, PyresinQoLFlyouts, PyresinQoLQuests
 
 Core/Localization.lua
 Core/Locales/deDE.lua
