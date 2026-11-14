@@ -293,4 +293,14 @@ entries[4].removed = nil
 events.scripts.OnEvent(events, "QUEST_ACCEPTED", 3)
 FlushTimers()
 assert(GameTooltip.lines[ns.L.xpCompletedQuests] == "3 / 4", "Quests accepted under a collapsed header must count")
-print("PASS: collapsed quest headers, turn-ins and accepted quests")
+
+-- Quests seen in the log are remembered without a saved set or QUEST_ACCEPTED.
+local expected = { GameTooltip.lines[ns.L.xpCompletedQuests], GameTooltip.lines[ns.L.xpQuestXP] }
+PyresinQoLQuests = {}
+entries[1].isCollapsed = false
+Emit("QUEST_LOG_UPDATE")
+entries[1].isCollapsed = true
+Emit("QUEST_LOG_UPDATE")
+assert(GameTooltip.lines[ns.L.xpCompletedQuests] == expected[1] and GameTooltip.lines[ns.L.xpQuestXP] == expected[2],
+    "Quests discovered in the log must keep counting after their header collapses")
+print("PASS: collapsed quest headers, turn-ins, accepted and discovered quests")
