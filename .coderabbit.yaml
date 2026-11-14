@@ -1,0 +1,5 @@
+# Release Please PRs only bump the version and changelog.
+reviews:
+  auto_review:
+    ignore_title_keywords:
+      - "chore(main): release"

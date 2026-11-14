@@ -19,3 +19,6 @@ ignore:
   - tests
   - tools
   - README.md
+  - cubic.yaml
+  - release-please-config.json
+  - version.txt

@@ -1,0 +1,6 @@
+# Release Please PRs only bump the version and changelog.
+version: 1
+reviews:
+  ignore:
+    head_branches:
+      - 'release-please--**'
