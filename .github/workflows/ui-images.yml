@@ -9,6 +9,11 @@ on:
         default: main
   schedule:
     - cron: '0 4 * * *'
+  # CI builds the headless image for these PRs; this run proves the dev image still builds.
+  pull_request:
+    paths:
+      - tests/ui/Dockerfile
+      - tests/ui/*.patch
 
 permissions:
   contents: read
@@ -17,15 +22,15 @@ jobs:
   prepare:
     name: Prepare Forever ${{ matrix.target }} image
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
-        target: [headless, dev]
+        target: ${{ github.event_name == 'pull_request' && fromJSON('["dev"]') || fromJSON('["headless", "dev"]') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.source-ref || 'main' }}
+          ref: ${{ inputs.source-ref || (github.event_name == 'pull_request' && github.sha) || 'main' }}
           persist-credentials: false
       - uses: ./.github/actions/ui-image
         with:

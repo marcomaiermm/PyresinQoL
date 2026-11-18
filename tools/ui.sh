@@ -104,7 +104,7 @@ case "${1:-}" in
         docker run -d --name "$container" --network none \
             --env "WOW_SIM_SCREEN_SIZE=$resolution" \
             --mount "type=bind,src=$root,dst=/app/Interface/AddOns/PyresinQoL,readonly" \
-            "${display[@]}" "${assets[@]}" "$image" --no-saved-vars \
+            "${display[@]}" "${assets[@]}" "$image" --no-saved-vars --window-size "$resolution" \
             --exec-lua 'assert(PyresinQoLSettingsFrame and PyresinQoLDB, "Addon did not initialize"); SlashCmdList.PQOL()' "$@"
         wait_for_preview
         echo 'Edit the addon, then run: bash tools/ui.sh reload'

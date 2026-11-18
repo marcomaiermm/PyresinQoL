@@ -36,10 +36,15 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
         assertFalse(UI.Button(panel, DELETE):IsEnabled())
         UI.Click(UI.Button(panel, "Create"), panel, "Create profile")
     end,
-    function() NameDialog("  "); assertFalse(popup:GetButton1():IsEnabled()) end,
-    function() NameDialog("Default"); assertFalse(popup:GetButton1():IsEnabled()) end,
-    function() NameDialog("bad|name"); assertFalse(popup:GetButton1():IsEnabled()) end,
-    function() NameDialog("UI profile"); Accept() end,
+    function() NameDialog("  ") end,
+    -- OnTextChanged validates after a later EditBox flush.
+    function() assertFalse(popup:GetButton1():IsEnabled()) end,
+    function() NameDialog("Default") end,
+    function() assertFalse(popup:GetButton1():IsEnabled()) end,
+    function() NameDialog("bad|name") end,
+    function() assertFalse(popup:GetButton1():IsEnabled()) end,
+    function() NameDialog("UI profile") end,
+    function() Accept() end,
     function()
         assertFalse(popup:IsShown())
         assertEquals("UI profile", Store().active)
@@ -49,7 +54,8 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
         assertEquals(PyresinQoLDB.modules.unitFrames, Store().profiles["UI profile"].modules.unitFrames)
         UI.Click(UI.Button(panel, "Rename"), panel, "Rename profile")
     end,
-    function() NameDialog("UI renamed"); Accept() end,
+    function() NameDialog("UI renamed") end,
+    function() Accept() end,
     function()
         assertEquals("UI renamed", Store().active)
         assertNil(Store().profiles["UI profile"])
@@ -68,8 +74,10 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
         assertEquals("UI renamed", Store().characterBindings[character][key])
         UI.Click(UI.Button(panel, "Create"), panel, "Copy profile")
     end,
-    function() NameDialog("UI renamed"); assertFalse(popup:GetButton1():IsEnabled()) end,
-    function() NameDialog("UI keeper"); Accept() end,
+    function() NameDialog("UI renamed") end,
+    function() assertFalse(popup:GetButton1():IsEnabled()) end,
+    function() NameDialog("UI keeper") end,
+    function() Accept() end,
     function()
         assertEquals("UI keeper", Store().active)
         UI.Click(UI.Button(panel, DELETE), panel, "Delete inactive profile")

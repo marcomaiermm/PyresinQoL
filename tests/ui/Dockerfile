@@ -3,7 +3,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends clang mold cmak
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /build
 # Keep the simulator and its Lua VM reproducible; Cargo.lock pins dependencies.
-ARG SIM_REVISION=6a1d81b1c5a1f9771a1b1a7aec6c1361753b3d3f
+# renovate: repo=https://github.com/Osso/wow-ui-sim branch=master
+ARG SIM_REVISION=e6e0f6476890ca96095ff2eb5c03b31716e0891f
 RUN git init . && git remote add origin https://github.com/Osso/wow-ui-sim.git \
     && git fetch --depth 1 origin "$SIM_REVISION" && git checkout --detach FETCH_HEAD
 # The upstream binary targets the builder's CPU; the CI runner may differ.
@@ -15,12 +16,18 @@ RUN git apply --check /tmp/simulator.patch && git apply /tmp/simulator.patch
 COPY viewport.patch /tmp/viewport.patch
 RUN git apply --check /tmp/viewport.patch && git apply /tmp/viewport.patch
 
+# Forever runtime requires the simulator's pinned spell data, fetched from Blizzard's CDN.
+FROM builder AS spells
+RUN cargo build --release --locked --bin wow-cli --no-default-features --features casc,tools,client-wowforever \
+    && mkdir -p /spells && target/release/wow-cli casc sync-forever-spells --source cdn --output /spells/spells.json
+
 FROM debian:bookworm-slim AS blizzard-ui
 RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /source
-# Forever 1.60.1.69913, matching the addon and the simulator's Forever profile.
-ARG UI_REVISION=70ef1b2fd78061a73f886c4a1e79dc5b5cff6d5e
+# Head of Gethe's Forever branch, matching the addon and the simulator's Forever profile.
+# renovate: repo=https://github.com/Gethe/wow-ui-source branch=forever
+ARG UI_REVISION=3d8abb1da73acd38e412e24fb3f99454a6392346
 RUN git init . && git remote add origin https://github.com/Gethe/wow-ui-source.git \
     && git config core.sparseCheckout true \
     && printf 'Interface/AddOns/\n' > .git/info/sparse-checkout \
@@ -36,12 +43,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends libicu72 fonts-
 WORKDIR /app
 COPY --from=builder /build/Interface/AddOns/TestFramework/ /app/Interface/AddOns/TestFramework/
 COPY --from=blizzard-ui /source/Interface/AddOns/ /root/.cache/wow-ui-sim/blizzard-ui/wowforever/AddOns/
+COPY --from=spells /spells/ /app/spells/wowforever/
 ENV WOW_SIM_NO_SAVED_VARS=1
 ENTRYPOINT ["/app/wow-sim"]
 
 FROM builder AS gui-builder
 RUN cargo build --release --locked --bin wow-sim --bin wow-cli \
-    --no-default-features --features gui,client-wowforever \
+    --no-default-features --features gui,tools,client-wowforever \
     && strip target/release/wow-sim target/release/wow-cli
 
 FROM runtime AS dev

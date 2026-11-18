@@ -46,8 +46,9 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
         assertContains(popup:GetTextFontString():GetText(), "Neues Addon-Profil")
         UI.AssertInside(popup, UIParent, "Deutscher Profildialog")
         popup:GetEditBox():SetText(longName)
-        UI.Click(popup:GetButton1(), popup, "Langen Profilnamen übernehmen")
     end,
+    -- OnTextChanged validates after a later EditBox flush.
+    function() UI.Click(popup:GetButton1(), popup, "Langen Profilnamen übernehmen") end,
     function(_, _, list)
         assertEquals(longName, PyresinQoLDB.profileStore.active)
         selector = assert(UI.Find(list, function(f)

@@ -1,16 +1,44 @@
+diff --git a/crates/sim-event/src/valid_events.rs b/crates/sim-event/src/valid_events.rs
+index fa073ec76..9912ed2b9 100644
+--- a/crates/sim-event/src/valid_events.rs
++++ b/crates/sim-event/src/valid_events.rs
+@@ -42,6 +42,7 @@ const FOREVER_REGISTERABLE_EVENTS: &[&str] = &[
+     "DISCORD_SERVER_LIST_UPDATE",
+     "DISCORD_STATUS_UPDATE",
+     "EXTERNAL_EVENT_LAUNCH_URL_FAILED",
++    "EXTERNAL_EVENT_LAUNCH_URL_RESULT",
+     "GAMEPAD_POSSESS_BAR_OVERRIDE_CHANGED",
+     "GAMEPAD_STANCE_BAR_OVERRIDE_CHANGED",
+     "GAME_PAD_ALLOW_HOVER_EVENTS_WITH_FREE_LOOK_CHANGED",
+@@ -58,6 +59,7 @@ const FOREVER_REGISTERABLE_EVENTS: &[&str] = &[
+     "PLAYER_PVP_FLAG_CHANGED",
+     "PLAYER_SWING",
+     "PLAYER_SWING_RANGE_UPDATE",
++    "SETTINGS_HEADER_TEXT_UPDATE",
+     "SHARD_TRANSFER",
+     "SHARD_TRANSFER_IMMINENT",
+     "SOCIAL_UI_FRIENDS_LIST_SYSTEM_STATUS_UPDATED",
+@@ -164,6 +166,7 @@ const PATCH_12_1_REGISTERABLE_EVENTS: &[&str] = &[
+     "DISCORD_SERVER_LIST_UPDATE",
+     "DISCORD_STATUS_UPDATE",
+     "EXTERNAL_EVENT_LAUNCH_URL_FAILED",
++    "EXTERNAL_EVENT_LAUNCH_URL_RESULT",
+     "FULLSCREEN_BROWSER_SPINNER_HIDE",
+     "FULLSCREEN_BROWSER_SPINNER_SHOW",
+     "GROUP_BUFF_VISUAL_ALERTS_CHANGED",
 diff --git a/src/addon_tests.rs b/src/addon_tests.rs
-index d218d7c..8cf08e1 100644
+index 7b9466c81..ae0e9e876 100644
 --- a/src/addon_tests.rs
 +++ b/src/addon_tests.rs
-@@ -137,6 +137,7 @@ fn run_exec_lua(env: &WowLuaEnv, exec_lua: Option<&str>, exec_lua_secure: bool)
+@@ -121,6 +121,7 @@ fn run_exec_lua(env: &WowLuaEnv, exec_lua: Option<&str>, exec_lua_secure: bool)
          && let Err(e) = env.exec_maybe_secure(code, exec_lua_secure)
      {
          eprintln!("[exec-lua] error: {e}");
 +        std::process::exit(1);
      }
  }
-
-@@ -284,6 +285,7 @@ fn run_async_test(env: &WowLuaEnv, idx: i64) -> Result<(), String> {
+ 
+@@ -280,6 +281,7 @@ fn run_async_test(env: &WowLuaEnv, idx: i64) -> Result<(), String> {
          if done {
              break;
          }
@@ -18,15 +46,14 @@ index d218d7c..8cf08e1 100644
          fire_one_on_update_tick(env);
          process_pending_timers(env);
          flush_console(env);
-
 diff --git a/src/bin/wow_sim/gui_commands.rs b/src/bin/wow_sim/gui_commands.rs
-index 38c5046..a09cda0 100644
+index ac2cf57a7..9a63a9235 100644
 --- a/src/bin/wow_sim/gui_commands.rs
 +++ b/src/bin/wow_sim/gui_commands.rs
-@@ -287,6 +287,13 @@ fn prepare_screenshot_env(env: &WowLuaEnv, command: &ScreenshotCommand<'_>) {
-     run_screenshot_exec_lua(env, command);
+@@ -314,6 +314,13 @@ fn prepare_screenshot_env(
      run_extra_update_ticks(env, 3);
-     apply_delay(command.delay);
+     env.service_headless_ui_transition(saved_vars)
+         .expect("screenshot timer UI transition failed");
 +    let state = env.state().borrow();
 +    if !state.lua_errors.is_empty() {
 +        for error in &state.lua_errors {
@@ -35,22 +62,22 @@ index 38c5046..a09cda0 100644
 +        std::process::exit(1);
 +    }
  }
-
+ 
  fn run_screenshot_exec_lua(env: &WowLuaEnv, command: &ScreenshotCommand<'_>) {
-@@ -295,6 +302,7 @@ fn run_screenshot_exec_lua(env: &WowLuaEnv, command: &ScreenshotCommand<'_>) {
+@@ -322,6 +329,7 @@ fn run_screenshot_exec_lua(env: &WowLuaEnv, command: &ScreenshotCommand<'_>) {
      };
      if let Err(e) = env.exec_maybe_secure(code, command.exec_lua_secure) {
          eprintln!("[exec-lua] error: {e}");
 +        std::process::exit(1);
      }
  }
-
+ 
 diff --git a/src/bin/wow_sim/main.rs b/src/bin/wow_sim/main.rs
-index e8da46d..8e981a3 100644
+index 5c70bb871..279053155 100644
 --- a/src/bin/wow_sim/main.rs
 +++ b/src/bin/wow_sim/main.rs
-@@ -574,6 +574,16 @@ fn run_self_test(dispatch: &CommandDispatch, max_ticks: u32, categories: Option<
-
+@@ -742,6 +742,16 @@ fn run_self_test(dispatch: &CommandDispatch, max_ticks: u32, categories: Option<
+ 
  fn run_addon_tests(dispatch: &CommandDispatch, addon_name: &str) {
      settle_headless_startup(&dispatch.env);
 +    // Reject startup errors before the per-flow test handlers take over.
@@ -66,11 +93,81 @@ index e8da46d..8e981a3 100644
      wow_ui_sim::addon_tests::run_addon_tests(
          &dispatch.env,
          addon_name,
+diff --git a/src/c_api/c_map.rs b/src/c_api/c_map.rs
+index 5e5aec9c4..d7a689dca 100644
+--- a/src/c_api/c_map.rs
++++ b/src/c_api/c_map.rs
+@@ -107,6 +107,7 @@ const C_MAP_METHODS: &[(&str, RustLuaFn)] = &[
+     ("GetCurrentMapID", c_map_get_current_map_id),
+     ("GetFallbackWorldMapID", c_map_get_fallback_world_map_id),
+     ("MapHasArt", c_map_map_has_art),
++    ("IsMapValidForNavBarDropdown", c_map_is_map_valid_for_nav_bar_dropdown),
+     ("RequestPreloadMap", c_map_request_preload_map),
+ ];
+ 
+@@ -123,7 +124,9 @@ fn register_c_map_methods(state: &mut LuaState, table_ref: LuaTableRef) -> LuaRe
+     }
+     if matches!(
+         crate::client_profile::ACTIVE,
+-        crate::client_profile::ClientProfile::Retail | crate::client_profile::ClientProfile::Ptr
++        crate::client_profile::ClientProfile::Retail
++            | crate::client_profile::ClientProfile::Ptr
++            | crate::client_profile::ClientProfile::WowForever
+     ) {
+         table_set_rust_fn_static(
+             state,
+@@ -1008,6 +1011,15 @@ fn c_map_get_fallback_world_map_id(state: &mut LuaState) -> LuaResult<u32> {
+     Ok(1)
+ }
+ 
++// Forever 1.60.1.70959: the world-map nav bar offers a dropdown for maps with children.
++fn c_map_is_map_valid_for_nav_bar_dropdown(state: &mut LuaState) -> LuaResult<u32> {
++    let ui_map_id = i32::from_stack(state, 1)?;
++    let valid = collect_children(&borrow_state(state)?.maps, ui_map_id, false, None)
++        .is_some_and(|children| !children.is_empty());
++    state.push(Val::Bool(valid));
++    Ok(1)
++}
++
+ fn c_map_map_has_art(state: &mut LuaState) -> LuaResult<u32> {
+     let ui_map_id = i32::from_stack(state, 1)?;
+     state.push(Val::Bool(ui_map_id > 0));
+diff --git a/src/c_api/item_spell/c_item.rs b/src/c_api/item_spell/c_item.rs
+index bc07a413d..e005d1c57 100644
+--- a/src/c_api/item_spell/c_item.rs
++++ b/src/c_api/item_spell/c_item.rs
+@@ -353,6 +353,10 @@ fn register_c_item_inventory_queries(
+             super::item_drop_on_unit::drop_item_on_unit,
+         )?;
+     }
++    // Forever 1.60.1.70959 documents C_Item.IsUsableItem.
++    if ACTIVE == ClientProfile::WowForever {
++        table_set_rust_fn_static(state, table_ref, "IsUsableItem", super::item_use::is_usable_item)?;
++    }
+     register_c_item_methods(
+         state,
+         table_ref,
+diff --git a/src/c_api/item_spell/item_use.rs b/src/c_api/item_spell/item_use.rs
+index 69a315abd..42d330f11 100644
+--- a/src/c_api/item_spell/item_use.rs
++++ b/src/c_api/item_spell/item_use.rs
+@@ -81,9 +81,8 @@ pub(super) fn is_usable_item(state: &mut LuaState) -> LuaResult<u32> {
+                     .item_use_eligibility
+                     .get(&(item, spell))
+                     .copied()
+-                    .ok_or_else(|| {
+-                        runtime_error("C_Item.IsUsableItem: eligibility has not been supplied")
+-                    })?;
++                    // Addon UI tests own the item; unknown eligibility means usable.
++                    .unwrap_or(true);
+                 if eligible {
+                     let enough = resources_sufficient(&sim, spell);
+                     (enough, !enough)
 diff --git a/src/loader/lua_file.rs b/src/loader/lua_file.rs
-index f8ce114..8349581 100644
+index d3d372753..3705ad85a 100644
 --- a/src/loader/lua_file.rs
 +++ b/src/loader/lua_file.rs
-@@ -50,7 +50,13 @@ fn begin_addon_module(
+@@ -53,7 +53,13 @@ fn begin_addon_module(
      path: &Path,
      ctx: &AddonContext<'_>,
  ) -> Result<super::addon_modules::ModuleToken, LoadError> {
@@ -85,25 +182,33 @@ index f8ce114..8349581 100644
          LoadError::Lua(format!(
              "addon module path {} is outside {}",
              path.display(),
-diff --git a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
---- a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
-+++ b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
-@@ -13,6 +13,11 @@ pub(crate) fn restore_post_cleanup_globals(
-     lua: &mut rilua::Lua,
-     _state: Rc<RefCell<SimState>>,
- ) -> crate::Result<()> {
-+    // Forever loads RestrictedExecution after cleanup; it captures this compiler.
-+    let compiler = crate::lua_api::methods::registry_get(
-+        lua.state_mut(), "__original_loadstring",
-+    );
-+    LuaApiMut::set_global_val(lua, "loadstring_untainted", compiler)?;
-     crate::lua_api::env_init::init_shared_bootstrap(lua)?;
-     crate::lua_api::env_init::init_runtime_surface_bootstrap(lua)?;
-     crate::lua_api::env_init::init_enum_globals(lua)?;
 diff --git a/src/lua_api/frame/methods/text_attribute_event/attributes.rs b/src/lua_api/frame/methods/text_attribute_event/attributes.rs
+index 0ce2e949a..549dd4324 100644
 --- a/src/lua_api/frame/methods/text_attribute_event/attributes.rs
 +++ b/src/lua_api/frame/methods/text_attribute_event/attributes.rs
-@@ -101,7 +101,9 @@ pub(super) fn set_attribute(state: &mut LuaState) -> LuaResult<u32> {
+@@ -85,14 +85,13 @@ fn write_attribute(state: &mut LuaState, id: u64, name: &str, value: Val) -> Lua
+     let dispatch = |state: &mut LuaState| -> LuaResult<()> {
+         let frame = frame_ref(state, id)?;
+         if let Some(handler) = get_rilua_script(state, id, "OnAttributeChanged") {
+-            dispatch_attribute_changed(
+-                state,
+-                handler,
+-                frame,
+-                name_arg,
+-                value,
+-                secure_delegate_dispatch,
+-            );
++            // Blizzard delegates (e.g. SmartNavigationSecureHelper) expect their own
++            // handler to run untainted when addon code sets the attribute.
++            let secure = secure_delegate_dispatch
++                || !crate::lua_api::frame::methods::forbidden_aspects::is_addon_installed_handler(
++                    state, handler,
++                );
++            dispatch_attribute_changed(state, handler, frame, name_arg, value, secure);
+         } else {
+             dispatch_direct_attribute_changed(state, frame, name_arg, value);
+         }
+@@ -106,7 +105,9 @@ fn write_attribute(state: &mut LuaState, id: u64, name: &str, value: Val) -> Lua
      if value != Val::Bool(false) {
          dispatch(state)?;
      }
@@ -111,45 +216,210 @@ diff --git a/src/lua_api/frame/methods/text_attribute_event/attributes.rs b/src/
 +    // Native SecureHandlerStateTemplate already dispatches through its script.
 +    // The fallback passes a raw frame instead of a restricted handle.
 +    if changed && get_rilua_script(state, id, "OnAttributeChanged").is_none() {
-         run_state_attribute_snippet(state, id, &name, value)?;
+         run_state_attribute_snippet(state, id, name, value)?;
      }
      Ok(0)
-diff --git a/src/xml/types_support.rs b/src/xml/types_support.rs
---- a/src/xml/types_support.rs
-+++ b/src/xml/types_support.rs
-@@ -207,6 +207,12 @@
-     pub on_mouse_up: Vec<ScriptBodyXml>,
-     #[serde(rename = "OnMouseWheel", default)]
-     pub on_mouse_wheel: Vec<ScriptBodyXml>,
-+    #[serde(rename = "OnVerticalScroll", default)]
-+    pub on_vertical_scroll: Vec<ScriptBodyXml>,
-+    #[serde(rename = "OnHorizontalScroll", default)]
-+    pub on_horizontal_scroll: Vec<ScriptBodyXml>,
-+    #[serde(rename = "OnScrollRangeChanged", default)]
-+    pub on_scroll_range_changed: Vec<ScriptBodyXml>,
-     #[serde(rename = "OnDragStart", default)]
-     pub on_drag_start: Vec<ScriptBodyXml>,
-     #[serde(rename = "OnDragStop", default)]
-diff --git a/src/loader/helpers.rs b/src/loader/helpers.rs
---- a/src/loader/helpers.rs
-+++ b/src/loader/helpers.rs
-@@ -635,6 +635,9 @@
-             ("OnMouseDown", scripts.on_mouse_down.last()),
-             ("OnMouseUp", scripts.on_mouse_up.last()),
-             ("OnMouseWheel", scripts.on_mouse_wheel.last()),
-+            ("OnVerticalScroll", scripts.on_vertical_scroll.last()),
-+            ("OnHorizontalScroll", scripts.on_horizontal_scroll.last()),
-+            ("OnScrollRangeChanged", scripts.on_scroll_range_changed.last()),
-             ("OnDragStart", scripts.on_drag_start.last()),
-             ("OnDragStop", scripts.on_drag_stop.last()),
-             ("OnReceiveDrag", scripts.on_receive_drag.last()),
+@@ -266,8 +267,10 @@ pub(super) fn clear_attribute(state: &mut LuaState) -> LuaResult<u32> {
+         .widgets
+         .get(id)
+         .is_some_and(|frame| frame.attributes.contains_key(&name));
++    // Blizzard delegates clear their trigger attribute inside OnAttributeChanged
++    // (SmartNavigationSecureHelper); clearing must not re-enter the handler.
+     if existed {
+-        write_attribute(state, id, &name, Val::Nil)?;
++        store_simple_attribute(state, id, &name, Val::Nil)?;
+     }
+     state.push(Val::Bool(existed));
+     Ok(1)
+diff --git a/src/lua_api/frame/methods/text_attribute_event/text.rs b/src/lua_api/frame/methods/text_attribute_event/text.rs
+index b842cb632..8f73dcb0b 100644
+--- a/src/lua_api/frame/methods/text_attribute_event/text.rs
++++ b/src/lua_api/frame/methods/text_attribute_event/text.rs
+@@ -872,37 +872,31 @@ pub(super) fn get_num_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let line_count = if !props.has_text {
+         0
+     } else {
+-        let (text, font, font_size) = frame_text_measurement(state, id);
+-        if let Some(font_system) = state
+-            .app_data::<crate::lua_api::env::WowLuaAppData>()
+-            .and_then(|app| app.font_system.as_ref())
+-        {
+-            font_system
+-                .borrow_mut()
+-                .measure_text_layout(
+-                    &text,
+-                    font.as_deref(),
+-                    font_size,
+-                    props.wrap_width,
+-                    0.0,
+-                    props.smooth_scaling,
+-                )
+-                .1
+-        } else {
+-            approximate_text_layout(
+-                &text,
+-                font_size,
+-                props.wrap_width,
+-                0.0,
+-                props.smooth_scaling,
+-            )
+-            .1
+-        }
++        measure_text_line_count(state, id, props.wrap_width)
+     };
+     state.push(Val::Num(line_count as f64));
+     Ok(1)
+ }
+ 
++fn measure_text_line_count(state: &LuaState, id: u64, wrap_width: Option<f32>) -> usize {
++    let smooth_scaling = borrow_state(state)
++        .ok()
++        .and_then(|sim| sim.widgets.get(id).map(|f| f.font_string_smooth_scaling))
++        .unwrap_or(false);
++    let (text, font, font_size) = frame_text_measurement(state, id);
++    if let Some(font_system) = state
++        .app_data::<crate::lua_api::env::WowLuaAppData>()
++        .and_then(|app| app.font_system.as_ref())
++    {
++        font_system
++            .borrow_mut()
++            .measure_text_layout(&text, font.as_deref(), font_size, wrap_width, 0.0, smooth_scaling)
++            .1
++    } else {
++        approximate_text_layout(&text, font_size, wrap_width, 0.0, smooth_scaling).1
++    }
++}
++
+ fn read_line_count_props(state: &LuaState, id: u64) -> LuaResult<Option<LineCountProps>> {
+     let sim = borrow_state(state)?;
+     let Some(frame) = sim.widgets.get(id) else {
+diff --git a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
+index 4728ac94c..7d6403ce7 100644
+--- a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
++++ b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
+@@ -1,7 +1,7 @@
+ use super::simple_html::{get_simple_html_font, is_simple_html_frame, set_simple_html_font};
+ use super::{
+-    frame_text_value, get_string_width, measure_text_height, measure_text_width,
+-    refresh_auto_text_height_after_width_change, set_text,
++    frame_text_value, get_string_width, measure_text_height, measure_text_line_count,
++    measure_text_width, refresh_auto_text_height_after_width_change, set_text,
+ };
+ use crate::lua_api::frame::methods::button_anchor_hierarchy::{
+     apply_font_object_snapshot, font_object_snapshot_changes_frame, read_font_object_fields,
+@@ -22,7 +22,6 @@ struct TruncationProps {
+     height: f64,
+     word_wrap: bool,
+     max_lines: u32,
+-    line_height: f64,
+ }
+ 
+ #[derive(Copy, Clone)]
+@@ -45,22 +44,31 @@ pub(crate) fn is_truncated(state: &mut LuaState) -> LuaResult<u32> {
+     Ok(1)
+ }
+ 
+-fn read_truncation_props(state: &LuaState, id: u64) -> TruncationProps {
+-    let sim = borrow_state(state).expect("sim state should exist");
++fn read_truncation_props(state: &mut LuaState, id: u64) -> TruncationProps {
++    let mut sim = borrow_state_mut(state).expect("sim state should exist");
++    sim.resolve_rect_if_dirty(id);
+     let frame = sim.widgets.get(id);
++    let (width, height) = frame
++        .map(|f| {
++            if let Some(rect) = f.layout_rect {
++                let scale = f.effective_scale.max(1e-6);
++                (rect.width / scale, rect.height / scale)
++            } else {
++                (f.width, f.height)
++            }
++        })
++        .unwrap_or((0.0, 0.0));
+     TruncationProps {
+-        width: frame.map(|f| f.width as f64).unwrap_or(0.0),
+-        height: frame.map(|f| f.height as f64).unwrap_or(0.0),
++        width: width as f64,
++        height: height as f64,
+         word_wrap: frame.map(|f| f.word_wrap).unwrap_or(false),
+         max_lines: frame.map(|f| f.max_lines).unwrap_or(0),
+-        line_height: frame
+-            .map(|f| f.font_size as f64 * f.text_scale.max(0.0))
+-            .unwrap_or(0.0),
+     }
+ }
+ 
+ fn check_truncated(state: &LuaState, id: u64, p: TruncationProps) -> bool {
+-    let width_overflow = p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
++    let width_overflow =
++        !p.word_wrap && p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
+     let vertical_overflow = check_vertical_overflow(state, id, &p);
+     width_overflow || vertical_overflow
+ }
+@@ -70,14 +78,9 @@ fn check_vertical_overflow(state: &LuaState, id: u64, p: &TruncationProps) -> bo
+         return false;
+     }
+     let wrapped_height = measure_text_height(state, id, Some(p.width as f32));
+-    let max_lines_height = (p.max_lines > 0).then_some(p.line_height * p.max_lines as f64);
+-    let available_height = match (p.height > 0.0, max_lines_height) {
+-        (true, Some(lh)) => p.height.min(lh),
+-        (true, None) => p.height,
+-        (false, Some(lh)) => lh,
+-        (false, None) => 0.0,
+-    };
+-    available_height > 0.0 && wrapped_height > available_height + 0.5
++    let too_many_lines = p.max_lines > 0
++        && measure_text_line_count(state, id, Some(p.width as f32)) > p.max_lines as usize;
++    too_many_lines || (p.height > 0.0 && wrapped_height > p.height + 0.5)
+ }
+ 
+ pub(crate) fn set_formatted_text(state: &mut LuaState) -> LuaResult<u32> {
+diff --git a/src/lua_api/frame/methods/widgets/message_frame/getters.rs b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
+index 632c769bb..c16004ebb 100644
+--- a/src/lua_api/frame/methods/widgets/message_frame/getters.rs
++++ b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
+@@ -69,6 +69,12 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let id = frame_id_from_stack(state, 1)?;
+     let max = val_to_f64(stack_val(state, 2)) as i32;
+     let mut sim = borrow_state_mut(state)?;
++    if let Some(frame) = sim.widgets.get_mut_visual(id)
++        && frame.widget_type == crate::widget::WidgetType::FontString
++    {
++        frame.max_lines = max.max(0) as u32;
++        return Ok(0);
++    }
+     let data = sim.message_frames.entry(id).or_default();
+     data.max_lines = max.max(1) as usize;
+     while data.messages.len() > data.max_lines {
+@@ -84,11 +90,16 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+ pub(super) fn get_max_lines(state: &mut LuaState) -> LuaResult<u32> {
+     let id = frame_id_from_stack(state, 1)?;
+     let sim = borrow_state(state)?;
+-    let v = sim
+-        .message_frames
+-        .get(&id)
+-        .map(|d| d.max_lines)
+-        .unwrap_or(120) as f64;
++    let v = match sim.widgets.get(id) {
++        Some(frame) if frame.widget_type == crate::widget::WidgetType::FontString => {
++            frame.max_lines as f64
++        }
++        _ => sim
++            .message_frames
++            .get(&id)
++            .map(|d| d.max_lines)
++            .unwrap_or(120) as f64,
++    };
+     drop(sim);
+     v.into_stack(state)
+ }
 diff --git a/src/lua_api/globals/create_frame/template_chain.rs b/src/lua_api/globals/create_frame/template_chain.rs
+index 52329b151..5296e6fec 100644
 --- a/src/lua_api/globals/create_frame/template_chain.rs
 +++ b/src/lua_api/globals/create_frame/template_chain.rs
-@@ -658,13 +658,16 @@
+@@ -686,13 +686,16 @@ fn base_method_only_handlers(scripts: &crate::xml::ScriptsXml) -> [MethodOnlyScr
      ]
  }
-
+ 
 -fn pointer_method_only_handlers(scripts: &crate::xml::ScriptsXml) -> [MethodOnlyScript<'_>; 8] {
 +fn pointer_method_only_handlers(scripts: &crate::xml::ScriptsXml) -> [MethodOnlyScript<'_>; 11] {
      [
@@ -164,11 +434,24 @@ diff --git a/src/lua_api/globals/create_frame/template_chain.rs b/src/lua_api/gl
          ("OnDragStart", scripts.on_drag_start.last()),
          ("OnDragStop", scripts.on_drag_stop.last()),
          ("OnReceiveDrag", scripts.on_receive_drag.last()),
-
+diff --git a/src/lua_api/globals/stubs/global_stubs.rs b/src/lua_api/globals/stubs/global_stubs.rs
+index 4c8438c40..8694e1b25 100644
+--- a/src/lua_api/globals/stubs/global_stubs.rs
++++ b/src/lua_api/globals/stubs/global_stubs.rs
+@@ -244,6 +244,8 @@ static GLOBAL_CUSTOM_STUBS: &[(&'static str, RustFn)] = &[
+     ("GetActionBarToggles", stub_action_bar_toggles),
+     ("GetReadyCheckStatus", stub_nil),
+     ("GetReadyCheckTimeLeft", stub_zero),
++    // Forever 1.60.1.70959 SocialToast: no shard transfer is scheduled.
++    ("GetEvictionTimeRemaining", stub_zero),
+     // GetRestrictedAccountData is SimState-backed in real/xp_honor_rest.rs.
+     ("GetClassicExpansionLevel", stub_current_expansion_level),
+     ("ClassicExpansionAtLeast", stub_classic_expansion_at_least),
 diff --git a/src/lua_api/globals/template/direct.rs b/src/lua_api/globals/template/direct.rs
+index fe022d9ef..37fd613ad 100644
 --- a/src/lua_api/globals/template/direct.rs
 +++ b/src/lua_api/globals/template/direct.rs
-@@ -366,6 +366,14 @@
+@@ -372,6 +372,14 @@ pub fn apply_xml_anchors(
  ) {
      if let Some(anchors) = frame.anchors() {
          let mut s = state.borrow_mut();
@@ -183,11 +466,11 @@ diff --git a/src/lua_api/globals/template/direct.rs b/src/lua_api/globals/templa
          for anchor in &anchors.anchors {
              set_single_anchor(&mut s, frame_id, anchor, parent_name);
          }
-
 diff --git a/src/lua_api/globals/template/direct_tests.rs b/src/lua_api/globals/template/direct_tests.rs
+index 396a78f86..a8350d15a 100644
 --- a/src/lua_api/globals/template/direct_tests.rs
 +++ b/src/lua_api/globals/template/direct_tests.rs
-@@ -66,3 +66,82 @@
+@@ -66,3 +66,82 @@ fn explicit_hidden_false_restores_frame_shown_state() {
          "explicit hidden=\"false\" must override an inherited hidden=true template"
      );
  }
@@ -270,168 +553,27 @@ diff --git a/src/lua_api/globals/template/direct_tests.rs b/src/lua_api/globals/
 +        .iter()
 +        .all(|anchor| anchor.relative_to_id == Some(parent_id as usize)));
 +}
-
-diff --git a/src/lua_api/frame/methods/text_attribute_event/text.rs b/src/lua_api/frame/methods/text_attribute_event/text.rs
-index c77066223..11e451ca7 100644
---- a/src/lua_api/frame/methods/text_attribute_event/text.rs
-+++ b/src/lua_api/frame/methods/text_attribute_event/text.rs
-@@ -820,23 +820,27 @@ pub(super) fn get_num_lines(state: &mut LuaState) -> LuaResult<u32> {
-     let line_count = if !props.has_text {
-         0
-     } else {
--        let (text, font, font_size) = frame_text_measurement(state, id);
--        if let Some(font_system) = state
--            .app_data::<crate::lua_api::env::WowLuaAppData>()
--            .and_then(|app| app.font_system.as_ref())
--        {
--            font_system
--                .borrow_mut()
--                .measure_text_layout(&text, font.as_deref(), font_size, props.wrap_width, 0.0)
--                .1
--        } else {
--            approximate_text_layout(&text, font_size, props.wrap_width, 0.0).1
--        }
-+        measure_text_line_count(state, id, props.wrap_width)
-     };
-     state.push(Val::Num(line_count as f64));
-     Ok(1)
- }
-
-+fn measure_text_line_count(state: &LuaState, id: u64, wrap_width: Option<f32>) -> usize {
-+    let (text, font, font_size) = frame_text_measurement(state, id);
-+    if let Some(font_system) = state
-+        .app_data::<crate::lua_api::env::WowLuaAppData>()
-+        .and_then(|app| app.font_system.as_ref())
-+    {
-+        font_system
-+            .borrow_mut()
-+            .measure_text_layout(&text, font.as_deref(), font_size, wrap_width, 0.0)
-+            .1
-+    } else {
-+        approximate_text_layout(&text, font_size, wrap_width, 0.0).1
-+    }
-+}
-+
- fn read_line_count_props(state: &LuaState, id: u64) -> LuaResult<Option<LineCountProps>> {
-     let sim = borrow_state(state)?;
-     let Some(frame) = sim.widgets.get(id) else {
-diff --git a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
-index e53832c76..465e70d17 100644
---- a/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
-+++ b/src/lua_api/frame/methods/text_attribute_event/text/formatting.rs
-@@ -1,7 +1,7 @@
- use super::simple_html::{get_simple_html_font, is_simple_html_frame, set_simple_html_font};
- use super::{
--    frame_text_value, get_string_width, measure_text_height, measure_text_width,
--    refresh_auto_text_height_after_width_change, set_text,
-+    frame_text_value, get_string_width, measure_text_height, measure_text_line_count,
-+    measure_text_width, refresh_auto_text_height_after_width_change, set_text,
- };
- use crate::lua_api::frame::methods::button_anchor_hierarchy::{
-     apply_font_object_snapshot, font_object_snapshot_changes_frame, read_font_object_fields,
-@@ -22,7 +22,6 @@ struct TruncationProps {
-     height: f64,
-     word_wrap: bool,
-     max_lines: u32,
--    line_height: f64,
- }
-
- #[derive(Copy, Clone)]
-@@ -45,22 +44,31 @@ pub(crate) fn is_truncated(state: &mut LuaState) -> LuaResult<u32> {
-     Ok(1)
- }
-
--fn read_truncation_props(state: &LuaState, id: u64) -> TruncationProps {
--    let sim = borrow_state(state).expect("sim state should exist");
-+fn read_truncation_props(state: &mut LuaState, id: u64) -> TruncationProps {
-+    let mut sim = borrow_state_mut(state).expect("sim state should exist");
-+    sim.resolve_rect_if_dirty(id);
-     let frame = sim.widgets.get(id);
-+    let (width, height) = frame
-+        .map(|f| {
-+            if let Some(rect) = f.layout_rect {
-+                let scale = f.effective_scale.max(1e-6);
-+                (rect.width / scale, rect.height / scale)
-+            } else {
-+                (f.width, f.height)
-+            }
-+        })
-+        .unwrap_or((0.0, 0.0));
-     TruncationProps {
--        width: frame.map(|f| f.width as f64).unwrap_or(0.0),
--        height: frame.map(|f| f.height as f64).unwrap_or(0.0),
-+        width: width as f64,
-+        height: height as f64,
-         word_wrap: frame.map(|f| f.word_wrap).unwrap_or(false),
-         max_lines: frame.map(|f| f.max_lines).unwrap_or(0),
--        line_height: frame
--            .map(|f| f.font_size as f64 * f.text_scale.max(0.0))
--            .unwrap_or(0.0),
-     }
- }
-
- fn check_truncated(state: &LuaState, id: u64, p: TruncationProps) -> bool {
--    let width_overflow = p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
-+    let width_overflow =
-+        !p.word_wrap && p.width > 0.0 && measure_text_width(state, id) > p.width + 0.5;
-     let vertical_overflow = check_vertical_overflow(state, id, &p);
-     width_overflow || vertical_overflow
- }
-@@ -70,14 +78,9 @@ fn check_vertical_overflow(state: &LuaState, id: u64, p: &TruncationProps) -> bo
-         return false;
-     }
-     let wrapped_height = measure_text_height(state, id, Some(p.width as f32));
--    let max_lines_height = (p.max_lines > 0).then_some(p.line_height * p.max_lines as f64);
--    let available_height = match (p.height > 0.0, max_lines_height) {
--        (true, Some(lh)) => p.height.min(lh),
--        (true, None) => p.height,
--        (false, Some(lh)) => lh,
--        (false, None) => 0.0,
--    };
--    available_height > 0.0 && wrapped_height > available_height + 0.5
-+    let too_many_lines = p.max_lines > 0
-+        && measure_text_line_count(state, id, Some(p.width as f32)) > p.max_lines as usize;
-+    too_many_lines || (p.height > 0.0 && wrapped_height > p.height + 0.5)
- }
-
- pub(crate) fn set_formatted_text(state: &mut LuaState) -> LuaResult<u32> {
-
-diff --git a/src/lua_api/frame/methods/widgets/message_frame/getters.rs b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
-index e95327402..d4cc52e76 100644
---- a/src/lua_api/frame/methods/widgets/message_frame/getters.rs
-+++ b/src/lua_api/frame/methods/widgets/message_frame/getters.rs
-@@ -62,6 +62,12 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
-     let id = frame_id_from_stack(state, 1)?;
-     let max = val_to_f64(stack_val(state, 2)) as i32;
-     let mut sim = borrow_state_mut(state)?;
-+    if let Some(frame) = sim.widgets.get_mut_visual(id)
-+        && frame.widget_type == crate::widget::WidgetType::FontString
-+    {
-+        frame.max_lines = max.max(0) as u32;
-+        return Ok(0);
-+    }
-     let data = sim.message_frames.entry(id).or_default();
-     data.max_lines = max.max(1) as usize;
-     while data.messages.len() > data.max_lines {
-@@ -77,11 +83,16 @@ pub(super) fn set_max_lines(state: &mut LuaState) -> LuaResult<u32> {
- pub(super) fn get_max_lines(state: &mut LuaState) -> LuaResult<u32> {
-     let id = frame_id_from_stack(state, 1)?;
-     let sim = borrow_state(state)?;
--    let v = sim
--        .message_frames
--        .get(&id)
--        .map(|d| d.max_lines)
--        .unwrap_or(120) as f64;
-+    let v = match sim.widgets.get(id) {
-+        Some(frame) if frame.widget_type == crate::widget::WidgetType::FontString => {
-+            frame.max_lines as f64
-+        }
-+        _ => sim
-+            .message_frames
-+            .get(&id)
-+            .map(|d| d.max_lines)
-+            .unwrap_or(120) as f64,
-+    };
-     drop(sim);
-     v.into_stack(state)
- }
+diff --git a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
+index 7a9fa3c0e..e35b17b57 100644
+--- a/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
++++ b/src/lua_api/workarounds/temporary/environment_cleanup_restore.rs
+@@ -4,6 +4,7 @@
+ //! cleanup-removed secure namespaces remain absent from the public environment.
+ 
+ use crate::lua_api::SimState;
++use rilua::LuaApiMut;
+ use std::cell::RefCell;
+ use std::rc::Rc;
+ 
+@@ -11,6 +12,11 @@ pub(crate) fn restore_post_cleanup_globals(
+     lua: &mut rilua::Lua,
+     _state: Rc<RefCell<SimState>>,
+ ) -> crate::Result<()> {
++    // Forever loads RestrictedExecution after cleanup; it captures this compiler.
++    let compiler = crate::lua_api::methods::registry_get(
++        lua.state_mut(), "__original_loadstring",
++    );
++    LuaApiMut::set_global_val(lua, "loadstring_untainted", compiler)?;
+     crate::lua_api::env_init::init_shared_bootstrap(lua)?;
+     crate::lua_api::env_init::init_runtime_surface_bootstrap(lua)?;
+     crate::lua_api::env_init::init_enum_globals(lua)?;

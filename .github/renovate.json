@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["custom.regex"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "build",
+  "semanticCommitScope": "ui",
+  "schedule": ["before 6am on monday"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Forever Blizzard UI source and the simulator built against it",
+      "managerFilePatterns": ["/^tests/ui/Dockerfile$/"],
+      "matchStrings": [
+        "# renovate: repo=(?<packageName>\\S+) branch=(?<currentValue>\\S+)\\nARG [A-Z_]+=(?<currentDigest>[0-9a-f]{40})"
+      ],
+      "datasourceTemplate": "git-refs",
+      "depNameTemplate": "{{{packageName}}}"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "A Forever UI build usually needs the newer simulator; test them together",
+      "matchManagers": ["custom.regex"],
+      "groupName": "Forever UI simulator"
+    }
+  ]
+}

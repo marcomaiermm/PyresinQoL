@@ -7,6 +7,17 @@ local staleReturnItem, staleReturnCallback, settingOriginal
 local baselineHomeEntries, baselineHomeTextureCoords
 local WorldHomeMenuArrow
 local resizeWasMinimized
+-- Blizzard's border buttons overhang the map frame (and the screen when maximized) by a few pixels.
+local function ClickBorderButton(button, name)
+    assertTrue(button:IsVisible())
+    assertTrue(button:IsEnabled())
+    assertTrue(button:IsMouseEnabled())
+    local x, y = button:GetCenter()
+    local scale = button:GetEffectiveScale() / UIParent:GetEffectiveScale()
+    x, y = x * scale, y * scale
+    assert(x >= 0 and x <= UIParent:GetWidth() and y >= 0 and y <= UIParent:GetHeight(), name .. " is off screen")
+    button:Click()
+end
 local SetNativeBackingMap
 local detectedFloorTexture
 
@@ -972,17 +983,17 @@ UI.Flow("native dungeon map keeps Blizzard zoom, pan, close and minimize control
         local maxMin = assert(WorldMapFrame.BorderFrame.MaximizeMinimizeFrame)
         if not maxMin.MinimizeButton:IsShown() then
             assertTrue(maxMin.MaximizeButton:IsShown())
-            UI.Click(maxMin.MaximizeButton, WorldMapFrame, "Native map maximize from minimized state")
+            ClickBorderButton(maxMin.MaximizeButton, "Native map maximize from minimized state")
         end
         assertTrue(maxMin.MinimizeButton:IsShown())
-        UI.Click(maxMin.MinimizeButton, WorldMapFrame, "Native map minimize")
+        ClickBorderButton(maxMin.MinimizeButton, "Native map minimize")
         assertTrue(maxMin:IsMinimized())
-        UI.Click(maxMin.MaximizeButton, WorldMapFrame, "Native map maximize")
+        ClickBorderButton(maxMin.MaximizeButton, "Native map maximize")
         assertFalse(maxMin:IsMinimized())
     end,
     function()
         local close = assert(WorldMapFrame.BorderFrame.CloseButton, "Missing native world-map close button")
-        UI.Click(close, UIParent, "Native world-map close")
+        ClickBorderButton(close, "Native world-map close")
         assertFalse(WorldMapFrame:IsShown())
         assertEquals("idle", provider.displayMode)
         assertNil(provider.selection, "Closing the native map must clear the retained dungeon route")
@@ -1008,10 +1019,10 @@ UI.Flow("native dungeon art survives provider refresh and viewport resize", {
             "Missing native map resize controls")
         resizeWasMinimized = maxMin:IsMinimized()
         if resizeWasMinimized then
-            UI.Click(maxMin.MaximizeButton, WorldMapFrame,
+            ClickBorderButton(maxMin.MaximizeButton,
                 "Native map maximize before resize regression")
         else
-            UI.Click(maxMin.MinimizeButton, WorldMapFrame,
+            ClickBorderButton(maxMin.MinimizeButton,
                 "Native map minimize before resize regression")
         end
     end,
@@ -1020,10 +1031,10 @@ UI.Flow("native dungeon art survives provider refresh and viewport resize", {
         assertEquals(not resizeWasMinimized, maxMin:IsMinimized(),
             "Native map resize control must change the display state")
         if resizeWasMinimized then
-            UI.Click(maxMin.MinimizeButton, WorldMapFrame,
+            ClickBorderButton(maxMin.MinimizeButton,
                 "Native map restore minimized state")
         else
-            UI.Click(maxMin.MaximizeButton, WorldMapFrame,
+            ClickBorderButton(maxMin.MaximizeButton,
                 "Native map restore maximized state")
         end
     end,
