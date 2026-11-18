@@ -11,6 +11,7 @@ local resizeWasMinimized
 local function ClickBorderButton(button, name)
     assertTrue(button:IsVisible())
     assertTrue(button:IsEnabled())
+    assertTrue(button:IsMouseEnabled())
     local x, y = button:GetCenter()
     local scale = button:GetEffectiveScale() / UIParent:GetEffectiveScale()
     x, y = x * scale, y * scale
