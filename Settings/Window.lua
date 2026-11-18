@@ -202,8 +202,10 @@ function ns.InitializeSettings()
         end
         return initializers
     end
+    local shownText
     local function RefreshView()
         local text = GetSearchText()
+        shownText = text
         local searching = text ~= ""
         local initializers = currentPage.initializers
         if searching then initializers = CollectSearchResults(text) end
@@ -221,9 +223,10 @@ function ns.InitializeSettings()
             if page.menu then page.menu.collapsed = false end
             LayoutNavigation()
         end
-        -- Clearing a nonempty query refreshes synchronously through OnTextChanged.
-        if search:GetText() == "" then RefreshView()
-        else search:SetText("") end
+        -- Refresh once here; OnTextChanged (deferred by the client) skips the cleared query.
+        shownText = ""
+        search:SetText("")
+        RefreshView()
     end
     -- A sidebar entry: a page, or a sub menu's entry, with its tooltip and module state.
     local function NavigationButton(entry, indent, OnClick)
@@ -372,7 +375,9 @@ function ns.InitializeSettings()
     launcher.OnDefault = canvas.OnDefault
     canvas.OnRefresh = RefreshView
     canvas:SetScript("OnShow", RefreshView)
-    search:HookScript("OnTextChanged", RefreshView)
+    search:HookScript("OnTextChanged", function()
+        if GetSearchText() ~= shownText then RefreshView() end
+    end)
     search:HookScript("OnEscapePressed", function() search:SetText("") end)
     canvas:HookScript("OnHide", function()
         search:ClearFocus()

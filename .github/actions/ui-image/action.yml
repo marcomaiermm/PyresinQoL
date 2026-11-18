@@ -36,7 +36,7 @@ runs:
           docker image load --input "$cache_dir/image.tar" 2>&1 | tee "$RUNNER_TEMP/forever-ui-build.log"
         else
           if [[ "$BUILD_ON_MISS" != true ]]; then
-            echo "::error::No cached Forever $TARGET image. Run UI simulator images on main with source-ref set to this branch, then rerun CI." | tee "$RUNNER_TEMP/forever-ui-build.log"
+            echo "::error::No cached Forever $TARGET image. Run UI simulator images on main, then rerun CI (PRs that change tests/ui/Dockerfile or its patches build their own)." | tee "$RUNNER_TEMP/forever-ui-build.log"
             exit 1
           fi
           mkdir -p "$cache_dir"

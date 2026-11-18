@@ -243,6 +243,9 @@ UIFlow("Search: cross-page matches, literal punctuation, result links and close/
         assertTrue(list.Header.DefaultsButton:IsShown())
         AssertOneRefresh(list, function() PageButton(sidebar, "Player Frame"):Click() end)
         canvas.SearchBox:SetText("nameplates")
+    end,
+    -- The query refreshes through OnTextChanged after a later EditBox flush.
+    function(canvas, _, list)
         assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
         canvas:Hide()
     end,
@@ -278,8 +281,8 @@ UIFlow("Modules: pending reload locks page and search controls until enabled aga
         assertFalse(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())
         assertFalse(list.Header.DefaultsButton:IsEnabled())
         canvas.SearchBox:SetText("class color")
-        list:ScrollToElementByName(playerSetting:GetName())
     end,
+    function(_, _, list) list:ScrollToElementByName(playerSetting:GetName()) end,
     function(_, sidebar, list)
         assertEquals(SETTINGS_SEARCH_RESULTS, list.Header.Title:GetText())
         assertFalse(UI.VisibleSetting(list, playerSetting).Checkbox:IsEnabled())

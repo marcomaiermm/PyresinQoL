@@ -1,6 +1,16 @@
 local UI = PyresinQoLUITest
 local frame = PlayerCastingBarFrame
 local oldEnabled, oldConfig, enable, panel, color, previous
+-- CastSpellByID and SpellStopCasting are protected; drive the player's cast through the simulator.
+local function StartCast(spellID, name, duration)
+    A_Admin.SetCasting(spellID, name, "Interface\\Icons\\Spell_Holy_FlashHeal", duration)
+    A_Admin.FireEvent("UNIT_SPELLCAST_START", "player", select(7, UnitCastingInfo("player")), spellID)
+end
+local function InterruptCast()
+    local castID, _, spellID = select(7, UnitCastingInfo("player"))
+    A_Admin.StopCasting()
+    A_Admin.FireEvent("UNIT_SPELLCAST_INTERRUPTED", "player", castID, spellID)
+end
 local function ColorDropdown()
     return assert(UI.Find(panel, function(row)
         if not row.Dropdown or not row:IsVisible() then return false end
@@ -31,7 +41,7 @@ UI.Flow("Cast bar: configured native casts interrupt, channel and restart withou
     function() UI.SelectMenu(color, "Class color") end,
     function()
         HideUIPanel(EditModeManagerFrame)
-        CastSpellByID(19750)
+        StartCast(19750, "Flash of Light", 1.5)
     end,
     function()
         assertNotNil(UnitCastingInfo("player"))
@@ -43,7 +53,7 @@ UI.Flow("Cast bar: configured native casts interrupt, channel and restart withou
     end,
     function()
         assert(frame:GetValue() > previous, "Native cast must fill across UI ticks")
-        assertTrue(SpellStopCasting())
+        InterruptCast()
     end,
     function()
         assertNil(UnitCastingInfo("player"))
@@ -68,7 +78,7 @@ UI.Flow("Cast bar: configured native casts interrupt, channel and restart withou
     function()
         assertNil(UnitChannelInfo("player"))
         assertFalse(frame.channeling)
-        CastSpellByID(82326)
+        StartCast(635, "Holy Light", 2.5)
     end,
     function()
         assertTrue(frame.casting)
@@ -82,7 +92,7 @@ UI.Flow("Cast bar: configured native casts interrupt, channel and restart withou
     end,
 }, function()
     if color then color:CloseMenu() end
-    SpellStopCasting()
+    if UnitCastingInfo("player") then InterruptCast() end
     A_Admin.StopChannel(false)
     ShowUIPanel(EditModeManagerFrame)
     EditModeManagerFrame:SelectSystem(frame)
