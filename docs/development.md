@@ -559,10 +559,12 @@ combat, stealth, form, custom-condition, opacity and mouseover transitions, then
 enter and leave controller UI mode and confirm the native bars resume their saved
 rules.
 
-Action-bar dialog registration adds only its own entry to `StaticPopupDialogs`.
-Never reassign that Blizzard global, even to the same table: doing so taints its
-reference, and later native popup/ESC registration can carry that taint into
-`SpellStopCasting()`. `tests/integration/core/settings.lua` rejects global writes from the action-bar
+Addon prompts use `ns.ShowDialog` (`Core/Dialog.lua`), never `StaticPopup_Show`:
+an addon popup taints the shared StaticPopup frames, and native code that later
+hides popups runs tainted (the guild window then blocked `C_Discord.IsUserOAuthed()`).
+Never reassign Blizzard globals such as `StaticPopupDialogs`, even to the same table:
+doing so taints its reference, and later native popup/ESC registration can carry
+that taint into `SpellStopCasting()`. `tests/integration/core/settings.lua` rejects global writes from the action-bar
 settings builder. The optional native dispatch regression runs with
 [Elune](https://github.com/Meorawr/elune):
 `elune tools/check-escape-taint.lua /path/to/Interface/AddOns` (use the built Lua

@@ -46,7 +46,10 @@ PyresinQoLDB = variant == "disabled" and { cooldownShortcut = false, showPerform
 PyresinQoLDB.modules = { quests = true } -- Opt-in; the quest page tests need it running.
 DEFAULTS, CLOSE = "Defaults", "Close"
 SETTINGS_SEARCH_RESULTS, SETTINGS_SEARCH_NOTHING_FOUND = "Search Results", "No settings found"
-StaticPopupDialogs = {}
+-- Addon prompts must stay off Blizzard's shared StaticPopup frames, which taint native callers.
+StaticPopupDialogs = setmetatable({}, { __newindex = function(_, key) error("Addon dialog on StaticPopup: " .. key) end })
+function StaticPopup_Show(which) error("Addon dialog on StaticPopup: " .. tostring(which)) end
+ns.dialogs = {}
 EventRegistry = { RegisterCallback = function() end, TriggerEvent = function() end }
 UISpecialFrames, SlashCmdList = {}, {}
 UIParent = { GetWidth = function() return 1280 end, GetHeight = function() return 800 end,
@@ -523,8 +526,7 @@ for key, label in pairs({ ORIENTATION = "Orientation", ORIENTATION_HORIZONTAL = 
 end
 assert(loadfile("Modules/Flyouts/Options.lua"))("PyresinQoL", ns)
 assert(loadfile("Modules/Flyouts/Settings.lua"))("PyresinQoL", ns)
--- Addon settings may add popup definitions, but reassigning a Blizzard global
--- taints later native users of that registry, including Escape handlers.
+-- Reassigning a Blizzard global taints its later native users, including Escape handlers.
 local actionBarSettings = assert(loadfile("Modules/ActionBars/Settings.lua"))
 setfenv(actionBarSettings, setmetatable({}, {
     __index = _G,

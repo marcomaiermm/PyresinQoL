@@ -358,7 +358,7 @@ function ns.MaybePromptProfileReload()
     if not ns.profileReloadPending or ns.ProfileSwitchError() then return end
     if EditModeManagerFrame and EditModeManagerFrame:IsShown() then return end
     ns.profileReloadPending = nil
-    if ns.ModulesNeedReload() then StaticPopup_Show("PYRESINQOL_PROFILE_RELOAD") end
+    if ns.ModulesNeedReload() then ns.ShowDialog("PYRESINQOL_PROFILE_RELOAD") end
 end
 
 -- Profiles linked only by other characters belong to them, and profiles of presets hidden in the
@@ -395,7 +395,7 @@ local function Complete(success, reason)
 end
 
 local function RegisterDialogs()
-    StaticPopupDialogs.PYRESINQOL_PROFILE_NAME = {
+    ns.dialogs.PYRESINQOL_PROFILE_NAME = {
         text = L.profileNewDialog, button1 = ACCEPT, button2 = CANCEL,
         hasEditBox = true, timeout = 0, whileDead = true, hideOnEscape = true,
         OnShow = function(dialog, data)
@@ -420,17 +420,17 @@ local function RegisterDialogs()
             return Complete(ns.CreateProfile(dialog:GetEditBox():GetText()))
         end,
     }
-    StaticPopupDialogs.PYRESINQOL_PROFILE_SWITCH = {
+    ns.dialogs.PYRESINQOL_PROFILE_SWITCH = {
         text = L.profileSwitchDialog, button1 = L.profileSwitchReload, button2 = CANCEL,
         timeout = 0, whileDead = true, hideOnEscape = true,
         OnAccept = function(_, name) return Complete(ns.SwitchProfile(name)) end,
     }
-    StaticPopupDialogs.PYRESINQOL_PROFILE_DELETE = {
+    ns.dialogs.PYRESINQOL_PROFILE_DELETE = {
         text = L.profileDeleteDialog, button1 = DELETE, button2 = CANCEL,
         timeout = 0, whileDead = true, hideOnEscape = true,
         OnAccept = function(_, name) return Complete(ns.DeleteProfile(name)) end,
     }
-    StaticPopupDialogs.PYRESINQOL_PROFILE_RELOAD = {
+    ns.dialogs.PYRESINQOL_PROFILE_RELOAD = {
         text = L.profileModulesReload, button1 = L.reloadUI, button2 = CANCEL,
         timeout = 0, whileDead = true, hideOnEscape = true,
         OnAccept = function()
@@ -475,7 +475,7 @@ function ns.CreateProfilesPage(parent)
                 if store.active == name then return end
                 local reason = ns.ProfileSwitchError()
                 if reason then UIErrorsFrame:AddMessage(reason, 1, 0.2, 0.2); return end
-                StaticPopup_Show("PYRESINQOL_PROFILE_SWITCH", ProfileLabel(name), nil, name)
+                ns.ShowDialog("PYRESINQOL_PROFILE_SWITCH", ProfileLabel(name), nil, name)
             end)
             radio:SetEnabled(switchError == nil)
         end
@@ -504,10 +504,10 @@ function ns.CreateProfilesPage(parent)
         return button
     end
     local create = Button(L.profileNew, L.profileCreate, 210, function()
-        StaticPopup_Show("PYRESINQOL_PROFILE_NAME", nil, nil, {})
+        ns.ShowDialog("PYRESINQOL_PROFILE_NAME", nil, nil, {})
     end)
     local rename = Button(L.profileRename, L.profileRenameButton, 245, function()
-        StaticPopup_Show("PYRESINQOL_PROFILE_NAME", nil, nil, { rename = PyresinQoLDB.profileStore.active })
+        ns.ShowDialog("PYRESINQOL_PROFILE_NAME", nil, nil, { rename = PyresinQoLDB.profileStore.active })
     end)
     Label(L.profileDelete, 300, "GameFontHighlightLarge")
     Label(L.profileDeleteTarget, 340)
@@ -519,7 +519,7 @@ function ns.CreateProfilesPage(parent)
     local Refresh
     local delete = Button(L.profileDelete, DELETE, 367, function()
         Refresh() -- Input mode changes do not refresh this page; drop a target that has since been hidden.
-        if toDelete then StaticPopup_Show("PYRESINQOL_PROFILE_DELETE", ProfileLabel(toDelete), nil, toDelete) end
+        if toDelete then ns.ShowDialog("PYRESINQOL_PROFILE_DELETE", ProfileLabel(toDelete), nil, toDelete) end
     end)
     function Refresh()
         local store = PyresinQoLDB.profileStore

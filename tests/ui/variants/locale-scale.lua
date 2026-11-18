@@ -42,7 +42,7 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
         UI.Click(UI.Button(list, "Erstellen"), list, "Profil erstellen")
     end,
     function()
-        popup = assert(StaticPopup_FindVisible("PYRESINQOL_PROFILE_NAME"))
+        popup = assert(UI.Dialog("PYRESINQOL_PROFILE_NAME"))
         assertContains(popup:GetTextFontString():GetText(), "Neues Addon-Profil")
         UI.AssertInside(popup, UIParent, "Deutscher Profildialog")
         popup:GetEditBox():SetText(longName)
@@ -64,7 +64,7 @@ UI.Flow("German settings at enlarged scale retain layout and controls across reo
     end,
 }, function()
     if selector then selector:CloseMenu() end
-    StaticPopup_Hide("PYRESINQOL_PROFILE_NAME")
+    UI.HideDialog("PYRESINQOL_PROFILE_NAME")
     if originalStore then PyresinQoLDB.profileStore = originalStore; EventRegistry:TriggerEvent("PyresinQoL.ProfileChanged") end
     if originalEnabled ~= nil then Settings.GetSetting("PyresinQoL_CastBarCustomization"):SetValue(originalEnabled) end
     PyresinQoLDB.castBarCustomization = originalRawEnabled
@@ -138,7 +138,7 @@ UI.Flow("German quest-sparkle checkbox and post-close restart dialog fit at enla
     end,
     function(_, _, list)
         assertFalse(PyresinQoLDB.questItemSparkles)
-        assertNil(StaticPopup_FindVisible("PYRESINQOL_QUEST_SPARKLES_RESTART"))
+        assertNil(UI.Dialog("PYRESINQOL_QUEST_SPARKLES_RESTART"))
         UI.Click(list.Header.DefaultsButton, list.Header, "Quest-Standardwerte")
     end,
     function(canvas, _, list)
@@ -148,10 +148,8 @@ UI.Flow("German quest-sparkle checkbox and post-close restart dialog fit at enla
     end,
     function(canvas)
         assertFalse(canvas:IsShown())
-        local popup = assert(StaticPopup_FindVisible("PYRESINQOL_QUEST_SPARKLES_RESTART"))
-        -- The pinned popup formatter corrupts UTF-8 umlauts; validate the source
-        -- translation and the rendered ASCII instruction separately (SIM-010).
-        assertContains(StaticPopupDialogs.PYRESINQOL_QUEST_SPARKLES_RESTART.text, "vollständig neu")
+        local popup = assert(UI.Dialog("PYRESINQOL_QUEST_SPARKLES_RESTART"))
+        assertContains(popup:GetTextFontString():GetText(), "vollständig neu")
         assertContains(popup:GetTextFontString():GetText(), "Starte das Spiel")
         assertContains(popup:GetTextFontString():GetText(), "/reload")
         UI.AssertInside(popup, UIParent, "Deutscher Neustart-Dialog")
@@ -161,7 +159,7 @@ UI.Flow("German quest-sparkle checkbox and post-close restart dialog fit at enla
 }, function()
     if sparkleSetting then sparkleSetting:SetValue(originalSparkles) end
     PyresinQoLSettingsFrame:Hide()
-    StaticPopup_Hide("PYRESINQOL_QUEST_SPARKLES_RESTART")
+    UI.HideDialog("PYRESINQOL_QUEST_SPARKLES_RESTART")
 end)
 
 local enable, panel, original

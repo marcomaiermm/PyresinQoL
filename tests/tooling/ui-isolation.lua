@@ -33,9 +33,7 @@ else
         assertFalse(GameMenuFrame:IsShown())
         assertFalse(ColorPickerFrame:IsShown())
         assertFalse(Menu.GetManager():IsAnyMenuOpen())
-        for _, name in ipairs({ "NAME", "DELETE", "SWITCH" }) do
-            assertNil(StaticPopup_FindVisible("PYRESINQOL_PROFILE_" .. name))
-        end
+        assertFalse(PyresinQoLDialog and PyresinQoLDialog:IsShown() or false)
         state.passes = state.passes + 1
         print("ui-isolation-pass-" .. state.passes .. "-clean")
     end)

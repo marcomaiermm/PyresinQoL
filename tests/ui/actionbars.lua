@@ -124,7 +124,7 @@ local function EditFlow(name, steps, restore)
     }
     for _, step in ipairs(steps) do flow[#flow + 1] = step end
     UI.Flow("Action Bars: " .. name, flow, function()
-        StaticPopup_Hide("PYRESINQOL_ACTIONBAR_CONDITION")
+        UI.HideDialog("PYRESINQOL_ACTIONBAR_CONDITION")
         HideUIPanel(EditModeManagerFrame)
         if restore then restore() end
     end)
@@ -220,7 +220,7 @@ EditFlow("macro dialog validates input and retains its bar when selection change
         Click(Button(panel, "Edit macro condition"), scroll, "Macro condition button")
     end,
     function()
-        macroPopup = assert(StaticPopup_FindVisible("PYRESINQOL_ACTIONBAR_CONDITION"))
+        macroPopup = assert(UI.Dialog("PYRESINQOL_ACTIONBAR_CONDITION"))
         UI.AssertInside(macroPopup, UIParent, "Macro dialog")
         assertContains(macroPopup:GetTextFontString():GetText(), "Action Bar 1")
         macroPopup:GetEditBox():SetText("[combat] invalid")

@@ -13,14 +13,14 @@ ns.RegisterModuleSettings("quests", function(module, context)
         L.questItemSparkles, false, module.UpdateQuestSparkles)
     AddControl(quests, Settings.CreateCheckboxInitializer(sparkles, nil, L.questItemSparklesHelp))
 
-    StaticPopupDialogs.PYRESINQOL_QUEST_SPARKLES_RESTART = {
+    ns.dialogs.PYRESINQOL_QUEST_SPARKLES_RESTART = {
         text = L.questItemSparklesRestart, button1 = OKAY,
         timeout = 0, whileDead = true, hideOnEscape = true,
     }
     function module.MaybePromptQuestSparklesRestart()
         if not module.questSparklesRestartPending or context.canvas:IsShown() then return end
         module.questSparklesRestartPending = nil
-        if sparkles:GetValue() ~= true then StaticPopup_Show("PYRESINQOL_QUEST_SPARKLES_RESTART") end
+        if sparkles:GetValue() ~= true then ns.ShowDialog("PYRESINQOL_QUEST_SPARKLES_RESTART") end
     end
     context.canvas:HookScript("OnHide", module.MaybePromptQuestSparklesRestart)
 end)

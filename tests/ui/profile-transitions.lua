@@ -100,6 +100,6 @@ UI.Flow("Profiles: layout-linked profile sync on specialization event refreshes 
         EventRegistry:TriggerEvent("PyresinQoL.ProfileChanged")
     end
     PyresinQoLSettingsFrame:Hide()
-    StaticPopup_Hide("PYRESINQOL_QUEST_SPARKLES_RESTART")
+    UI.HideDialog("PYRESINQOL_QUEST_SPARKLES_RESTART")
     for name, value in pairs(originalSparkleCVars) do C_CVar.SetCVar(name, value) end
 end)

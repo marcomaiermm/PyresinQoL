@@ -3,8 +3,8 @@ local L = ns.L
 local actionBars = ns.ActionBars
 
 local function RegisterConditionDialog()
-    if StaticPopupDialogs.PYRESINQOL_ACTIONBAR_CONDITION then return end
-    StaticPopupDialogs.PYRESINQOL_ACTIONBAR_CONDITION = {
+    if ns.dialogs.PYRESINQOL_ACTIONBAR_CONDITION then return end
+    ns.dialogs.PYRESINQOL_ACTIONBAR_CONDITION = {
         text = L.actionBarConditionDialog,
         button1 = ACCEPT,
         button2 = CANCEL,

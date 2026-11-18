@@ -20,6 +20,7 @@ Core/Locales/ruRU.lua
 Core/Locales/zhCN.lua
 Core/Modules.lua
 Core/Database.lua
+Core/Dialog.lua
 Core/Profiles.lua
 Settings/Controls.lua
 Settings/Window.lua

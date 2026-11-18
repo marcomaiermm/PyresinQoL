@@ -143,8 +143,6 @@ and uses the actual zero-gap wrapped-row rectangles; see AURA-001 in the error m
   labels at scale 1.25 pass **6/6**. World sparkles and restart behavior remain
   unverified outside the game client. The shared UI helper seeds the simulator's
   missing loot-effect CVar only for these scenarios; see SIM-009 in the error map.
-  German popup-source text is checked separately from rendered ASCII instructions
-  because the pinned simulator's popup formatter corrupts UTF-8 umlauts (SIM-010).
 - Package integrity, source consistency and the 0.1.6 manifest audit pass.
 - Native Dungeon Maps verification passes **66/66** at 1280×720, including
   catalog/subzone auto-detection and unsupported-instance handoff. CI runs the
