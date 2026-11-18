@@ -69,7 +69,7 @@ ColorPickerFrame = {
     IsShown = function(self) return self.shown end,
     Hide = function(self) self.shown = false end,
 }
-local ns = { CastBar = cast }
+local ns = { CastBar = cast, dialogs = {} }
 for _, file in ipairs({ "Core/Localization.lua", "Core/Modules.lua", "Core/Profiles.lua", "Core/Database.lua",
     "Modules/EditMode/CustomDisplay.lua", "Modules/Performance/Performance.lua", "Modules/CastBar/EditMode.lua" }) do
     assert(loadfile(file))("PyresinQoL", ns)
@@ -86,8 +86,8 @@ PyresinQoLDB = { modules = modules, showFPS = true, showLatency = true,
     performancePosition = { x = 10, y = 20 }, castBarCustomization = true,
     castBar = { width = 220, colorMode = "custom", customColor = { r = .1, g = .2, b = .3 } } }
 local queued, prompts = {}, 0
+function ns.ShowDialog(name) assert(name == "PYRESINQOL_PROFILE_RELOAD"); prompts = prompts + 1 end
 C_Timer = { After = function(_, callback) queued[#queued + 1] = callback end }
-function StaticPopup_Show(name) assert(name == "PYRESINQOL_PROFILE_RELOAD"); prompts = prompts + 1 end
 function ns.InitializeSettings()
     -- Use real module refreshes; registered-setting callback wiring is covered by
     -- settings.lua and the native UI transition scenario.

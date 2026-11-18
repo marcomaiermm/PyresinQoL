@@ -23,14 +23,14 @@ UI.Flow("quest sparkles: opt-in, canceled reminder and restart dialog only after
     function(_, _, list)
         CheckCVars(true)
         assertTrue(UI.VisibleSetting(list, setting).Checkbox:GetChecked())
-        assertNil(StaticPopup_FindVisible(dialog))
+        assertNil(UI.Dialog(dialog))
         UI.Click(UI.VisibleSetting(list, setting).Checkbox, list.ScrollBox, "Disable quest sparkles")
     end,
     function(_, _, list)
         assertFalse(PyresinQoLDB.questItemSparkles)
         CheckCVars(false)
         assertFalse(UI.VisibleSetting(list, setting).Checkbox:GetChecked())
-        assertNil(StaticPopup_FindVisible(dialog), "Do not interrupt the open settings menu")
+        assertNil(UI.Dialog(dialog), "Do not interrupt the open settings menu")
         UI.Click(UI.VisibleSetting(list, setting).Checkbox, list.ScrollBox, "Enable quest sparkles")
     end,
     function(canvas)
@@ -38,7 +38,7 @@ UI.Flow("quest sparkles: opt-in, canceled reminder and restart dialog only after
         UI.Click(canvas.ClosePanelButton, UIParent, "Close after re-enabling")
     end,
     function()
-        assertNil(StaticPopup_FindVisible(dialog), "Re-enabling cancels the restart reminder")
+        assertNil(UI.Dialog(dialog), "Re-enabling cancels the restart reminder")
         SlashCmdList.PQOL()
     end,
     function(_, _, list)
@@ -48,12 +48,12 @@ UI.Flow("quest sparkles: opt-in, canceled reminder and restart dialog only after
         assertFalse(PyresinQoLDB.questItemSparkles)
         assertFalse(UI.VisibleSetting(list, setting).Checkbox:GetChecked())
         CheckCVars(false)
-        assertNil(StaticPopup_FindVisible(dialog))
+        assertNil(UI.Dialog(dialog))
         UI.Click(canvas.ClosePanelButton, UIParent, "Close after disabling sparkles")
     end,
     function(canvas)
         assertFalse(canvas:IsShown())
-        local popup = assert(StaticPopup_FindVisible(dialog), "Missing restart dialog after closing settings")
+        local popup = assert(UI.Dialog(dialog), "Missing restart dialog after closing settings")
         assertContains(popup:GetTextFontString():GetText(), "Fully restart the game")
         assertContains(popup:GetTextFontString():GetText(), "/reload")
         UI.AssertInside(popup, UIParent, "Sparkles restart dialog")
@@ -66,11 +66,11 @@ UI.Flow("quest sparkles: opt-in, canceled reminder and restart dialog only after
         UI.Click(canvas.ClosePanelButton, UIParent, "Close already-disabled settings")
     end,
     function()
-        assertNil(StaticPopup_FindVisible(dialog), "A completed reset must not prompt again")
+        assertNil(UI.Dialog(dialog), "A completed reset must not prompt again")
     end,
 }, function()
     if setting then setting:SetValue(original) end
     PyresinQoLSettingsFrame:Hide()
-    StaticPopup_Hide(dialog)
+    UI.HideDialog(dialog)
     for name, value in pairs(originalCVars) do C_CVar.SetCVar(name, value) end
 end)

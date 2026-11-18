@@ -134,7 +134,7 @@ ns.RegisterModule("actionBars", function(module)
         edit:SetScript("OnClick", function()
             local option = setting("CustomCondition")
             if available() and option then
-                StaticPopup_Show("PYRESINQOL_ACTIONBAR_CONDITION", L[selected.label], nil, {
+                ns.ShowDialog("PYRESINQOL_ACTIONBAR_CONDITION", L[selected.label], nil, {
                     key = selected.prefix .. "CustomCondition", setting = option,
                 })
             end

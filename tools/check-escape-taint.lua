@@ -23,7 +23,7 @@ native("Blizzard_Game/Shared/Game.lua")
 ToggleGameMenu()
 assert(#errors == 0, table.concat(errors, "\n"))
 
-local ns = {}
+local ns = { dialogs = {} }
 function GetLocale() return "enUS" end
 Settings = { VarType = { Boolean = "boolean", String = "string", Number = "number" } }
 function Settings.CreateSliderOptions() return { SetLabelFormatter = function() end } end
@@ -57,5 +57,6 @@ ToggleGameMenu()
 assert(#errors == 0, table.concat(errors, "\n"))
 assert(issecurevariable(_G, "StaticPopupDialogs"), "The native popup registry must stay secure")
 assert(issecurevariable(_G, "HelpFrame_EscapePressed"), "Native ESC handlers must stay secure")
-assert(StaticPopupDialogs.PYRESINQOL_ACTIONBAR_CONDITION, "The addon dialog must still be registered")
+assert(next(StaticPopupDialogs) == nil, "Addon dialogs stay off the native popup registry")
+assert(ns.dialogs.PYRESINQOL_ACTIONBAR_CONDITION, "The addon dialog must still be registered")
 print("PASS: native Escape remains secure after addon settings and later native handler registration")

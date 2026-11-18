@@ -32,8 +32,6 @@ function EditModeManagerFrame:IsShown() return self.shown end
 function ShowUIPanel(frame) frame.shown = true end
 PyresinQoLSettingsFrame = Frame()
 local popup
-StaticPopupDialogs = {}
-function StaticPopup_Show(name, label, _, data) popup = { name = name, label = label, data = data } end
 UIErrorsFrame = { AddMessage = function(self, message) self.message = message end }
 ACCEPT, CANCEL = "Accept", "Cancel"
 
@@ -67,7 +65,8 @@ function CreateSettingsButtonInitializer(label, text, callback)
     return entry
 end
 
-local ns = { CastBar = h.castBar }
+local ns = { CastBar = h.castBar, dialogs = {} }
+function ns.ShowDialog(name, label, _, data) popup = { name = name, label = label, data = data } end
 for _, path in ipairs({ "Core/Localization.lua", "Core/Locales/deDE.lua", "Core/Modules.lua", "Settings/Controls.lua",
     "Modules/ActionBars/Config.lua", "Modules/CastBar/EditMode.lua", "Modules/ActionBars/EditMode.lua",
     "Modules/ActionBars/Settings.lua" }) do assert(loadfile(path))("PyresinQoL", ns) end
@@ -156,15 +155,15 @@ assert(PyresinQoLDB.actionBarMainAlphaNormal == .37 and not PyresinQoLDB.actionB
 
 local conditionText = "[stealth] hide; show"
 local popupFrame = { GetEditBox = function() return { GetText = function() return conditionText end } end }
-StaticPopupDialogs[popup.name].OnAccept(popupFrame, popup.data)
+ns.dialogs[popup.name].OnAccept(popupFrame, popup.data)
 assert(PyresinQoLDB.actionBarMainCustomCondition == conditionText and PyresinQoLDB.actionBarBar2CustomCondition == "",
     "An open macro editor keeps the bar it was opened for when selection changes")
 conditionText = "[combat] invalid"
-assert(StaticPopupDialogs[popup.name].OnAccept(popupFrame, popup.data) and UIErrorsFrame.message)
+assert(ns.dialogs[popup.name].OnAccept(popupFrame, popup.data) and UIErrorsFrame.message)
 assert(PyresinQoLDB.actionBarMainCustomCondition == "[stealth] hide; show")
 combat = true
 conditionText = "hide"
-assert(StaticPopupDialogs[popup.name].OnAccept(popupFrame, popup.data))
+assert(ns.dialogs[popup.name].OnAccept(popupFrame, popup.data))
 hide.OnCheckButtonClick()
 assert(not PyresinQoLDB.actionBarBar2HideCombat and PyresinQoLDB.actionBarMainCustomCondition ~= "hide")
 combat = false

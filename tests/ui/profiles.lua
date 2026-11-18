@@ -2,7 +2,7 @@ local UI = PyresinQoLUITest
 local original, panel, active, layouts, popup
 local function Store() return PyresinQoLDB.profileStore end
 local function NameDialog(name)
-    popup = assert(StaticPopup_FindVisible("PYRESINQOL_PROFILE_NAME"))
+    popup = assert(UI.Dialog("PYRESINQOL_PROFILE_NAME"))
     UI.AssertInside(popup, UIParent, "Profile name dialog")
     popup:GetEditBox():SetText(name)
 end
@@ -83,7 +83,7 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
         UI.Click(UI.Button(panel, DELETE), panel, "Delete inactive profile")
     end,
     function()
-        popup = assert(StaticPopup_FindVisible("PYRESINQOL_PROFILE_DELETE"))
+        popup = assert(UI.Dialog("PYRESINQOL_PROFILE_DELETE"))
         assertContains(popup:GetTextFontString():GetText(), "UI renamed")
         UI.Click(popup:GetButton2(), popup, "Cancel profile deletion")
     end,
@@ -92,7 +92,7 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
         UI.Click(UI.Button(panel, DELETE), panel, "Delete inactive profile")
     end,
     function()
-        popup = assert(StaticPopup_FindVisible("PYRESINQOL_PROFILE_DELETE"))
+        popup = assert(UI.Dialog("PYRESINQOL_PROFILE_DELETE"))
         UI.Click(popup:GetButton1(), popup, "Confirm profile deletion")
     end,
     function()
@@ -103,7 +103,7 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
     end,
     function() UI.SelectMenu(active, "Default") end,
     function()
-        popup = assert(StaticPopup_FindVisible("PYRESINQOL_PROFILE_SWITCH"))
+        popup = assert(UI.Dialog("PYRESINQOL_PROFILE_SWITCH"))
         assertContains(popup:GetTextFontString():GetText(), "Default")
         UI.Click(popup:GetButton2(), popup, "Cancel profile switch")
     end,
@@ -111,6 +111,6 @@ UI.Flow("Profiles: native dialogs validate, copy, rename, link and delete profil
 }, function()
     if active then active:CloseMenu() end
     if layouts then layouts:CloseMenu() end
-    for _, name in ipairs({ "NAME", "DELETE", "SWITCH" }) do StaticPopup_Hide("PYRESINQOL_PROFILE_" .. name) end
+    for _, name in ipairs({ "NAME", "DELETE", "SWITCH" }) do UI.HideDialog("PYRESINQOL_PROFILE_" .. name) end
     if original then PyresinQoLDB.profileStore = original; EventRegistry:TriggerEvent("PyresinQoL.ProfileChanged") end
 end)

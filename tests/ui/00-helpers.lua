@@ -173,6 +173,17 @@ function UI.Click(control, bounds, name)
     control:Click()
 end
 
+-- The addon's own dialog (Core/Dialog.lua), while it shows `which`.
+function UI.Dialog(which)
+    local dialog = PyresinQoLDialog
+    if dialog and dialog:IsShown() and dialog.which == which then return dialog end
+end
+
+function UI.HideDialog(which)
+    local dialog = UI.Dialog(which)
+    if dialog then dialog:Hide() end
+end
+
 function UI.ScrollTo(scroll, control)
     local content = scroll:GetScrollChild()
     local offset = content:GetTop() - control:GetTop()

@@ -15,7 +15,8 @@ function CopyTable(value)
     return result
 end
 local function Namespace()
-    local ns = {}
+    local ns = { dialogs = {} }
+    function ns.ShowDialog(...) return ShowTestDialog(ns, ...) end
     for _, path in ipairs({ "Core/Localization.lua", "Core/Locales/deDE.lua", "Core/Profiles.lua", "Core/Database.lua", "Core/Modules.lua", "Modules/CastBar/Config.lua" }) do
         assert(loadfile(path))("PyresinQoL", ns)
     end
@@ -100,7 +101,6 @@ function EventRegistry:TriggerEvent(event)
     for _, callback in ipairs(callbacks[event] or {}) do callback() end
 end
 ACCEPT, CANCEL, DELETE = "Accept", "Cancel", "Delete"
-StaticPopupDialogs = {}
 UIErrorsFrame = { AddMessage = function(self, message) self.message = message end }
 GameTooltip = { SetOwner = function() end, SetText = function() end, AddLine = function() end,
     Show = function() end, Hide = function() end }
@@ -159,9 +159,9 @@ function CreateFrame(kind, _, parent, template)
     end
     return widget
 end
-function StaticPopup_Show(which, _, _, data)
-    local info = assert(StaticPopupDialogs[which])
-    popup = { which = which, data = data, shown = true, text = {}, input = {}, button = {} }
+function ShowTestDialog(owner, which, _, _, data)
+    local info = assert(owner.dialogs[which])
+    popup = { which = which, info = info, data = data, shown = true, text = {}, input = {}, button = {} }
     local dialog = popup
     function dialog:GetEditBox() return self.input end
     function dialog:GetButton1() return self.button end
@@ -206,7 +206,7 @@ create.scripts.OnClick()
 assert(not popup.button.enabled and popup.input.maxLetters == 32)
 popup.input:SetText("  UI copy  ")
 assert(popup.button.enabled)
-StaticPopupDialogs[popup.which].EditBoxOnEnterPressed(popup.input)
+popup.info.EditBoxOnEnterPressed(popup.input)
 assert(not popup.shown and store.active == "UI copy" and Entry(settings, "UI copy").selected())
 rename.scripts.OnClick()
 popup.input:SetText("UI renamed")
